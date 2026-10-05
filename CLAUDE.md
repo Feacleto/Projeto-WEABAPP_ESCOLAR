@@ -1963,6 +1963,15 @@ podia ser conferido.
   escolhida no cadastro com "Até 31/12" e "12 meses" de atalho e o "Contrato
   de N meses" aparecendo sozinho. As parcelas são os MESES DE SERVIÇO (mês
   começado conta inteiro) — não os meses do calendário: 10/03 a 09/03 são 12.
+- ⚠️ **O TEXTO DAS CLÁUSULAS TEM VERSÃO PRÓPRIA (05/10/2026):**
+  `dados.versaoDoTexto` (ausente = 1, o texto de antes), dentro do JSON do
+  hash. O `ContractView` desenha a redação DAQUELA versão, e os números que
+  ela cita (multa, juros, prazos, canal do titular) moram em
+  `TEXTOS_DO_CONTRATO`. O texto 2 tem multa de 2% + juros de 1% ao mês,
+  arrependimento de 7 dias, aviso de 10 dias antes de suspender/rescindir,
+  cláusula LGPD (o motorista é o controlador, o app é operador) e foro do
+  consumidor. Texto publicado não se edita: corrigir é criar o 3. O pendente
+  é reemitido sozinho no texto novo (`mesmoConteudo` muda); o aceito fica.
 - **Nenhuma versão é editada depois de emitida.** O motorista emite
   (`aguardando`) e pode retirar o que ninguém aceitou; a família só LÊ — quem
   grava aceite e hash é a callable `aceitarContrato`. As rules recusam

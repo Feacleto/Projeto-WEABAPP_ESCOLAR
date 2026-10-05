@@ -35,7 +35,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { DEV_NAME, DEV_CNPJ } from '../src/config/developer.js';
+import { DEV_RAZAO_SOCIAL, DEV_CNPJ } from '../src/config/developer.js';
 import { COMPANY_INFO } from '../src/pages/legal/legalContent.js';
 import { caminhoSemSegredo } from '../src/compartilhado/caminhoSemSegredo.js';
 
@@ -254,7 +254,7 @@ if (dados) {
   // A landing e HTML estatico sem build: ela nao alcanca `developer.js`. Os
   // dados legais estao escritos la a mao, de propriedade — e o unico jeito de
   // isso nao virar a quarta versao da identidade da empresa e comparar aqui.
-  checar('a razao social bate com developer.js', DEV_NAME, dados.legalName);
+  checar('a razao social bate com developer.js', DEV_RAZAO_SOCIAL, dados.legalName);
   checar('o CNPJ tambem', DEV_CNPJ, dados.taxID);
   checar('e o e-mail bate com o dos documentos legais', COMPANY_INFO.email, dados.email);
 

@@ -1,15 +1,23 @@
 import { formatBRL } from '../../compartilhado/formatters';
 import { formatPhone } from '../../compartilhado/formatters';
+import {
+  versaoDoTexto,
+  regrasDoTexto,
+  seAtrasar,
+  identificacaoDaContratada,
+} from '../../dominio/cobranca/contratoDaFamilia.js';
 
-/**
- * A multa por atraso da cláusula 8ª, § 1º — UM número só, lido pela cláusula
- * e pelo resumo do topo. Antes de 03/10/2026 ela era literal dentro do texto,
- * e um resumo que a digitasse de novo seria a segunda verdade sobre o mesmo
- * dinheiro. O texto renderizado da cláusula continua idêntico ("10% (dez por
- * cento)"), e o hash do aceite nem passa por aqui: ele é tirado do JSON
- * gravado (`reguaDoContrato.js`), não do que a tela desenha.
+/*
+ * ⚠️ ESTA TELA DESENHA O TEXTO DA VERSÃO GRAVADA, NÃO O TEXTO DE HOJE
+ * (05/10/2026). O hash do aceite é tirado de `dados` (os valores), e as
+ * cláusulas moram aqui no código — então cada redação tem número
+ * (`dados.versaoDoTexto`, ausente = 1) e o que muda entre elas está em
+ * `v2 ? … : …`. O ramo do texto 1 NÃO SE EDITA: é o que as famílias que já
+ * aceitaram leram. Os números citados (multa, juros, prazos, canal) vêm de
+ * `regrasDoTexto`, por versão — antes de 03/10/2026 a multa era literal no
+ * texto, e um resumo que a digitasse de novo seria a segunda verdade sobre o
+ * mesmo dinheiro.
  */
-const MULTA_POR_ATRASO = { pct: 10, extenso: 'dez por cento' };
 
 /**
  * O RESUMO DO COMBINADO — o que a família precisa conferir, ANTES do texto
@@ -29,7 +37,7 @@ export function ResumoDoCombinado({ data, children }) {
     ['Vencimento', `Todo dia ${finance.dueDay}`],
     ['Vale de', `${period.startDate} a ${period.endDate}`],
     ['Falta e férias', 'Não dão desconto'],
-    ['Se atrasar', `Multa de ${MULTA_POR_ATRASO.pct}%`],
+    ['Se atrasar', seAtrasar(data)],
   ];
   return (
     <section className="rounded-2xl border border-border bg-card p-4 print:hidden">
@@ -78,6 +86,9 @@ export default function ContractView({
     period,
     contractedYear,
   } = data;
+  const v2 = versaoDoTexto(data) >= 2;
+  const regras = regrasDoTexto(data);
+  const ident = identificacaoDaContratada(company);
 
   return (
     <article className="bg-card text-left text-base leading-relaxed text-text">
@@ -119,28 +130,66 @@ export default function ContractView({
 
       {/* Preâmbulo */}
       <section className="space-y-4">
-        <p>
-          Pelo presente instrumento particular de{' '}
-          <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE TRANSPORTE
-          ESCOLAR</strong>,{' '}
-          <strong>{company.name}</strong>, com sede à{' '}
-          <strong>{company.address}</strong>, devidamente inscrita no
-          C.N.P.J./C.P.F. sob nº <strong>{company.document}</strong>, doravante
-          apenas denominada <strong>CONTRATADA</strong>, neste ato representada
-          por seu representante legal{' '}
-          <strong>{company.representative}</strong>, e, de outro lado, o
-          responsável pelo aluno <strong>{student.name}</strong>, Sr(a).{' '}
-          <strong>{parent.name}</strong>, com email{' '}
-          <strong>{parent.email}</strong>
-          {parent.phone && (
-            <>
-              {' '}
-              e telefone <strong>{formatPhone(parent.phone)}</strong>
-            </>
-          )}
-          , agora apenas denominado <strong>CONTRATANTE</strong>, tem, entre si,
-          justo e contratado o seguinte:
-        </p>
+        {v2 ? (
+          <p>
+            Pelo presente instrumento particular de{' '}
+            <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE TRANSPORTE
+            ESCOLAR</strong>, de um lado <strong>{company.name}</strong>,{' '}
+            {ident.tipo === 'CNPJ' ? 'com sede em' : 'com endereço em'}{' '}
+            <strong>{company.address}</strong>,{' '}
+            {ident.tipo === 'CNPJ'
+              ? 'inscrita no CNPJ'
+              : ident.tipo === 'CPF'
+                ? 'inscrito(a) no CPF'
+                : 'inscrito(a) no CPF/CNPJ'}{' '}
+            sob nº <strong>{company.document}</strong>
+            {ident.representante && (
+              <>
+                , neste ato representada por{' '}
+                <strong>{ident.representante}</strong>
+              </>
+            )}
+            , doravante denominada <strong>CONTRATADA</strong>, e, de outro
+            lado, o(a) responsável pelo aluno <strong>{student.name}</strong>,{' '}
+            <strong>{parent.name}</strong>
+            {parent.email && (
+              <>
+                , com e-mail <strong>{parent.email}</strong>
+              </>
+            )}
+            {parent.phone && (
+              <>
+                {parent.email ? ' e' : ', com'} telefone{' '}
+                <strong>{formatPhone(parent.phone)}</strong>
+              </>
+            )}
+            , doravante denominado(a) <strong>CONTRATANTE</strong>, têm, entre
+            si, justo e contratado o seguinte:
+          </p>
+        ) : (
+          <p>
+            Pelo presente instrumento particular de{' '}
+            <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE TRANSPORTE
+            ESCOLAR</strong>,{' '}
+            <strong>{company.name}</strong>, com sede à{' '}
+            <strong>{company.address}</strong>, devidamente inscrita no
+            C.N.P.J./C.P.F. sob nº <strong>{company.document}</strong>, doravante
+            apenas denominada <strong>CONTRATADA</strong>, neste ato representada
+            por seu representante legal{' '}
+            <strong>{company.representative}</strong>, e, de outro lado, o
+            responsável pelo aluno <strong>{student.name}</strong>, Sr(a).{' '}
+            <strong>{parent.name}</strong>, com email{' '}
+            <strong>{parent.email}</strong>
+            {parent.phone && (
+              <>
+                {' '}
+                e telefone <strong>{formatPhone(parent.phone)}</strong>
+              </>
+            )}
+            , agora apenas denominado <strong>CONTRATANTE</strong>, tem, entre si,
+            justo e contratado o seguinte:
+          </p>
+        )}
 
         {/* Cláusula 1 */}
         <p>
@@ -216,22 +265,54 @@ export default function ContractView({
           <strong>CLÁUSULA 8ª</strong> – As parcelas terão vencimento todo dia{' '}
           <strong>{finance.dueDay}</strong> de cada mês.
         </p>
-        <p className="pl-4">
-          <strong>§ 1º</strong> – Em caso de falta de pagamento no vencimento,
-          o valor será acrescido de multa de {MULTA_POR_ATRASO.pct}% ({MULTA_POR_ATRASO.extenso}).
-        </p>
-        <p className="pl-4">
-          <strong>§ 2º</strong> – Em caso de inadimplência, a Contratada poderá
-          optar:
-        </p>
-        <p className="pl-8">
-          I – Pela rescisão contratual, independente da exigibilidade do débito
-          vencido e do devido no mês da efetivação.
-        </p>
-        <p className="pl-8">
-          II – Pela suspensão da prestação dos serviços, independente da
-          exigibilidade do débito vencido e do devido no mês da efetivação.
-        </p>
+        {v2 ? (
+          <>
+            <p className="pl-4">
+              <strong>§ 1º</strong> – Em caso de falta de pagamento no
+              vencimento, o valor será acrescido de multa de{' '}
+              {regras.multa.pct}% ({regras.multa.extenso}), juros de mora de{' '}
+              {regras.juros.pctAoMes}% ({regras.juros.extenso}) ao mês,
+              proporcionais aos dias de atraso, e correção monetária pelo IPCA
+              (IBGE), nos termos do art. 52, § 1º, do Código de Defesa do
+              Consumidor.
+            </p>
+            <p className="pl-4">
+              <strong>§ 2º</strong> – Em caso de inadimplência, a Contratada
+              poderá optar, desde que avise o Contratante com antecedência
+              mínima de {regras.diasDeAvisoAntesDeSuspender.n} ({regras.diasDeAvisoAntesDeSuspender.extenso}) dias, pelo
+              aplicativo Alô Buzinou ou por WhatsApp, e o débito não seja pago
+              nesse prazo:
+            </p>
+            <p className="pl-8">
+              I – Pela rescisão contratual, sem prejuízo da cobrança do débito
+              vencido e do devido no mês da efetivação.
+            </p>
+            <p className="pl-8">
+              II – Pela suspensão da prestação dos serviços até a quitação do
+              débito, sem prejuízo da cobrança do débito vencido e do devido
+              no mês da efetivação.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="pl-4">
+              <strong>§ 1º</strong> – Em caso de falta de pagamento no vencimento,
+              o valor será acrescido de multa de {regras.multa.pct}% ({regras.multa.extenso}).
+            </p>
+            <p className="pl-4">
+              <strong>§ 2º</strong> – Em caso de inadimplência, a Contratada poderá
+              optar:
+            </p>
+            <p className="pl-8">
+              I – Pela rescisão contratual, independente da exigibilidade do débito
+              vencido e do devido no mês da efetivação.
+            </p>
+            <p className="pl-8">
+              II – Pela suspensão da prestação dos serviços, independente da
+              exigibilidade do débito vencido e do devido no mês da efetivação.
+            </p>
+          </>
+        )}
 
         {/* Cláusula 9 */}
         <p>
@@ -244,18 +325,64 @@ export default function ContractView({
           <strong>A) Pelo Contratante:</strong>
         </p>
         <p className="pl-8">I – Por simples desistência formal;</p>
+        {v2 && (
+          <p className="pl-8">
+            II – Por arrependimento, em até {regras.diasDeArrependimento.n}{' '}
+            ({regras.diasDeArrependimento.extenso}) dias contados do aceite eletrônico deste contrato, nos
+            termos do art. 49 do Código de Defesa do Consumidor, sem multa e
+            sem justificativa, pagando apenas pelos dias de transporte
+            efetivamente prestados até a desistência, se houver. O que tiver
+            sido pago além disso será devolvido, corrigido monetariamente.
+          </p>
+        )}
         <p className="pl-4">
           <strong>B) Pela Contratada:</strong>
         </p>
         <p className="pl-8">
-          I – Por inadimplência, nos termos do inciso I do parágrafo 2º da
-          cláusula 8ª.
+          {v2
+            ? 'I – Por inadimplência, nos termos do inciso I do parágrafo 2º da cláusula 8ª, com o aviso prévio ali previsto.'
+            : 'I – Por inadimplência, nos termos do inciso I do parágrafo 2º da cláusula 8ª.'}
         </p>
         <p className="pl-4">
-          <strong>Parágrafo Único</strong> – Em todos os casos fica o
-          Contratante obrigado a pagar o valor da parcela do mês em que ocorrer
-          o evento.
+          <strong>Parágrafo Único</strong> –{' '}
+          {v2
+            ? 'Salvo no arrependimento do inciso II da alínea A, fica o Contratante obrigado a pagar o valor da parcela do mês em que ocorrer o evento.'
+            : 'Em todos os casos fica o Contratante obrigado a pagar o valor da parcela do mês em que ocorrer o evento.'}
         </p>
+
+        {v2 && (
+          <>
+            {/* Cláusula 10 — dados pessoais (LGPD) */}
+            <p>
+              <strong>CLÁUSULA 10ª</strong> – A Contratada é a controladora
+              dos dados pessoais do aluno e do Contratante (nome, endereço,
+              escola, telefone, e-mail, horários e registros das viagens),
+              tratados para prestar o transporte e cumprir este contrato (Lei
+              13.709/2018, art. 7º, V), sempre no melhor interesse da criança
+              (art. 14). A Contratada usa o aplicativo Alô Buzinou como
+              ferramenta, que trata esses dados em nome dela, como operador.
+            </p>
+            <p className="pl-4">
+              <strong>§ 1º</strong> – Dados de saúde do aluno só serão
+              tratados se o Contratante os informar, com consentimento
+              específico dado no próprio aplicativo, que pode ser revogado a
+              qualquer momento.
+            </p>
+            <p className="pl-4">
+              <strong>§ 2º</strong> – O Contratante pode exercer os direitos
+              de titular (como acesso, correção e eliminação dos dados)
+              diretamente com a Contratada ou pelo canal do aplicativo,{' '}
+              <strong>{regras.canalDoTitular}</strong>.
+            </p>
+
+            {/* Cláusula 11 — foro */}
+            <p>
+              <strong>CLÁUSULA 11ª</strong> – Fica eleito o foro do domicílio
+              do Contratante para resolver qualquer questão deste contrato
+              (Código de Defesa do Consumidor, art. 101, I).
+            </p>
+          </>
+        )}
 
         {/* Encerramento */}
         <p className="mt-6">
@@ -304,7 +431,7 @@ export default function ContractView({
             )}
             <p className="text-sm text-textMuted pt-1">
               {numero ? `Versão ${numero} do contrato.` : `Contrato versão ${acceptanceInfo.version || 1}.`} Aceite registrado
-              eletronicamente conforme MP 2.200-2/2001 e Lei 14.063/2020.
+              eletronicamente conforme MP 2.200-2/2001, art. 10, § 2º, e Código Civil, art. 107.
             </p>
           </div>
         </section>

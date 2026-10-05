@@ -36,7 +36,13 @@ export default function PaiContract() {
   // Aceite antigo, anterior às versões gravadas: o texto é o que os campos dizem.
   const legado = useMemo(() => {
     if (!child || !admin || vigente || aguardando) return null;
-    return buildContractData({ child, admin });
+    // O aceite antigo foi dado lendo o TEXTO 1 — remontá-lo no texto de hoje
+    // mostraria cláusulas que ela não leu. Sem aceite, é só prévia.
+    return buildContractData({
+      child,
+      admin,
+      ...(child.contractAcceptedAt ? { versaoDoTexto: 1 } : {}),
+    });
   }, [child, admin, vigente, aguardando]);
 
   if (loading || adminLoading || contratosLoading) {

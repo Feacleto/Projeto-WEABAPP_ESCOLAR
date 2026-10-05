@@ -23,7 +23,14 @@ import {
   estadoDoContrato,
   dataBR,
   vigenciaDaCrianca,
+  VERSAO_DO_TEXTO,
+  TEXTOS_DO_CONTRATO,
+  versaoDoTexto,
+  regrasDoTexto,
+  seAtrasar,
+  identificacaoDaContratada,
 } from '../src/dominio/cobranca/contratoDaFamilia.js';
+import { createHash } from 'node:crypto';
 
 const require = createRequire(import.meta.url);
 const servidor = require('../functions/lib/reguaDoContrato.js');
@@ -154,6 +161,59 @@ checar('o servidor conta as parcelas igual à tela, caso a caso', true,
 checar('e o gerador de mensalidade usa a régua', true,
   readFileSync(new URL('../functions/lib/billing.js', import.meta.url), 'utf8')
     .includes('mesDentroDaVigencia(monthKey, child.vigenciaInicio, child.vigenciaFim)'));
+
+console.log('\n═══ A VERSÃO DO TEXTO (o contrato aceito mostra o que foi aceito) ═══');
+checar('versão gravada sem a marca é o texto 1', 1, versaoDoTexto({ finance: {} }));
+checar('marca desconhecida também é o texto 1 (nunca um texto que não existe)', 1, versaoDoTexto({ versaoDoTexto: 99 }));
+checar('o texto novo é o 2', 2, VERSAO_DO_TEXTO);
+checar('o 2 é lido como 2', 2, versaoDoTexto({ versaoDoTexto: 2 }));
+checar('o texto 1 continua com a multa de 10% que foi aceita', 10, TEXTOS_DO_CONTRATO[1].multa.pct);
+checar('o texto 2: multa de 2% (CDC art. 52, § 1º)', 2, regrasDoTexto({ versaoDoTexto: 2 }).multa.pct);
+checar('o texto 2: juros de 1% ao mês', 1, regrasDoTexto({ versaoDoTexto: 2 }).juros.pctAoMes);
+checar('o texto 2: 7 dias de arrependimento (CDC art. 49)', 7, regrasDoTexto({ versaoDoTexto: 2 }).diasDeArrependimento.n);
+checar('o texto 2: 10 dias de aviso antes de suspender', 10, regrasDoTexto({ versaoDoTexto: 2 }).diasDeAvisoAntesDeSuspender.n);
+checar('o resumo do texto 1 diz a multa dele', 'Multa de 10%', seAtrasar({}));
+checar('o resumo do texto 2 diz multa e juros', 'Multa de 2% e juros de 1% ao mês', seAtrasar({ versaoDoTexto: 2 }));
+const v1 = { ...base };
+const v2 = { ...base, versaoDoTexto: 2 };
+checar('texto diferente é conteúdo diferente (é o que reemite o pendente)', false, mesmoConteudo(v1, v2));
+const hashDe = (d) => createHash('sha256').update(jsonCanonico(d)).digest('hex');
+checar('a marca do texto entra no hash do aceite', false, hashDe(v1) === hashDe(v2));
+checar('e o servidor tira o mesmo hash da versão nova',
+  hashDe(v2), createHash('sha256').update(servidor.jsonCanonico(v2)).digest('hex'));
+
+console.log('\n═══ A CONTRATADA PODE SER CPF OU CNPJ (preâmbulo do texto 2) ═══');
+checar('CPF: sem representante (ninguém representa a si mesmo)', { tipo: 'CPF', representante: null },
+  identificacaoDaContratada({ name: 'João da Silva', document: '123.456.789-09', representative: 'João da Silva' }));
+checar('CNPJ com representante de verdade', { tipo: 'CNPJ', representante: 'João da Silva' },
+  identificacaoDaContratada({ name: 'Transportes JS Ltda', document: '12.345.678/0001-90', representative: 'João da Silva' }));
+checar('CNPJ com o "Representante legal" de reserva: nenhum nome inventado', { tipo: 'CNPJ', representante: null },
+  identificacaoDaContratada({ name: 'Transportes JS Ltda', document: '12345678000190', representative: 'Representante legal' }));
+checar('CNPJ cujo "representante" é a própria razão social: não repete', { tipo: 'CNPJ', representante: null },
+  identificacaoDaContratada({ name: 'JOÃO DA SILVA', document: '12345678000190', representative: 'João da Silva' }));
+checar('documento que não é nem um nem outro: tipo desconhecido', { tipo: null, representante: null },
+  identificacaoDaContratada({ name: 'X', document: '123', representative: 'Y' }));
+
+console.log('\n═══ A TELA DESENHA O TEXTO DA VERSÃO, E O SERVIÇO GRAVA A MARCA ═══');
+// As quebras de linha viram "\n": num clone no Windows o arquivo chega com
+// "\r\n", e a busca pelo fim da função (`\n}\n`) passava direto (QA, 05/10/2026).
+const tela = readFileSync(new URL('../src/components/contract/ContractView.jsx', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const servico = readFileSync(new URL('../src/services/contractService.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+checar('o contrato novo sai com a marca do texto atual', true,
+  servico.includes('versaoDoTexto = VERSAO_DO_TEXTO') && servico.includes('{ versaoDoTexto }'));
+checar('a tela escolhe o texto pela versão gravada', true, tela.includes('versaoDoTexto(data)'));
+checar('a multa da cláusula vem da tabela da versão, nunca literal', true,
+  !/multa de \d+%/.test(tela) && tela.includes('regras.multa.pct'));
+checar('o resumo lê a mesma régua da cláusula', true, tela.includes("['Se atrasar', seAtrasar(data)]"));
+checar('o aceite não cita a Lei 14.063 (assinatura com o poder público)', false, tela.includes('14.063'));
+const inicioDoResumo = tela.indexOf('export function ResumoDoCombinado');
+const resumo = tela.slice(inicioDoResumo, tela.indexOf('\n}\n', inicioDoResumo));
+checar('o resumo (que a família vê) não fala em "aditivo" nem "o que muda"', false,
+  /aditivo|o que muda/i.test(resumo));
+for (const pagina of ['../src/pages/pai/PaiContract.jsx', '../src/pages/tio/TioContract.jsx']) {
+  checar(`o aceite ANTIGO é remontado no texto 1 (${pagina.split('/').pop()})`, true,
+    readFileSync(new URL(pagina, import.meta.url), 'utf8').includes('child.contractAcceptedAt ? { versaoDoTexto: 1 }'));
+}
 
 console.log(`\n${'═'.repeat(64)}\n  ${ok} passaram, ${bad} falharam`);
 if (falhas.length) falhas.forEach((f) => console.log('  ✗ ' + f));

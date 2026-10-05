@@ -52,7 +52,13 @@ export default function TioContract() {
   // Aceite antigo, anterior aos documentos: o texto é o que os campos dizem.
   const legado = useMemo(() => {
     if (!child || !profile || vigente || aguardando) return null;
-    return buildContractData({ child, admin: profile });
+    // O aceite antigo foi dado lendo o TEXTO 1 — remontá-lo no texto de hoje
+    // mostraria cláusulas que ela não leu. Sem aceite, é só prévia.
+    return buildContractData({
+      child,
+      admin: profile,
+      ...(child.contractAcceptedAt ? { versaoDoTexto: 1 } : {}),
+    });
   }, [child, profile, vigente, aguardando]);
 
   if (loading || !contratos) {

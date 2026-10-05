@@ -155,7 +155,7 @@ PAGINAS = {
       (IC_GENTE, 'A gente é comunidade', 'Tio indica tio. A gente cresce assim.'),
       (IC_ESCUDO, 'Do lado de quem dirige', 'Pra apoiar o motorista, não pra fiscalizar.'),
   ])
-  + '<p style="font-size:15px;color:#55606E;margin-top:22px">Alô Buzinou · CNPJ 65.000.217/0001-47 · Rua das Trovas, Socorro · São Paulo/SP</p>'),
+  + '<p style="font-size:15px;color:#55606E;margin-top:22px">Alô Buzinou · CNPJ 65.000.217/0001-47 · Rua das Trovas, 61, Socorro · São Paulo/SP</p>'),
  'duvidas': dict(cena='duvidas', titulo='Dúvidas', desc='As perguntas de quem dirige e de quem confia: preço, dinheiro, dados das crianças, link do convite e como avisar a falta.', corpo=
   '<span class="chapeu">perguntas frequentes</span><h1>Dúvidas</h1>'
   '<div class="tabs" role="tablist" aria-label="Escolha o público"><span class="pilula" aria-hidden="true"></span><button type="button" role="tab" data-pub="mot" aria-selected="true">Quem dirige</button><button type="button" role="tab" data-pub="fam" aria-selected="false">Quem confia</button></div>'
@@ -197,7 +197,7 @@ RODAPE = '''<section class="fecho"><div class="wrap"><h2>Daqui em diante, você 
   </nav>
   <a class="rodape-app" href="https://alobuzinou.com/login">Entrar no app <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
   <div class="rodape-contato">
-    <p>Rua das Trovas — Socorro · São Paulo/SP · CEP 04763-110</p>
+    <p>Rua das Trovas, 61 — Socorro · São Paulo/SP · CEP 04763-110</p>
     <p><a href="mailto:contato@alobuzinou.com">contato@alobuzinou.com</a> · <a href="https://wa.me/5511969170709" target="_blank" rel="noopener">(11) 96917-0709</a></p>
     <p class="leg">CNPJ 65.000.217/0001-47 · © 2026 Alô Buzinou · <a href="https://alobuzinou.com/termos">Termos de Uso</a> · <a href="https://alobuzinou.com/privacidade">Política de Privacidade</a></p>
   </div>

@@ -179,3 +179,107 @@ export function estadoDoContrato(child) {
   if (aceito) return aguardando ? 'mudanca' : 'aceito';
   return aguardando ? 'aguardando' : 'sem-contrato';
 }
+
+/**
+ * ── A VERSÃO DO TEXTO (05/10/2026) ──────────────────────────────────────────
+ *
+ * ⚠️ O HASH DO ACEITE PROVA OS DADOS, NÃO AS CLÁUSULAS. O que é gravado em
+ * `children/{id}/contratos/{n}.dados` são os VALORES (partes, mensalidade,
+ * vigência); o TEXTO das cláusulas é desenhado pelo `ContractView` a partir
+ * do código. Sem esta marca, mudar uma cláusula no código mudava o que um
+ * contrato JÁ ACEITO mostra — a família abriria "o contrato que assinou" e
+ * leria outro, com o mesmo hash embaixo.
+ *
+ * A saída mais simples: o número do texto vai DENTRO de `dados`
+ * (`versaoDoTexto`), então entra no hash sozinho (o servidor tira o hash de
+ * `dados` inteiro — nada muda em `aceitarContrato`), e a tela desenha o texto
+ * DAQUELA versão. Ausente = 1 = o texto que existia antes da marca: é o que
+ * todo contrato emitido até aqui mostrou e foi aceito lendo.
+ *
+ * ⚠️ UM TEXTO PUBLICADO NUNCA É EDITADO. Corrigir cláusula é criar a versão
+ * seguinte aqui e no `ContractView`; o número antigo continua desenhando
+ * exatamente o que desenhava. Por isso os números que as cláusulas citam
+ * (multa, prazos, o canal do titular) moram NESTA tabela, por versão, e não
+ * em constantes soltas que alguém atualizaria "para todos".
+ *
+ * Mudar o texto também faz `mesmoConteudo` dar "mudou" para quem ainda não
+ * aceitou — e é isso que faz `garantirContrato` reemitir sozinho o contrato
+ * pendente no texto novo. O aceito fica como está: ninguém é chamado a
+ * assinar de novo por causa de uma redação.
+ */
+export const VERSAO_DO_TEXTO = 2;
+
+export const TEXTOS_DO_CONTRATO = {
+  // O texto de antes da marca. Multa de 10% (acima do teto do CDC art. 52,
+  // § 1º, que os tribunais aplicam à mensalidade) — fica como estava porque
+  // é o que foi aceito; os contratos novos saem na 2.
+  1: {
+    multa: { pct: 10, extenso: 'dez por cento' },
+    juros: null,
+    diasDeArrependimento: null,
+    diasDeAvisoAntesDeSuspender: null,
+    canalDoTitular: null,
+  },
+  // 05/10/2026: multa de 2% + juros de 1% ao mês + correção (CDC art. 52,
+  // § 1º); arrependimento de 7 dias (CDC art. 49 — o aceite é eletrônico,
+  // fora do estabelecimento); aviso de 10 dias antes de suspender ou
+  // rescindir por atraso; cláusula de dados pessoais (LGPD); foro do
+  // domicílio do consumidor (CDC art. 101, I); preâmbulo para CPF ou CNPJ.
+  2: {
+    multa: { pct: 2, extenso: 'dois por cento' },
+    juros: { pctAoMes: 1, extenso: 'um por cento' },
+    diasDeArrependimento: { n: 7, extenso: 'sete' },
+    diasDeAvisoAntesDeSuspender: { n: 10, extenso: 'dez' },
+    // CONGELADO no texto, não importado de `COMPANY_INFO`: se o canal mudar
+    // amanhã, o contrato que ela aceitou continua dizendo o que dizia.
+    canalDoTitular: 'contato@alobuzinou.com',
+  },
+};
+
+/** Qual texto esta versão gravada usa. Ausente (ou desconhecido) = 1. */
+export function versaoDoTexto(dados) {
+  const v = Number(dados?.versaoDoTexto);
+  return TEXTOS_DO_CONTRATO[v] ? v : 1;
+}
+
+/** Os números que as cláusulas daquela versão citam. */
+export function regrasDoTexto(dados) {
+  return TEXTOS_DO_CONTRATO[versaoDoTexto(dados)];
+}
+
+/**
+ * A linha "Se atrasar" do resumo — lida da MESMA versão que a cláusula 8ª,
+ * § 1º, desenha. Um resumo que dissesse 2% em cima de uma cláusula de 10%
+ * seria a segunda verdade sobre o mesmo dinheiro.
+ */
+export function seAtrasar(dados) {
+  const { multa, juros } = regrasDoTexto(dados);
+  return juros
+    ? `Multa de ${multa.pct}% e juros de ${juros.pctAoMes}% ao mês`
+    : `Multa de ${multa.pct}%`;
+}
+
+/**
+ * COMO A CONTRATADA SE IDENTIFICA NO PREÂMBULO (texto 2).
+ *
+ * O motorista pode ser pessoa física (CPF) ou ter empresa (CNPJ), e o texto 1
+ * dizia sempre "devidamente inscrita no C.N.P.J./C.P.F. ... neste ato
+ * representada por seu representante legal" — para o autônomo, um
+ * representante de si mesmo. O tipo sai do NÚMERO de dígitos (11 = CPF, 14 =
+ * CNPJ); o representante só aparece com CNPJ, e só quando é uma pessoa de
+ * verdade: o `'Representante legal'` de reserva de `buildContractData` não é
+ * nome de ninguém, e repetir a razão social como representante também não.
+ */
+export function identificacaoDaContratada(company) {
+  const digitos = String(company?.document || '').replace(/\D/g, '');
+  const tipo = digitos.length === 14 ? 'CNPJ' : digitos.length === 11 ? 'CPF' : null;
+  const rep = String(company?.representative || '').trim();
+  const representante =
+    tipo === 'CNPJ' &&
+    rep &&
+    rep.toLowerCase() !== 'representante legal' &&
+    rep.toLowerCase() !== String(company?.name || '').trim().toLowerCase()
+      ? rep
+      : null;
+  return { tipo, representante };
+}

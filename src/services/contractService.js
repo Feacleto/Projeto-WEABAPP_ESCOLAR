@@ -5,6 +5,7 @@ import {
   vigenciaDaCrianca,
   parcelasDaVigencia,
   dataBR,
+  VERSAO_DO_TEXTO,
 } from '../dominio/cobranca/contratoDaFamilia.js';
 
 export { formatBRL };
@@ -52,7 +53,14 @@ export function dadosDaContratadaFaltando(admin) {
   return faltando;
 }
 
-export function buildContractData({ child, admin }) {
+/**
+ * `versaoDoTexto`: qual redação das cláusulas este documento usa (ver
+ * `VERSAO_DO_TEXTO` em `contratoDaFamilia.js`). Toda versão EMITIDA sai na
+ * atual. O único que pede outra é a tela do aceite ANTIGO (anterior às
+ * versões gravadas, só `contractAcceptedAt`), que remonta o documento dos
+ * campos: ela pede o texto 1, que é o que aquela família leu ao aceitar.
+ */
+export function buildContractData({ child, admin, versaoDoTexto = VERSAO_DO_TEXTO }) {
   // Sem a parte contratada identificada, não há documento a montar.
   if (dadosDaContratadaFaltando(admin).length > 0) return null;
 
@@ -68,6 +76,10 @@ export function buildContractData({ child, admin }) {
 
   return {
     version: CONTRACT_VERSION,
+    // DENTRO de `dados`, então entra no hash do aceite e no `mesmoConteudo`.
+    // O texto 1 é gravado como AUSENTE, igual ao que já existe no banco:
+    // gravar `1` faria o documento remontado diferir do original.
+    ...(versaoDoTexto > 1 ? { versaoDoTexto } : {}),
     issuedAt: today.toISOString(),
     contractedYear: year,
 

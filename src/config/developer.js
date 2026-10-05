@@ -11,6 +11,18 @@ export const DEV_NAME = 'Desenvolva Algo';
 export const DEV_CNPJ = '65.000.217/0001-47';
 
 /**
+ * A RAZÃO SOCIAL DO CARTÃO CNPJ — e ela NÃO é "Desenvolva Algo".
+ *
+ * ⚠️ O CNPJ é de um MEI, e a razão social de MEI é o nome civil do titular
+ * (informada pelo dono em 05/10/2026). "Desenvolva Algo" é o nome FANTASIA:
+ * serve para tela e rodapé, mas um documento que qualifica a parte (Termos,
+ * Política, contrato de assinatura) precisa da razão social exata, senão a
+ * parte que assina não é a pessoa que o CNPJ diz.
+ */
+export const DEV_RAZAO_SOCIAL = 'FELIPE ANDERSON ANACLETO DA SILVA';
+export const DEV_TIPO_EMPRESA = 'MEI';
+
+/**
  * A SEDE, EM PARTES — e `Socorro` é BAIRRO, não cidade.
  *
  * ⚠️ ESSA CONFUSÃO CUSTOU DUAS CORREÇÕES SEGUIDAS, e é o motivo de o endereço
@@ -57,7 +69,9 @@ export const DEV_CEP = '04763-110';
  * E inventar número continua fora de questão: num documento com valor
  * probatório, endereço que não existe é o mesmo que endereço nenhum.
  */
-export const DEV_NUMERO = '';
+// Informado pelo dono em 05/10/2026, que decidiu publicar o número (o
+// Decreto 7.962/2013, art. 2º, I, pede endereço físico completo).
+export const DEV_NUMERO = '61';
 export const DEV_ENDERECO = [
   DEV_NUMERO ? `${DEV_LOGRADOURO}, ${DEV_NUMERO}` : DEV_LOGRADOURO,
   DEV_BAIRRO,
