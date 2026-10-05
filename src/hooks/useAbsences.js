@@ -4,6 +4,7 @@ import {
   watchAbsencesByDate,
   watchAbsenceForChild,
   watchAllAbsencesForChild,
+  watchAbsencesRange,
 } from '../services/absencesService';
 
 /**
@@ -114,4 +115,31 @@ export function useChildAbsenceHistory(childId, adminUid) {
   }, [childId, adminUid]);
 
   return { history, loading };
+}
+
+/**
+ * OS AVISOS DE FALTA DA SEMANA, de segunda a domingo (Tio) — o que o Buzi lê
+ * para "Quem avisou falta?". Só escuta quando `ligado`: a conversa liga na
+ * primeira vez que a pergunta aparece, e quem nunca pergunta não paga a
+ * leitura. `lista` é `null` enquanto não chegou (resposta com meia lista
+ * diria "ninguém avisou"), e `erro` separa "não consegui ler" de "não existe".
+ */
+export function useAvisosDaSemana(de, ate, ligado = true) {
+  const { user } = useAuth();
+  const uid = user?.uid || null;
+  const [snap, setSnap] = useState({ chave: null, lista: null, erro: false });
+  const chave = `${uid}|${de}|${ate}`;
+
+  useEffect(() => {
+    if (!ligado || !uid || !de || !ate) return undefined;
+    return watchAbsencesRange(
+      uid,
+      de,
+      ate,
+      (lista) => setSnap({ chave, lista, erro: false }),
+      () => setSnap({ chave, lista: null, erro: true })
+    );
+  }, [ligado, uid, de, ate, chave]);
+
+  return snap.chave === chave ? { lista: snap.lista, erro: snap.erro } : { lista: null, erro: false };
 }

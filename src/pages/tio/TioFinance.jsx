@@ -60,6 +60,8 @@ import { montarExtrato } from '../../dominio/cobranca/extratoDoMes.js';
 import { resumoDaTurma, frasesDoMovimento } from '../../dominio/identidade/movimentoDaTurma.js';
 import { diasDeAtraso } from '../../dominio/associacao/contaAtiva.js';
 import { faturaGratisDoMes } from '../../dominio/associacao/faturaGratis.js';
+import { boletimParaAnunciar, nomeDoMes as nomeDoMesDoBoletim } from '../../dominio/cobranca/boletim.js';
+import { lerBoletimVisto } from '../../hooks/useBoletim';
 import { buildChargeMessage } from '../../dominio/cobranca/chargeMessage';
 import {
   abaInicialDoCaixa,
@@ -150,6 +152,7 @@ import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 export default function TioFinance() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const [boletimPronto] = useState(() => boletimParaAnunciar(Date.now(), lerBoletimVisto(user?.uid)));
   const { perguntarPix, folhaDoPix } = usePerguntaDaChavePix();
 
   const [monthKey, setMonthKey] = useState(getCurrentMonthKey());
@@ -666,13 +669,15 @@ export default function TioFinance() {
           {/* ⚠️ O BUZI MORA AQUI, LOGO ABAIXO DO SALDO (04/10/2026, simulação
             * aprovada): ele fala de dinheiro, então só existe com a senha — e
             * some na rota, onde quem segura o celular pode ser a auxiliar. */}
+          {/* Do dia 1 ao 7, até ele abrir, o botão anuncia o Boletim do mês
+            * que fechou — o Buzi abre a conversa com ele. */}
           <button
             type="button"
             onClick={() => navigate('/tio/finance/buzi')}
             className="tap mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-card text-base font-bold text-primary"
           >
             <MessageCircle size={20} aria-hidden="true" />
-            Perguntar ao Buzi
+            {boletimPronto ? `Boletim de ${nomeDoMesDoBoletim(boletimPronto)} pronto` : 'Perguntar ao Buzi'}
           </button>
         </section>
 

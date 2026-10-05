@@ -2381,6 +2381,28 @@ celular do motorista e não pode ver valores.** Protótipo aprovado no artifact
   as mesmas regras do dono e mais duas: o posto nunca é recomendado, e nada de
   "você deveria trocar o óleo" — o app só sabe o que ele lançou. Sem dado, a
   resposta diz onde lançar; o preço do litro é o pago NO MÊS, sem "subiu".
+  ⚠️ **DESDE 05/10/2026 É O BUZI CHAT** (modelo no jeito do WhatsApp aprovado
+  pelo dono), na mesma rota e atrás da mesma senha. A chave dos dois grupos
+  saiu: o Buzi oferece os botões DENTRO da conversa — três assuntos
+  (Mensalidades, Perua e sobra, Rota e turma → Hoje · Turma · Semana), três
+  perguntas por assunto e, depois de cada resposta, no máximo três próximos
+  passos (a ação, "Outra pergunta", "Outro assunto"). Régua da conversa em
+  [buziConversa.js](src/dominio/cobranca/buziConversa.js); Hoje e Semana em
+  [buziDoDia.js](src/dominio/rota/buziDoDia.js) e Turma em
+  [buziDaTurma.js](src/dominio/identidade/buziDaTurma.js) (`testar:buzi`).
+  Escrever ou falar é a EXCEÇÃO: `entenderPergunta` acha a pergunta pronta
+  mais parecida por palavra-chave e a bolha diz "Entendi: …"; o que não casa
+  recebe "Ainda não sei responder isso" — nunca palpite. ⚠️ **A VOZ DO BUZI
+  ESTÁ DESLIGADA** (`VOZ_DO_BUZI = false` em TioBuzi, à espera do dono): a
+  ligação "Falar" e o "Ouvir" diriam valor pelo alto-falante com a auxiliar
+  na perua. O código fica; com o olho fechado a voz já não fala valor
+  (`falaDaResposta`). O microfone do ditado continua (só entra). "Pôr no Boletim" (só nas respostas de
+  dinheiro) monta o Boletim com as partes que ELE escolheu, na ordem em que
+  perguntou: `/tio/finance/boletim?partes=…`; sem parte, o de sempre. Do dia 1
+  ao 7 o botão "Perguntar ao Buzi" da Central vira "Boletim de setembro
+  pronto" e a conversa abre com ele. A conversa do dia fica no aparelho, sem
+  valor nenhum; as faltas da semana só são lidas quando a pergunta aparece
+  (`useAvisosDaSemana`).
 - **Turma e contratos** ([TioTurma](src/pages/tio/TioTurma.jsx), 04/10/2026,
   mistura dos modelos B e C aprovada pelo dono): faixa verde com placar
   (turma, quanto soma por mês, quantos esperando) e olho; filtros; quem

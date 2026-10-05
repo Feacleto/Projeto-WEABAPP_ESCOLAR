@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Printer } from 'lucide-react';
 import Header from '../../components/layout/Header';
@@ -8,7 +8,10 @@ import { useAuth } from '../../hooks/useAuth';
 import { useBoletim, MESES_DO_BOLETIM, marcarBoletimVisto } from '../../hooks/useBoletim';
 import { useValoresVisiveis, VALOR_ESCONDIDO } from '../../hooks/useValoresVisiveis';
 import { addMonths, formatBRL } from '../../compartilhado/formatters';
+import { useConfigDoFinanceiro, useDespesasDosUltimosMeses } from '../../hooks/useDespesas';
 import { boletimDoMes, mesDe, nomeDoMes } from '../../dominio/cobranca/boletim.js';
+import { responderDaPerua, TEMA_DA_PERUA } from '../../dominio/cobranca/buziDaPerua.js';
+import { BOLETIM_PADRAO, partesDoBoletim } from '../../dominio/cobranca/buziConversa.js';
 
 /**
  * O BOLETIM — o consolidado do mês que o Buzi oferece no fim de toda resposta
@@ -25,7 +28,37 @@ import { boletimDoMes, mesDe, nomeDoMes } from '../../dominio/cobranca/boletim.j
  * valores; no papel os valores saem sempre, porque é o documento dele.
  *
  * A taxa da plataforma não entra: é o outro dinheiro.
+ *
+ * ── AS PARTES QUE ELE ESCOLHEU NO BUZI (05/10/2026)
+ * `?partes=entrou,combustivel` monta o Boletim com o que ele pôs nele pelo
+ * Buzi Chat, na ordem em que perguntou (`partesDoBoletim` descarta o que não
+ * é dinheiro do negócio). Sem o parâmetro, é o Boletim de sempre: entrou,
+ * atrasados e avisaram. As partes da perua num mês FECHADO são contadas até o
+ * último instante dele, com as despesas lançadas até lá.
  */
+const TITULO_DA_PARTE = {
+  entrou: 'Quanto entrou',
+  atrasados: 'Mensalidades atrasadas',
+  avisaram: 'Avisaram que pagaram e esperam conferência',
+  [TEMA_DA_PERUA.COMBUSTIVEL]: 'Combustível',
+  [TEMA_DA_PERUA.MANUTENCAO]: 'Manutenção',
+  [TEMA_DA_PERUA.SOBROU]: 'Quanto sobrou',
+};
+const DA_PERUA = new Set(Object.values(TEMA_DA_PERUA));
+
+function dataDaDespesa(d) {
+  const v = d?.date;
+  if (!v) return null;
+  if (typeof v.toDate === 'function') return v.toDate().getTime();
+  const t = new Date(v).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
+/** O fim do mês 'AAAA-MM', ou agora se o mês ainda não acabou. */
+function instanteDoMes(mes, agora) {
+  const [a, m] = mes.split('-').map(Number);
+  return Math.min(new Date(a, m, 1).getTime() - 1, agora);
+}
 function mesPadrao(agora) {
   const d = new Date(agora);
   if (d.getDate() <= 7) return mesDe(new Date(d.getFullYear(), d.getMonth() - 1, 15).getTime());
@@ -36,6 +69,13 @@ export default function TioBoletim() {
   const { user, profile } = useAuth();
   const [params, setParams] = useSearchParams();
   const { pagamentos, atualizadoEm } = useBoletim();
+  const partes = useMemo(() => {
+    const escolhidas = partesDoBoletim(String(params.get('partes') || '').split(','));
+    return escolhidas.length ? escolhidas : BOLETIM_PADRAO;
+  }, [params]);
+  const temPerua = partes.some((t) => DA_PERUA.has(t));
+  const { despesas, carregando: carregandoDespesas } = useDespesasDosUltimosMeses(temPerua ? 24 : 1);
+  const config = useConfigDoFinanceiro();
   const { visiveis, alternar } = useValoresVisiveis();
   const [agora] = useState(() => Date.now());
   const atual = mesDe(agora);
@@ -51,14 +91,25 @@ export default function TioBoletim() {
     marcarBoletimVisto(user.uid, mes);
   }, [user?.uid, mes, atual]);
 
-  const naTela = useMemo(
-    () => (pagamentos ? boletimDoMes(pagamentos, { mes, agora, mostrar: visiveis }) : null),
-    [pagamentos, mes, agora, visiveis]
+  const pronto = !!pagamentos && (!temPerua || (!carregandoDespesas && config !== null));
+  const montar = useCallback(
+    (mostrar) => {
+      if (!pronto) return null;
+      const b = boletimDoMes(pagamentos, { mes, agora, mostrar });
+      const instante = instanteDoMes(mes, agora);
+      const despesasAte = (despesas || []).filter((d) => (dataDaDespesa(d) ?? 0) <= instante);
+      const secoes = partes.map((t) => {
+        const r = DA_PERUA.has(t)
+          ? responderDaPerua(t, { pagamentos, despesas: despesasAte, config: config || {}, agora: instante, mostrar })
+          : b[t];
+        return { tema: t, titulo: TITULO_DA_PARTE[t], frases: r?.frases || [], linhas: r?.linhas || [] };
+      });
+      return { ...b, secoes };
+    },
+    [pronto, pagamentos, mes, agora, despesas, partes, config]
   );
-  const noPapel = useMemo(
-    () => (pagamentos ? boletimDoMes(pagamentos, { mes, agora, mostrar: true }) : null),
-    [pagamentos, mes, agora]
-  );
+  const naTela = useMemo(() => montar(visiveis), [montar, visiveis]);
+  const noPapel = useMemo(() => montar(true), [montar]);
 
   return (
     <>
@@ -71,7 +122,11 @@ export default function TioBoletim() {
               <button
                 key={m}
                 type="button"
-                onClick={() => setParams({ mes: m }, { replace: true })}
+                onClick={() => {
+                  const novos = new URLSearchParams(params);
+                  novos.set('mes', m);
+                  setParams(novos, { replace: true });
+                }}
                 className={`tap h-12 shrink-0 rounded-full px-4 text-base font-bold ${
                   m === mes ? 'bg-primary text-white' : 'bg-card border border-border text-text'
                 }`}
@@ -136,9 +191,9 @@ function Documento({ b, profile, atualizadoEm, mostrar }) {
         </p>
       </header>
 
-      <Secao titulo="Quanto entrou" frases={b.entrou.frases} />
-      <Secao titulo="Mensalidades atrasadas" frases={b.atrasados.frases} linhas={b.atrasados.linhas} valor={valor} />
-      <Secao titulo="Avisaram que pagaram e esperam conferência" frases={b.avisaram.frases} linhas={b.avisaram.linhas} valor={valor} />
+      {b.secoes.map((s) => (
+        <Secao key={s.tema} titulo={s.titulo} frases={s.frases} linhas={s.linhas} valor={valor} />
+      ))}
 
       <footer className="border-t border-border pt-4 text-sm text-textMuted space-y-1">
         <p>A taxa da plataforma não entra neste Boletim.</p>
