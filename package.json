@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "testar:regras": "node scripts/testar-regras.mjs",
     "testar:storage": "node scripts/testar-storage.mjs",
+    "testar:jornada-motorista": "firebase emulators:exec --only auth,firestore,storage \"node scripts/testar-jornada-motorista.mjs\"",
     "testar:fechamento": "firebase emulators:exec --only firestore \"node scripts/testar-fechamento.mjs\"",
     "testar:jornada-responsavel": "firebase emulators:exec --only auth,firestore,storage \"node scripts/testar-jornada-responsavel.mjs\"",
     "testar:envio": "firebase emulators:exec --only firestore \"node scripts/testar-envio.mjs\"",
