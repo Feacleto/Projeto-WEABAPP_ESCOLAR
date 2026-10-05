@@ -2435,8 +2435,6 @@ celular do motorista e não pode ver valores.** Protótipo aprovado no artifact
     digita o de hoje aparece "A última vez aqui" (histórico). O tipo é da
     perua (`combustivelDaPerua`), e "Colocar outro combustível dessa vez"
     troca só aquele abastecimento. Régua: `postosPerto`/`pontoDoPosto`.
-    ⚠️ No `npm run dev` a folha "Abasteci" fecha sozinha (StrictMode +
-    `useVoltarFechaFolha`); em produção, não.
   - **Reserva da perua** (`/tio/finance/reserva`): ⚠️ **o app NÃO guarda
     dinheiro** — ele ANOTA o que o motorista diz ter no banco
     (`configFinanceiro.guardado.{troca,manutencao}`), e o teste reprova

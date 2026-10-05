@@ -240,3 +240,16 @@ Rodapé Início · Central com a bolinha verde; "Mensalidade de outubro em abert
 **Conferido em nova rodada da C1 (05/10):** a frase cabe em 2 linhas e o axe dá 0 em todas as 9 telas.
 
 **Ambiente (não é achado do app):** o vite da 5173 e os emuladores estavam de pé desde 12h39 de 04/10. O vite não tinha a classe `bg-marca` (o `tailwind.config.js` mudou às 19h45), e o EMBARQUEI e o "Abrir a rota" saíam transparentes; as jornadas rodaram contra um vite novo (`APP=http://127.0.0.1:5174`). Rodadas à noite, a C1 fixa o relógio do navegador às 6h35 para a tela abrir na ida; a F1 não fixa (com relógio fixo, a callable da senha não volta).
+
+---
+
+## R4 · A família responde a foto da turma e dá estrelas ao tio — 05/10/2026
+
+Terminou: **sim**. 9 telas, 0 erro no console, 0 achado (rodada contra o vite do worktree, com o conserto abaixo).
+Pergunta da foto no Início → "Sim" grava `fotoDaTurmaConsentida` e a pergunta some; "Como está o transporte da Sofia?" → 4 estrelas grava `avaliacoesDoTio/…_2026-2`, com "Agora não" à vista; a foto da turma aparece e abre; na ficha, a resposta da foto vai a "Não" e volta, e a nota vai de 4 a 5 com "Você pode mudar a nota até o fim do semestre."
+
+| # | Gravidade | Lente | Tela | O que acontece | Prova | Sugestão |
+|---|---|---|---|---|---|---|
+| 1 | **Ambiente** (só no `npm run dev`) — ✅ **corrigido** | fluxo | Toda folha (ficha da criança, "Abasteci") | A folha fechava no mesmo instante em que abria. O StrictMode monta o `useVoltarFechaFolha` duas vezes: a 1ª montagem empilhava a marca e, ao limpar, chamava `history.back()`; a 2ª empilhava outra; o `back()` (assíncrono) chegava depois e fechava a folha recém-aberta. | sonda com o hook antigo: 0 dialogs de 100 ms a 2,5 s, e o voltar saía para `/tio` | A limpeza só AGENDA o desfazer; uma montagem logo em seguida com a folha aberta o cancela e reaproveita a marca do topo. |
+
+**Conferido com o hook novo** (sonda na "Abasteci"): a folha fica aberta (1 dialog de 100 ms a 2,5 s); o voltar do Android fecha a folha UMA vez e continua em `/tio/abastecer`; fechar pelo X tira a entrada, e o voltar seguinte sai da tela (`/tio`), sem voltar a mais.
