@@ -563,6 +563,8 @@ async function main() {
   await oRegistroDoDono({ novato, dono, anon });
   await asVagasDaPerua({ novato, dono, anon });
   await oRegistroDaRota({ novato, dono, anon });
+  await osRecadosDoDia({ novato, dono, anon });
+  await quemBuscaParaAuxiliar({ novato, dono, anon });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -4392,4 +4394,159 @@ async function aLeituraDoDonoNosNiveisEAuxiliares({ novato, dono, anon }) {
     await escrever(NIV, dono, { nivel: S('ouro') }, ['nivel']));
   checar(BL, 'o dono não escreve em auxiliares', 'NEGA',
     await escrever(AUX, dono, { ativa: B(false) }, ['ativa']));
+}
+
+/**
+ * O RECADO DO DIA (05/10/2026) — casos escritos ANTES da regra.
+ * `recadosDoDia/{AAAA-MM-DD}_{childId}`: a família escreve o do PRÓPRIO
+ * filho (o adminUid é o da CRIANÇA, nunca escolhido por ela); o tio da
+ * criança lê e não escreve; ninguém mais lê. Documento ainda inexistente
+ * se autoriza pela criança do ID (o ramo `resource == null`).
+ */
+async function osRecadosDoDia({ novato, dono, anon }) {
+  console.log('\n=== OS RECADOS DO DIA (05/10/2026) ===');
+  const BL = 'recadoDoDia';
+  const agora = Date.now();
+  const L = (values) => ({ arrayValue: { values } });
+  const M = await criarLogin(`rd.m.${agora}@teste.local`);
+  const O = await criarLogin(`rd.o.${agora}@teste.local`);
+  const F = await criarLogin(`rd.f.${agora}@teste.local`);
+  const G = await criarLogin(`rd.g.${agora}@teste.local`);
+  const X = await criarLogin(`rd.x.${agora}@teste.local`);
+  const K = `rdK${agora}`;
+  const K2 = `rdK2${agora}`;
+  const D = '2026-10-05';
+  await semear(`users/${M.uid}`, { role: S('admin'), name: S('Tio M') });
+  await semear(`users/${O.uid}`, { role: S('admin'), name: S('Tio O') });
+  await semear(`users/${F.uid}`, {
+    role: S('parent'), name: S('Familia F'), adminUid: S(M.uid), adminUids: L([S(M.uid)]), childIds: L([S(K)]),
+  });
+  await semear(`users/${G.uid}`, {
+    role: S('parent'), name: S('Familia G'), adminUid: S(M.uid), adminUids: L([S(M.uid)]), childIds: L([S(K2)]),
+  });
+  await semear(`users/${X.uid}`, { role: S('auxiliar'), name: S('Aux X'), motoristaUids: L([S(M.uid)]) });
+  await semear(`auxiliares/${M.uid}_${X.uid}`, {
+    motoristaUid: S(M.uid), auxiliarUid: S(X.uid), nome: S('Aux X'), ativa: B(true),
+  });
+  await semear(`children/${K}`, {
+    name: S('Ana'), adminUid: S(M.uid), parentUid: S(F.uid), active: B(true), inviteStatus: S('accepted'),
+  });
+  await semear(`children/${K2}`, {
+    name: S('Bia'), adminUid: S(M.uid), parentUid: S(G.uid), active: B(true), inviteStatus: S('accepted'),
+  });
+
+  const COL = 'recadosDoDia';
+  const recado = (crianca, uid, dia, extra = {}) => ({
+    childId: S(crianca), parentUid: S(uid), adminUid: S(M.uid), dateKey: S(dia),
+    texto: S('A avó busca hoje'), criadoEm: T(0), atualizadoEm: T(0), ...extra,
+  });
+  const consultarCom = (col, condicoes, s) =>
+    fetch(`${FS}:runQuery`, {
+      method: 'POST',
+      headers: H(s),
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: col }],
+          where: { compositeFilter: { op: 'AND', filters: condicoes.map(([campo, valor]) => ({
+            fieldFilter: { field: { fieldPath: campo }, op: 'EQUAL', value: valor },
+          })) } },
+          limit: 20,
+        },
+      }),
+    }).then((r) => r.status);
+
+  // Criar
+  checar(BL, '1. a família cria o recado do próprio filho', 'PASSA',
+    await criar(COL, `${D}_${K}`, F, recado(K, F.uid, D)));
+  checar(BL, '2. a família põe outro tio como dono do recado', 'NEGA',
+    await criar(COL, `2026-10-11_${K}`, F, recado(K, F.uid, '2026-10-11', { adminUid: S(O.uid) })));
+  checar(BL, '3. id de outro dia que não bate com dateKey', 'NEGA',
+    await criar(COL, `2026-10-12_${K}`, F, recado(K, F.uid, '2026-10-13')));
+  checar(BL, '4. texto vazio', 'NEGA',
+    await criar(COL, `2026-10-14_${K}`, F, recado(K, F.uid, '2026-10-14', { texto: S('') })));
+  checar(BL, '5. texto de 141 letras', 'NEGA',
+    await criar(COL, `2026-10-15_${K}`, F, recado(K, F.uid, '2026-10-15', { texto: S('a'.repeat(141)) })));
+  checar(BL, '6. campo a mais (telefone)', 'NEGA',
+    await criar(COL, `2026-10-16_${K}`, F, recado(K, F.uid, '2026-10-16', { telefone: S('11999990000') })));
+  checar(BL, '7. outra família cria o recado da criança que não é dela', 'NEGA',
+    await criar(COL, `2026-10-17_${K}`, G, recado(K, G.uid, '2026-10-17')));
+
+  // Editar
+  await semear(`${COL}/${D}_${K}`, recado(K, F.uid, D));
+  checar(BL, '8. a família edita o próprio recado', 'PASSA',
+    await escrever(`${COL}/${D}_${K}`, F, { texto: S('O tio da van busca'), atualizadoEm: T(0) }, ['texto', 'atualizadoEm']));
+  checar(BL, '9. a família troca o adminUid na edição', 'NEGA',
+    await escrever(`${COL}/${D}_${K}`, F, { adminUid: S(O.uid) }, ['adminUid']));
+
+  // Leituras do tio e dos de fora
+  const R = `${COL}/${D}_${K}`;
+  checar(BL, '11. o tio da criança lê', 'PASSA', await ler(R, M));
+  checar(BL, '12. o tio consulta adminUid == ele e dateKey == dia', 'PASSA',
+    await consultarCom(COL, [['adminUid', S(M.uid)], ['dateKey', S(D)]], M));
+  checar(BL, '13. o tio lê o doc do dia ainda inexistente (resource == null)', 'PASSA',
+    await ler(`${COL}/${D}_${K2}`, M));
+  checar(BL, '14a. o tio cria um recado', 'NEGA',
+    await criar(COL, `2026-10-18_${K}`, M, recado(K, F.uid, '2026-10-18')));
+  checar(BL, '14b. o tio edita um recado', 'NEGA',
+    await escrever(R, M, { texto: S('o tio mexeu') }, ['texto']));
+  checar(BL, '15. outro tio O lê', 'NEGA', await ler(R, O));
+  checar(BL, '16. a auxiliar X lê', 'NEGA', await ler(R, X));
+  checar(BL, '17. o dono lê', 'NEGA', await ler(R, dono));
+  checar(BL, '18. o novato lê', 'NEGA', await ler(R, novato));
+  checar(BL, '19. anônimo lê', 'NEGA', await ler(R, anon));
+  checar(BL, '20. outra família G lê o recado de F', 'NEGA', await ler(R, G));
+
+  // Apagar (por último)
+  checar(BL, '10. a família apaga o próprio recado', 'PASSA', await apagar(R, F));
+}
+
+/**
+ * QUEM BUSCA, PARA A AUXILIAR (05/10/2026) — sem regra nova: o gatilho copia
+ * para `turmaDaAuxiliar/{tio}/quemBusca/{dia}_{childId}` e a regra da
+ * subárvore (par ativo) já decide.
+ */
+async function quemBuscaParaAuxiliar({ novato, dono, anon }) {
+  console.log('\n=== QUEM BUSCA, PARA A AUXILIAR (05/10/2026) ===');
+  const BL = 'quemBusca';
+  const agora = Date.now();
+  const L = (values) => ({ arrayValue: { values } });
+  const M = await criarLogin(`qb.m.${agora}@teste.local`);
+  const O = await criarLogin(`qb.o.${agora}@teste.local`);
+  const X = await criarLogin(`qb.x.${agora}@teste.local`);
+  const Y = await criarLogin(`qb.y.${agora}@teste.local`);
+  const Z = await criarLogin(`qb.z.${agora}@teste.local`);
+  const F = await criarLogin(`qb.f.${agora}@teste.local`);
+  const K = `qbK${agora}`;
+  const D = '2026-10-05';
+  await semear(`users/${M.uid}`, { role: S('admin'), name: S('Tio M') });
+  await semear(`users/${O.uid}`, { role: S('admin'), name: S('Tio O') });
+  await semear(`users/${X.uid}`, { role: S('auxiliar'), name: S('Aux X'), motoristaUids: L([S(M.uid)]) });
+  await semear(`users/${Y.uid}`, { role: S('auxiliar'), name: S('Aux Y'), motoristaUids: L([]) });
+  await semear(`users/${Z.uid}`, { role: S('auxiliar'), name: S('Aux Z'), motoristaUids: L([S(O.uid)]) });
+  await semear(`users/${F.uid}`, {
+    role: S('parent'), name: S('Familia de M'), adminUid: S(M.uid), adminUids: L([S(M.uid)]),
+  });
+  await semear(`auxiliares/${M.uid}_${X.uid}`, {
+    motoristaUid: S(M.uid), auxiliarUid: S(X.uid), nome: S('Aux X'), ativa: B(true),
+  });
+  await semear(`auxiliares/${M.uid}_${Y.uid}`, {
+    motoristaUid: S(M.uid), auxiliarUid: S(Y.uid), nome: S('Aux Y'), ativa: B(false),
+  });
+  await semear(`auxiliares/${O.uid}_${Z.uid}`, {
+    motoristaUid: S(O.uid), auxiliarUid: S(Z.uid), nome: S('Aux Z'), ativa: B(true),
+  });
+  await semear(`turmaDaAuxiliar/${M.uid}`, { motoristaUid: S(M.uid) });
+  const P = `turmaDaAuxiliar/${M.uid}/quemBusca/${D}_${K}`;
+  await semear(P, { childId: S(K), dateKey: S(D), nome: S('Avó Lúcia') });
+
+  checar(BL, 'a auxiliar X (par ativo) lê', 'PASSA', await ler(P, X));
+  checar(BL, 'a auxiliar Y (desativada) não lê', 'NEGA', await ler(P, Y));
+  checar(BL, 'a auxiliar Z (de outro tio) não lê', 'NEGA', await ler(P, Z));
+  checar(BL, 'a família F não lê', 'NEGA', await ler(P, F));
+  console.log(`  INFO o tio M lendo quemBusca → ${await ler(P, M)} (não decidido)`);
+  checar(BL, 'a auxiliar X não escreve', 'NEGA',
+    await escrever(P, X, { nome: S('Outra') }, ['nome']));
+  checar(BL, 'o tio M não escreve', 'NEGA',
+    await escrever(P, M, { nome: S('Outra') }, ['nome']));
+  checar(BL, 'anônimo não lê', 'NEGA', await ler(P, anon));
 }
