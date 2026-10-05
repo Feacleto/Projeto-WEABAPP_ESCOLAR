@@ -45,7 +45,7 @@
  *   node scripts/testar-vazamento.mjs   (ou: npm run testar:vazamento)
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 let ok = 0;
 let bad = 0;
@@ -223,6 +223,25 @@ for (const [campo, porque] of Object.entries(RESIDUO_EM_USERS)) {
   checar(`${campo} ainda é lido pelas rules`, true, rules.includes(campo));
   checar('  e o motivo está declarado', true, porque.length > 20);
 }
+
+/**
+ * ⚠️ A ROTA SEM SENHA LÊ AS MENSALIDADES EM ABERTO (04/10/2026, "Rota e
+ * Central"). Na rota, a auxiliar dá baixa na porta sem ver valor, e para isso
+ * o celular recebe os documentos `pending` do motorista — `amount` incluído.
+ * É CORTINA, NÃO COFRE, decidido com o dono: a auxiliar usa a mesma sessão
+ * dele, e com ou sem callable ela leria o mesmo pelo console. A separação de
+ * verdade é a conta própria da auxiliar (pendente). O que segura a cortina é
+ * a tela não imprimir valor — `npm run testar:sem-senha` — e a consulta ser
+ * estreita (só `pending`).
+ */
+const RESIDUO_SEM_SENHA = {
+  'payments.amount (pending)': 'a rota sem senha recebe as mensalidades em aberto; a tela não imprime o valor (testar:sem-senha)',
+};
+for (const [campo, porque] of Object.entries(RESIDUO_SEM_SENHA)) {
+  checar(`${campo}: resíduo declarado`, true, porque.length > 20);
+}
+checar('a cortina tem o teste dela', true,
+  existsSync(new URL('./testar-sem-senha.mjs', import.meta.url)));
 
 // ───────────────────────────────────────────────────────────────────────────
 bloco('4. O precedente que vale copiar — o servidor CURA o que sai');

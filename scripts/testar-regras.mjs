@@ -546,6 +546,8 @@ async function main() {
   await decisao12({ tio1, tio2, pai1, novato, dono });
   await oAceite({ tio1, tio2, pai1 });
   await oTesteDeCodigo({ tio1, tio2, pai1, dono });
+  await aRotaSemSenha({ tio1, tio2, pai1 });
+  await oCodigoDeIndicacao({ tio1 });
   await aAuditoriaDeSeguranca({ tio1, tio2, pai1, novato, dono });
   await oFinanceiroTrancado({ tio2, pai1, novato, dono, anon });
   await osNiveis({ tio1, tio2, pai1, dono, anon });
@@ -579,6 +581,90 @@ async function criarComHoraDoServidor(caminho, s, fields, campoHora) {
       }],
     }),
   }).then((r) => r.status);
+}
+
+/**
+ * Uma ATUALIZAÇÃO com a hora do servidor num campo — o `serverTimestamp()` do
+ * app num `updateDoc`. O documento precisa existir.
+ */
+async function atualizarComHoraDoServidor(caminho, s, fields, mascara, campoHora) {
+  const base = FS.slice(0, -'/documents'.length);
+  const nome = `projects/${PID}/databases/(default)/documents/${caminho}`;
+  return fetch(`${base}/documents:commit`, {
+    method: 'POST',
+    headers: H(s),
+    body: JSON.stringify({
+      writes: [{
+        update: { name: nome, fields },
+        updateMask: { fieldPaths: mascara },
+        updateTransforms: [{ fieldPath: campoHora, setToServerValue: 'REQUEST_TIME' }],
+        currentDocument: { exists: true },
+      }],
+    }),
+  }).then((r) => r.status);
+}
+
+/**
+ * A ROTA SEM SENHA (04/10/2026, "Rota e Central"). Na rota, a auxiliar usa o
+ * celular do motorista e anota "a família disse que mandou PIX": o motorista
+ * grava `claimed` com `claimedAt` — o que só a família fazia. O que este bloco
+ * trava (casos pedidos pela QA à sessão negocio):
+ *   - o `claimedAt` do motorista só na transição pending → claimed, e só com a
+ *     hora do SERVIDOR (data forjada seria prova falsa de quando ela avisou);
+ *   - de outro motorista, nunca;
+ *   - o evento `claimed` do motorista só com `meta.via: 'sem_senha'` — sem a
+ *     marca, a trilha confundiria com o "Já paguei" que ela mesma tocou.
+ */
+async function aRotaSemSenha({ tio1, tio2, pai1 }) {
+  console.log('\n=== A ROTA SEM SENHA (04/10/2026) ===');
+  const BL = 'sem senha';
+  const PAG = 'payments/pagSemSenha';
+  const pendente = () => semear(PAG, {
+    adminUid: S(tio1.uid), parentUid: S(pai1.uid), childId: S('kid1'),
+    childName: S('Ana'), month: S('2026-10'), amount: N(300), status: S('pending'),
+  });
+  const CLAIM = { status: S('claimed'), paymentMethod: S('pix') };
+
+  await pendente();
+  checar(BL, 'o motorista de OUTRA perua anota o PIX', 'NEGA',
+    await atualizarComHoraDoServidor(PAG, tio2, CLAIM, ['status', 'paymentMethod'], 'claimedAt'));
+  checar(BL, 'o motorista inventa a hora do aviso', 'NEGA',
+    await escrever(PAG, tio1, { ...CLAIM, claimedAt: { timestampValue: '2026-01-01T00:00:00Z' } },
+      ['status', 'paymentMethod', 'claimedAt']));
+  checar(BL, 'o motorista grava claimedAt dando baixa (não é a transição)', 'NEGA',
+    await atualizarComHoraDoServidor(PAG, tio1, { status: S('paid'), paymentMethod: S('cash') },
+      ['status', 'paymentMethod'], 'claimedAt'));
+  checar(BL, 'o motorista anota o PIX da família com a hora do servidor', 'PASSA',
+    await atualizarComHoraDoServidor(PAG, tio1, CLAIM, ['status', 'paymentMethod'], 'claimedAt'));
+
+  const META = (via) => ({ mapValue: { fields: via ? { via: S(via), method: S('pix') } : { method: S('pix') } } });
+  checar(BL, 'o evento "claimed" do motorista sem a marca da rota', 'NEGA',
+    await criarComHoraDoServidor(`${PAG}/events/s1`, tio1,
+      { type: S('claimed'), actorUid: S(tio1.uid), actorRole: S('admin'), meta: META(null) }, 'at'));
+  checar(BL, 'o evento "claimed" do motorista com outra marca', 'NEGA',
+    await criarComHoraDoServidor(`${PAG}/events/s2`, tio1,
+      { type: S('claimed'), actorUid: S(tio1.uid), actorRole: S('admin'), meta: META('com_senha') }, 'at'));
+  checar(BL, 'o evento "claimed" do motorista marcado "sem_senha"', 'PASSA',
+    await criarComHoraDoServidor(`${PAG}/events/s3`, tio1,
+      { type: S('claimed'), actorUid: S(tio1.uid), actorRole: S('admin'), meta: META('sem_senha') }, 'at'));
+  checar(BL, 'outro motorista grava o evento marcado', 'NEGA',
+    await criarComHoraDoServidor(`${PAG}/events/s4`, tio2,
+      { type: S('claimed'), actorUid: S(tio2.uid), actorRole: S('admin'), meta: META('sem_senha') }, 'at'));
+}
+
+/**
+ * O CÓDIGO DE INDICAÇÃO É DO SERVIDOR (04/10/2026, cupom do cartão do app).
+ * Ele casa a indicação: escrito pelo cliente, um motorista copiaria o código
+ * de outro e levaria o crédito. Só a callable `meuCodigoDeIndicacao` grava.
+ */
+async function oCodigoDeIndicacao({ tio1 }) {
+  console.log('\n=== O CÓDIGO DE INDICAÇÃO (04/10/2026) ===');
+  checar('codigo', 'o motorista escreve o próprio codigoDeIndicacao', 'NEGA',
+    await escrever(`users/${tio1.uid}`, tio1, { codigoDeIndicacao: S('TIOUM1') }, ['codigoDeIndicacao']));
+  // Sonda: o mesmo motorista ainda escreve uma preferência dele no mesmo
+  // documento — o NEGA de cima é pelo campo, não pela conta.
+  checar('codigo', 'e ainda grava uma preferência dele (sonda)', 'PASSA',
+    await escrever(`users/${tio1.uid}`, tio1, { compartilhaLocalizacao: B(true) }, ['compartilhaLocalizacao']));
 }
 
 /**
