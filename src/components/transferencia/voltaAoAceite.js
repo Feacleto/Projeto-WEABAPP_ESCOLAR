@@ -52,6 +52,11 @@ export function lerVolta(state) {
  * Este contrato fecha a assinatura do plano de agora? Aceito, e com o MESMO
  * plano que o servidor gravou em `users.plano` (o mesmo campo que a rule do
  * contrato compara com `conteudo.plano.id`).
+ *
+ * ⚠️ Recebe o contrato DA TELA DE ASSINAR (`contratoParaAssinar`, o mais
+ * recente). Com um pendente mais novo que o aceito, ele é o pendente e não
+ * fecha: o atalho não pode devolver ao pedido com o aceito velho enquanto a
+ * versão nova espera.
  */
 export function contratoFechaAssinatura(contrato, plano) {
   return !!contrato?.aceitoEm && !!plano && contrato?.conteudo?.plano?.id === plano;

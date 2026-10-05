@@ -17,6 +17,8 @@ import {
   montarContrato,
   diasParaVencer,
   precisaRenovar,
+  contratoVigenteDe,
+  contratoParaAssinar as contratoParaAssinarDe,
 } from '../dominio/associacao/contratoAssociacao';
 
 export { VERSAO_CONTRATO, montarContrato, diasParaVencer, precisaRenovar };
@@ -107,13 +109,30 @@ export async function aceitarContrato({ id, nome, conteudo }) {
   });
 }
 
-/** O contrato vigente de um associado — o mais recente aceito. */
-export async function contratoVigente(tioUid) {
+async function ultimosContratos(tioUid) {
   const snap = await getDocs(
     query(COL(), where('tioUid', '==', tioUid), orderBy('emitidoEm', 'desc'), limit(5))
   );
-  const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  return docs.find((c) => c.aceitoEm) || docs[0] || null;
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * O contrato vigente de um associado — o mais recente aceito (o da
+ * cobrança). Sem nenhum aceito, a ficha do dono mostra o pendente, como
+ * sempre mostrou.
+ */
+export async function contratoVigente(tioUid) {
+  const docs = await ultimosContratos(tioUid);
+  return contratoVigenteDe(docs) || docs[0] || null;
+}
+
+/**
+ * O contrato que a TELA DE ASSINAR mostra: o mais recente, aceito ou não —
+ * ver `contratoParaAssinar` no domínio. Um pendente novo vence o aceito
+ * velho, senão a v8 nunca seria pedida.
+ */
+export async function contratoParaAssinar(tioUid) {
+  return contratoParaAssinarDe(await ultimosContratos(tioUid));
 }
 
 /** Acompanha todos os contratos — pro painel do dono. */

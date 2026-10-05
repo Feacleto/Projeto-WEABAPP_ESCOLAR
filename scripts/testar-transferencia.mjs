@@ -248,6 +248,15 @@ console.log('\n\x1b[1m10. A volta ao aceite depois de assinar (F2.4)\x1b[0m');
   eq('não fecha: contrato pendente', contratoFechaAssinatura({ aceitoEm: null, conteudo: { plano: { id: 'mensal' } } }, 'mensal'), false);
   eq('não fecha: aceito para outro plano', contratoFechaAssinatura({ aceitoEm: 1, conteudo: { plano: { id: 'anual' } } }, 'mensal'), false);
   eq('não fecha: sem plano', contratoFechaAssinatura({ aceitoEm: 1, conteudo: { plano: { id: 'mensal' } } }, null), false);
+  {
+    const { contratoParaAssinar } = await import('../src/dominio/associacao/contratoAssociacao.js');
+    const aceitoVelho = { id: 't_1000', emitidoEm: 1000, aceitoEm: 1500, conteudo: { plano: { id: 'mensal' } } };
+    const pendenteNovo = { id: 't_2000', emitidoEm: 2000, aceitoEm: null, conteudo: { plano: { id: 'mensal' } } };
+    eq('o atalho não fecha com o aceito velho quando há um pendente novo',
+      contratoFechaAssinatura(contratoParaAssinar([aceitoVelho, pendenteNovo]), 'mensal'), false);
+    eq('sem pendente novo, o aceito do plano fecha',
+      contratoFechaAssinatura(contratoParaAssinar([aceitoVelho]), 'mensal'), true);
+  }
   eq('o servidor exige plano E contrato aceito (assinatura fechada)',
     R.podeAceitarParceiro.toString().includes('ehPagante(parceiro)') && R.podeAceitarParceiro.toString().includes('contratoAceito !== true'), true);
   eq('a Comunidade abre na aba dos parceiros', comunidade.includes('location.state?.pedidoAberto ? PUBLICO.PARCEIROS'), true);

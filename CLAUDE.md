@@ -1081,6 +1081,11 @@ havia base real.
   redação, e sem o desvio todo contrato aceito passaria a mostrar cláusulas
   que ninguém aceitou. ⚠️ Subir a versão NÃO força reaceite sozinho: só
   quem contrata de novo em `/tio/planos` assina a 8.
+  ⚠️ **Assinar e cobrar são perguntas diferentes** (05/10/2026):
+  `contratoParaAssinar` (o MAIS RECENTE, aceito ou não — é o que
+  `/tio/contrato-plataforma` mostra) e `contratoVigenteDe` (o aceito mais
+  recente, o da cobrança), em `contratoAssociacao.js`. Era uma só, e a v7
+  aceita escondia a v8 pendente na tela de assinar.
   ⚠️ **A cláusula 3 declara a TAXA, não um valor** — é isso que elimina a
   reassinatura por crescimento. Na versão 4 ganhar uma criança que cruzasse a
   fronteira exigia documento novo, no exato momento em que ele fechou um cliente.

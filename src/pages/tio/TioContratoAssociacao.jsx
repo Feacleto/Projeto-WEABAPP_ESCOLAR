@@ -11,7 +11,7 @@ import EmptyState from '../../components/common/EmptyState';
 import ContratoDoc from '../../components/admin/ContratoDoc';
 import { useAuth } from '../../hooks/useAuth';
 import {
-  contratoVigente,
+  contratoParaAssinar,
   aceitarContrato,
 } from '../../services/contratoAssociacaoService';
 import {
@@ -75,7 +75,9 @@ export default function TioContratoAssociacao() {
 
   useEffect(() => {
     if (!user?.uid) return;
-    contratoVigente(user.uid)
+    // A tela de ASSINAR: o mais recente, mesmo pendente (um aceito velho não
+    // pode esconder a versão nova a aceitar).
+    contratoParaAssinar(user.uid)
       .then(setContrato)
       .catch((err) => {
         console.error('Contrato de assinatura não carregou:', err);
@@ -113,7 +115,7 @@ export default function TioContratoAssociacao() {
         return;
       }
       toast.success('Contrato aceito. Uma cópia fica sempre aqui.');
-      const atualizado = await contratoVigente(user.uid);
+      const atualizado = await contratoParaAssinar(user.uid);
       setContrato(atualizado);
     } catch (err) {
       console.error('Falha ao aceitar contrato:', err);

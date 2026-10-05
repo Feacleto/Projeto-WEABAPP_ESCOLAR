@@ -31,6 +31,8 @@ import {
   diasParaVencer,
   precisaRenovar,
   EMAIL_DO_CONTRATO,
+  contratoParaAssinar,
+  contratoVigenteDe,
 } from '../src/dominio/associacao/contratoAssociacao.js';
 // A identidade da plataforma e os documentos que a citam. Os três têm que ler
 // a mesma fonte — ver o bloco no fim deste arquivo.
@@ -765,6 +767,26 @@ for (const entrada of [undefined, null, 0, -3, 99, 'lixo']) {
   const dia = c?.valores?.diaVencimento;
   checar(`dia ${JSON.stringify(entrada)} vira um dia imprimivel`, true,
     Number.isInteger(dia) && dia >= 1 && dia <= 28);
+}
+
+console.log('\nO contrato para ASSINAR e o contrato VIGENTE são perguntas diferentes');
+{
+  const v7aceito = { id: 'tio_1000', versao: 7, emitidoEm: 1000, aceitoEm: 1500 };
+  const v8pendente = { id: 'tio_2000', versao: 8, emitidoEm: 2000, aceitoEm: null };
+  const velhoPendente = { id: 'tio_500', versao: 6, emitidoEm: 500, aceitoEm: null };
+  checar('aceito v7 e pendente v8: a tela pede a v8', 8, contratoParaAssinar([v7aceito, v8pendente])?.versao);
+  checar('aceito v7 e pendente v8: a cobrança segue na v7', 7, contratoVigenteDe([v8pendente, v7aceito])?.versao);
+  checar('só o aceito: a tela mostra o aceito', 7, contratoParaAssinar([v7aceito])?.versao);
+  checar('aceito mais novo que um pendente velho: a tela mostra o aceito', 7, contratoParaAssinar([velhoPendente, v7aceito])?.versao);
+  checar('nenhum contrato: null nas duas', [null, null], [contratoParaAssinar([]), contratoVigenteDe(null)]);
+  checar('só pendente: a tela o pede, a cobrança não tem vigente', [8, null], [contratoParaAssinar([v8pendente])?.versao, contratoVigenteDe([v8pendente])]);
+  checar('sem emitidoEm (ainda no ar), a ordem sai do id', 8,
+    contratoParaAssinar([v7aceito, { ...v8pendente, emitidoEm: null }])?.versao);
+  checar('Timestamp do Firestore também ordena', 8,
+    contratoParaAssinar([{ ...v7aceito, emitidoEm: { toMillis: () => 1000 } }, { ...v8pendente, emitidoEm: { toMillis: () => 2000 } }])?.versao);
+  const tela = readFileSync(new URL('../src/pages/tio/TioContratoAssociacao.jsx', import.meta.url), 'utf8');
+  checar('a tela de assinar usa contratoParaAssinar, não contratoVigente', true,
+    tela.includes('contratoParaAssinar(user.uid)') && !/contratoVigente\(/.test(tela));
 }
 
 console.log(`\n${'═'.repeat(64)}`);

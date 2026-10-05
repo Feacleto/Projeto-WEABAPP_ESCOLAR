@@ -411,3 +411,48 @@ export function precisaRenovar(contrato, janelaDias = JANELA_DE_RENOVACAO, agora
   const d = diasParaVencer(contrato, agora);
   return d !== null && d <= janelaDias;
 }
+
+/**
+ * DUAS PERGUNTAS SOBRE OS CONTRATOS DE UM ASSINANTE, E ELAS NÃO SE MISTURAM
+ * (05/10/2026).
+ *
+ * `contratoVigenteDe` — qual vale para COBRAR: o aceito mais recente. Um
+ * pendente não vale nada até ser aceito.
+ *
+ * `contratoParaAssinar` — o que a tela de assinar mostra: o MAIS RECENTE,
+ * aceito ou não. Era uma pergunta só (`docs.find(aceito) || docs[0]`), e quem
+ * tinha a v7 aceita e contratava de novo via a v7 na tela, com "aceito", e a
+ * v8 nova nunca era pedida — o plano mudava e o documento assinado não. Um
+ * pendente MAIS VELHO que o aceito (emitido e superado) não é pedido: o
+ * aceito que veio depois é o que vale.
+ *
+ * A ordem é pela emissão (`emitidoEm`); sem ela (ainda não voltou do
+ * servidor), pelo número que o id carrega (`{uid}_{Date.now()}`).
+ */
+function emissaoMs(c) {
+  const e = c?.emitidoEm;
+  if (e != null) {
+    if (typeof e === 'number') return e;
+    if (typeof e.toMillis === 'function') return e.toMillis();
+    if (typeof e.seconds === 'number') return e.seconds * 1000;
+    if (e instanceof Date) return e.getTime();
+  }
+  const m = /_(\d+)$/.exec(String(c?.id || ''));
+  return m ? Number(m[1]) : 0;
+}
+
+function maisNovosPrimeiro(contratos) {
+  return (Array.isArray(contratos) ? contratos : [])
+    .filter(Boolean)
+    .sort((a, b) => emissaoMs(b) - emissaoMs(a));
+}
+
+/** O contrato que vale para a cobrança: o aceito mais recente, ou `null`. */
+export function contratoVigenteDe(contratos) {
+  return maisNovosPrimeiro(contratos).find((c) => c.aceitoEm) || null;
+}
+
+/** O contrato que a tela de assinar mostra: o mais recente, ou `null`. */
+export function contratoParaAssinar(contratos) {
+  return maisNovosPrimeiro(contratos)[0] || null;
+}
