@@ -1782,7 +1782,9 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   ⚠️ **Teto de 10 por mês, por tio** (F2.4): contam os pedidos que ELE fez
   no mês de Brasília — abertos, concluídos e os que ele cancelou; o "não
   posso" do parceiro e o vencido não (`pedidosQueContam`, índice deUid +
-  criadoEm). O 11º: "Fale com o suporte". ⚠️ **O aceite cria uma criança NOVA** (lista fechada
+  criadoEm). O 11º: "Fale com o suporte". A contagem roda na MESMA transação
+  que cria o pedido (`tx.get(query)`), para dois toques juntos não passarem
+  do 10º. ⚠️ **O aceite cria uma criança NOVA** (lista fechada
   `CAMPOS_QUE_VAO`: saúde, foto, dinheiro, contrato, horários e histórico
   nunca vão; a escola casa pelo nome com uma do parceiro), e a antiga fica
   `active: false` com `transferidaPara`, do mesmo dono, e CONGELADA para

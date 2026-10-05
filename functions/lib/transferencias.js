@@ -53,58 +53,75 @@ function makePedirTransferencia(db) {
     if (!idValido(childId) || !idValido(parceiroUid)) throw new HttpsError('invalid-argument', 'Escolha um dos seus tios parceiros.');
 
     const agora = Date.now();
-    const [ligada, tioSnap, criancaSnap, parceiroSnap, ehParceiro, abertas, doMes] = await Promise.all([
+    const [ligada, tioSnap, criancaSnap, parceiroSnap, ehParceiro] = await Promise.all([
       cobrancaLigada(db),
       db.doc(`users/${uid}`).get(),
       db.doc(`children/${childId}`).get(),
       db.doc(`users/${parceiroUid}`).get(),
       saoParceiros(db, uid, parceiroUid),
-      db.collection(COLECAO).where('deUid', '==', uid).where('childId', '==', childId)
-        .where('estado', 'in', R.ABERTOS).limit(5).get(),
-      // O TETO DO MÊS: só os pedidos DELE, criados neste mês (fuso de
-      // Brasília). Índice composto deUid + criadoEm (firestore.indexes.json).
-      // O limite passa do teto com folga: a conta de quem conta é da régua.
-      db.collection(COLECAO).where('deUid', '==', uid)
-        .where('criadoEm', '>=', Timestamp.fromMillis(R.inicioDoMesMs(agora)))
-        .select('estado', 'expiraEm', 'criadoEm').limit(R.TETO_POR_MES * 5).get(),
     ]);
     const crianca = criancaSnap.exists ? criancaSnap.data() : null;
-    const v = R.podePedir({
-      cobrancaLigada: ligada,
-      uid,
-      tio: tioSnap.data(),
-      crianca,
-      parceiroUid,
-      parceiro: parceiroSnap.exists ? parceiroSnap.data() : null,
-      ehParceiro,
-      temAberta: abertas.docs.some((s) => R.estaAberta(s.data(), agora)),
-      // Lista cheia (50 pedidos no mês) é teto, sem contar: a página cortada
-      // poderia deixar de fora justamente os que contam.
-      pedidasNoMes: doMes.size >= R.TETO_POR_MES * 5
-        ? R.TETO_POR_MES
-        : R.pedidosQueContam(doMes.docs.map((s) => s.data()), agora),
-    });
-    if (!v.ok) throw new HttpsError('failed-precondition', v.erro);
-
-    const previa = R.previaDoParceiro(crianca);
     const ref = db.collection(COLECAO).doc();
-    const lote = db.batch();
-    lote.set(ref, {
-      deUid: uid,
-      paraUid: parceiroUid,
-      familiaUid: crianca.parentUid,
-      childId,
-      previa,
-      marcaDe: marcaDe(tioSnap.data()),
-      marcaPara: marcaDe(parceiroSnap.data()),
-      estado: R.ESTADO.PEDIDO,
-      // A família não vê o pedido até o parceiro aceitar (rules).
-      familiaVe: false,
-      criadoEm: FieldValue.serverTimestamp(),
-      expiraEm: Timestamp.fromMillis(R.expiraEmMs(agora)),
+    const previa = R.previaDoParceiro(crianca);
+
+    /*
+     * ⚠️ O TETO E O "JÁ EXISTE UM PEDIDO" CONTAM DENTRO DA MESMA TRANSAÇÃO
+     * QUE CRIA O PEDIDO. Contados fora, dois toques simultâneos (dois
+     * aparelhos, ou o 10º e o 11º disparados juntos) leriam os dois "9 no
+     * mês" e passariam os dois. As transações do Admin SDK aceitam CONSULTA
+     * (`tx.get(query)`) e são serializáveis: a leitura trava o conjunto
+     * consultado, e a segunda transação que tentar criar um pedido dentro
+     * dele espera ou é refeita — e, refeita, já vê o primeiro. O que não
+     * muda em segundos (cobrança, os dois tios, a criança, a parceria) fica
+     * fora, lido uma vez; consulta de parceria dentro travaria `indicacoes`.
+     *
+     * O mês sai de `criadoEm`, e o pedido nasce com `serverTimestamp` —
+     * sempre dentro da faixa consultada pelo pedido seguinte.
+     */
+    await db.runTransaction(async (tx) => {
+      const [abertas, doMes] = await Promise.all([
+        tx.get(db.collection(COLECAO).where('deUid', '==', uid).where('childId', '==', childId)
+          .where('estado', 'in', R.ABERTOS).limit(5)),
+        // Só os pedidos DELE, criados neste mês (fuso de Brasília). Índice
+        // composto deUid + criadoEm (firestore.indexes.json). O limite passa
+        // do teto com folga: a conta de quem conta é da régua.
+        tx.get(db.collection(COLECAO).where('deUid', '==', uid)
+          .where('criadoEm', '>=', Timestamp.fromMillis(R.inicioDoMesMs(agora)))
+          .select('estado', 'expiraEm', 'criadoEm').limit(R.TETO_POR_MES * 5)),
+      ]);
+      const v = R.podePedir({
+        cobrancaLigada: ligada,
+        uid,
+        tio: tioSnap.data(),
+        crianca,
+        parceiroUid,
+        parceiro: parceiroSnap.exists ? parceiroSnap.data() : null,
+        ehParceiro,
+        temAberta: abertas.docs.some((d) => R.estaAberta(d.data(), agora)),
+        // Lista cheia (50 pedidos no mês) é teto, sem contar: a página cortada
+        // poderia deixar de fora justamente os que contam.
+        pedidasNoMes: doMes.size >= R.TETO_POR_MES * 5
+          ? R.TETO_POR_MES
+          : R.pedidosQueContam(doMes.docs.map((d) => d.data()), agora),
+      });
+      if (!v.ok) throw new HttpsError('failed-precondition', v.erro);
+
+      tx.set(ref, {
+        deUid: uid,
+        paraUid: parceiroUid,
+        familiaUid: crianca.parentUid,
+        childId,
+        previa,
+        marcaDe: marcaDe(tioSnap.data()),
+        marcaPara: marcaDe(parceiroSnap.data()),
+        estado: R.ESTADO.PEDIDO,
+        // A família não vê o pedido até o parceiro aceitar (rules).
+        familiaVe: false,
+        criadoEm: FieldValue.serverTimestamp(),
+        expiraEm: Timestamp.fromMillis(R.expiraEmMs(agora)),
+      });
+      tx.set(db.collection('notifications').doc(), aviso(parceiroUid, R.avisoAoParceiro({ marcaDe: marcaDe(tioSnap.data()), previa }), { transferenciaId: ref.id }));
     });
-    lote.set(db.collection('notifications').doc(), aviso(parceiroUid, R.avisoAoParceiro({ marcaDe: marcaDe(tioSnap.data()), previa }), { transferenciaId: ref.id }));
-    await lote.commit();
     return { id: ref.id };
   });
 }

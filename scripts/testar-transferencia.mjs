@@ -223,6 +223,12 @@ console.log('\n\x1b[1m9. O teto de 10 por mês (F2.4)\x1b[0m');
   const indices = JSON.parse(fs.readFileSync('firestore.indexes.json', 'utf8')).indexes;
   eq('o índice composto deUid + criadoEm existe', indices.some((i) => i.collectionGroup === 'transferenciasDeFamilia'
     && i.fields.map((f) => f.fieldPath).join(',') === 'deUid,criadoEm'), true);
+  const pedir = srv.slice(srv.indexOf('function makePedirTransferencia'), srv.indexOf('function makeResponderTransferencia'));
+  eq('a contagem do mês e o pedido estão na MESMA transação (dois toques juntos não passam do 10º)',
+    /runTransaction\(async \(tx\) => \{[\s\S]*tx\.get\(db\.collection\(COLECAO\)\.where\('deUid', '==', uid\)\s*\.where\('criadoEm'[\s\S]*R\.podePedir\([\s\S]*tx\.set\(ref,/.test(pedir), true);
+  eq('o pedido não é mais gravado num lote fora da transação', /db\.batch\(\)/.test(pedir), false);
+  eq('o "já existe pedido aberto" também conta dentro da transação',
+    /runTransaction[\s\S]*tx\.get\(db\.collection\(COLECAO\)\.where\('deUid', '==', uid\)\.where\('childId', '==', childId\)/.test(pedir), true);
 }
 
 console.log('\n\x1b[1m10. A volta ao aceite depois de assinar (F2.4)\x1b[0m');
