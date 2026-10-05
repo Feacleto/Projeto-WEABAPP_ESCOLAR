@@ -2509,6 +2509,88 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // -----------------------------------------------------------------
+    // A FALTA DA AUXILIAR E AS SUBSTITUTAS (05/10/2026, fase 5) — ver
+    // src/services/substitutasService.js e dominio/identidade/faltaDaAuxiliar.js.
+    //
+    // Dado do PRÓPRIO motorista, sem efeito em ninguém (como `expenses`):
+    // o cliente dele escreve direto, e cada documento é preso ao
+    // `motoristaUid` dele. A auxiliar NÃO lê nada disto — falta e substituta
+    // são o controle dele.
+    //
+    // ⚠️ A SUBSTITUTA É TERCEIRO QUE NÃO USA O APP: a lista fechada de campos
+    // é o que impede CPF ou endereço de entrar por um cliente mexido.
+    // -----------------------------------------------------------------
+    function diaValido(d) {
+      return d is string && d.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+    function telefoneDeSubstitutaValido(t) {
+      return t is string && t.matches('^[0-9]{10,11}$');
+    }
+    function nomeDeSubstitutaValido(n) {
+      return n is string && n.size() >= 1 && n.size() <= 60;
+    }
+    function valorDoDiaValido(v) {
+      return v is number && v > 0 && v <= 5000;
+    }
+    match /substitutasDoTio/{id} {
+      function substitutaValida() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['motoristaUid', 'nome', 'telefone', 'vezes',
+                                 'ultimaEm', 'ultimoValor', 'criadaEm'])
+          && d.keys().hasAll(['motoristaUid', 'nome', 'telefone'])
+          && d.motoristaUid == request.auth.uid
+          && nomeDeSubstitutaValido(d.nome)
+          && telefoneDeSubstitutaValido(d.telefone)
+          && (!('vezes' in d) || (d.vezes is int && d.vezes >= 0 && d.vezes <= 10000))
+          && (!('ultimaEm' in d) || d.ultimaEm == null || diaValido(d.ultimaEm))
+          && (!('ultimoValor' in d) || d.ultimoValor == null || valorDoDiaValido(d.ultimoValor))
+          && (!('criadaEm' in d) || d.criadaEm is timestamp);
+      }
+      allow read, delete: if isAdmin() && resource.data.motoristaUid == request.auth.uid;
+      allow create: if isAdmin() && substitutaValida();
+      allow update: if isAdmin() && resource.data.motoristaUid == request.auth.uid
+        && substitutaValida();
+    }
+    // Uma falta por auxiliar por dia: o id É `{motorista}_{auxiliar}_{dia}`,
+    // e a auxiliar precisa ser dele (o vínculo em `auxiliares/`). Sem isso,
+    // um motorista gravaria falta na auxiliar de outro.
+    match /faltasDaAuxiliar/{id} {
+      function substitutaDaFaltaValida(s) {
+        return s == null
+          || (s is map
+              && s.keys().hasOnly(['id', 'nome', 'telefone', 'valor'])
+              && s.keys().hasAll(['id', 'nome', 'telefone', 'valor'])
+              && s.id is string && s.id.size() >= 1 && s.id.size() <= 40
+              && nomeDeSubstitutaValido(s.nome)
+              && telefoneDeSubstitutaValido(s.telefone)
+              && valorDoDiaValido(s.valor));
+      }
+      function faltaValida() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['motoristaUid', 'auxiliarUid', 'nomeDaAuxiliar', 'dateKey',
+                                 'substituta', 'despesaId', 'criadaEm'])
+          && d.keys().hasAll(['motoristaUid', 'auxiliarUid', 'dateKey'])
+          && d.motoristaUid == request.auth.uid
+          && d.auxiliarUid is string && d.auxiliarUid.size() >= 1
+          && diaValido(d.dateKey)
+          && id == request.auth.uid + '_' + d.auxiliarUid + '_' + d.dateKey
+          && (!('nomeDaAuxiliar' in d) || (d.nomeDaAuxiliar is string && d.nomeDaAuxiliar.size() <= 60))
+          && (!('substituta' in d) || substitutaDaFaltaValida(d.substituta))
+          && (!('despesaId' in d) || d.despesaId == null
+              || (d.despesaId is string && d.despesaId.size() <= 40))
+          && (!('criadaEm' in d) || d.criadaEm is timestamp)
+          && exists(/databases/$(database)/documents/auxiliares/$(d.auxiliarUid))
+          && get(/databases/$(database)/documents/auxiliares/$(d.auxiliarUid)).data.motoristaUid == request.auth.uid;
+      }
+      allow read: if isAdmin() && resource.data.motoristaUid == request.auth.uid;
+      allow delete: if isAdmin() && resource.data.motoristaUid == request.auth.uid
+        && id.matches('^' + request.auth.uid + '_.*');
+      allow create: if isAdmin() && faltaValida();
+      allow update: if isAdmin() && resource.data.motoristaUid == request.auth.uid
+        && faltaValida();
+    }
+
     match /configFinanceiro/{uid} {
       function kmAntes() {
         return resource == null ? 0 : resource.data.get('kmDasRotas', 0);

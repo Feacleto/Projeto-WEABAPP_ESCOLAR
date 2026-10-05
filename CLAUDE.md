@@ -40,7 +40,8 @@ npm run testar                   # 68 scripts. O PRIMEIRO é
                                  # tutorial, mapa, modulos, e os do Financeiro
                                  # trancado: extrato, despesas, turma (depois de
                                  # dinheiro), tranca, senha-financeiro, km-da-rota,
-                                 # perua, ditado, indices
+                                 # perua, ditado, indices; e os da auxiliar:
+                                 # auxiliar, substitutas
 npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
                                  # `fecharMes` de verdade contra o Firestore
                                  # do emulador, com o Admin SDK, e lê os
@@ -198,8 +199,15 @@ sem rota aberta DE PROPÓSITO (ela põe na perua enquanto ele liga o app).
 ⚠️ **CONTA TRANCADA NÃO OPERA PELA AUXILIAR**: as callables escrevem com Admin
 SDK, então convidar, aceitar e marcar conferem `contaDoMotoristaOpera`, o
 mesmo predicado do `isAdmin()` das rules. Ela vê o PIX DELE (`PixDaPerua`).
-Pagamentos dela com senha própria, falta, substitutas e avaliações: próximas
-fases. ⚠️ A Política ainda não fala dela (pendências, bloco D).
+⚠️ **FASE 5 — A FALTA DELA E AS SUBSTITUTAS, SÓ NA TELA DO TIO:** no cartão
+de cada ativa, "Hoje" registra a falta (`faltasDaAuxiliar/{tio}_{aux}_{dia}`)
+e quem substituiu, da lista em `/tio/auxiliar/substitutas` (`substitutasDoTio`,
+só nome e WhatsApp); o valor do dia vira despesa `auxiliar` no MESMO lote, e
+"Controle de {mês}" soma faltas e substitutas. ⚠️ **A falta não desconta nada
+sozinha** (combinado entre os dois) e não há estrelas
+([faltaDaAuxiliar.js](src/dominio/identidade/faltaDaAuxiliar.js),
+`npm run testar:substitutas`). Pagamentos dela com senha própria e
+avaliações: próximas fases. ⚠️ A Política ainda não fala dela (pendências, bloco D).
 
 **O DONO PODE SER MAIS DE UM, e o legado `superAdmin` SAIU em 06/09/2026.**
 `isOwner()` e `ehDono()` sempre checaram o PAPEL, nunca a identidade — duas
@@ -362,7 +370,8 @@ src/
 │   │                 hoje. Pública, sem conta, sem sessão do Firebase e sem
 │   │                 mapa ao vivo: a posição da perua é o veículo de um
 │   │                 autônomo e ele não decidiu compartilhá-la com terceiros
-│   ├── tio/           25 telas do motorista — entre elas `TioTurma`
+│   ├── tio/           26 telas do motorista — entre elas `TioSubstitutas`
+│   │                 (`/tio/auxiliar/substitutas`), `TioTurma`
 │   │                 (`/tio/finance/turma`, atrás da senha), `TioEncerrar`
 │   │                 (`/tio/encerrar`, FORA do `GuardaDaConta`: quem está
 │   │                 bloqueado por atraso precisa conseguir sair) e
@@ -612,6 +621,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `leadsInvestidor` · `acessosTemporarios` · `niveis` · `atividadesDaPlatina` · `platformConfig` ·
 `limitesDeTentativa`, `asaasEventosProcessados`, `senhasDoFinanceiro`, `codigosDeIndicacao` e `convitesDeAuxiliar` (só o servidor) ·
 `auxiliares` (o vínculo da auxiliar; ela e o motorista dela leem, ninguém escreve pelo cliente) ·
+`faltasDaAuxiliar` e `substitutasDoTio` (a falta da auxiliar e a lista de substitutas; só o próprio motorista lê e escreve) ·
 `turmaDaAuxiliar` (a cópia sem valor da turma; só a auxiliar ativa lê) ·
 `configFinanceiro` (só o próprio motorista lê) ·
 `indicesEconomicos` (o IPCA; só o servidor escreve, motorista lê) ·

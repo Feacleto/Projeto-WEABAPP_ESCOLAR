@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { MessageCircle, UserPlus } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ChevronRight, MessageCircle, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
 import Button from '../../components/common/Button';
@@ -9,6 +10,10 @@ import ConfirmDialog from '../../components/common/ConfirmDialog';
 import Skeleton from '../../components/common/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
 import { useAuxiliaresDoMotorista } from '../../hooks/useAuxiliares';
+import { useSubstitutas } from '../../hooks/useSubstitutas';
+import HojeDaAuxiliar from '../../components/auxiliar/HojeDaAuxiliar';
+import ControleDoMes from '../../components/auxiliar/ControleDoMes';
+import { getDateKey } from '../../dominio/rota/horarios.js';
 import { convidarAuxiliar, desativarAuxiliar } from '../../services/auxiliarService';
 import {
   historicoDeAuxiliares,
@@ -27,8 +32,8 @@ import { maskPhone, unmaskPhone, isValidPhone } from '../../compartilhado/masks'
  * nasce ligada a ele), vê quem está ativa, desativa na hora e vê quem já
  * trabalhou com ele — a rotatividade dele, só para ele.
  *
- * Fica para as próximas fases: o pagamento dela com "Recebi", a falta, a
- * substituta com o valor e a lista de substitutas.
+ * Fase 5: a falta de hoje no cartão de cada ativa (`HojeDaAuxiliar`), o
+ * controle do mês e a porta para "Minhas substitutas".
  */
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 function mesAno(ms) {
@@ -40,6 +45,9 @@ function mesAno(ms) {
 export default function TioAuxiliar() {
   const { profile } = useAuth();
   const vinculos = useAuxiliaresDoMotorista();
+  // Fase 5: a falta de hoje, as substitutas e o controle do mês.
+  const { substitutas, faltas } = useSubstitutas();
+  const hoje = getDateKey();
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [valor, setValor] = useState('');
@@ -107,9 +115,25 @@ export default function TioAuxiliar() {
                   Desativar acesso
                 </button>
               </div>
+              <HojeDaAuxiliar auxiliar={a} dateKey={hoje} faltas={faltas} substitutas={substitutas} />
             </section>
           ))
         )}
+
+        {historico.length > 0 && <ControleDoMes faltas={faltas} monthKey={hoje.slice(0, 7)} />}
+
+        <Link
+          to="/tio/auxiliar/substitutas"
+          className="tap flex min-h-16 items-center gap-3 rounded-2xl bg-card px-4 py-2 shadow-rest"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-bold text-text">Minhas substitutas</span>
+            <span className="block text-sm text-textMuted">
+              {(substitutas || []).length} {(substitutas || []).length === 1 ? 'contato' : 'contatos'} para quando a auxiliar faltar
+            </span>
+          </span>
+          <ChevronRight size={20} className="text-textMuted" aria-hidden="true" />
+        </Link>
 
         {/* CONVIDAR — o link sai pelo WhatsApp. */}
         <section className="space-y-3 rounded-2xl bg-card p-5 shadow-rest">
@@ -170,6 +194,12 @@ export default function TioAuxiliar() {
                 </a>
               </div>
             ))}
+            <Link
+              to="/tio/auxiliar/substitutas"
+              className="tap flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-border bg-card text-base font-bold text-text"
+            >
+              Ver minhas substitutas
+            </Link>
           </section>
         )}
       </div>
