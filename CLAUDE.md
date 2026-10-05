@@ -180,10 +180,23 @@ convite dele (`/auxiliar/:codigo`, callables em
 [auxiliares.js](functions/lib/auxiliares.js), régua pura em
 [reguaDoAuxiliar.js](functions/lib/reguaDoAuxiliar.js)): link de 15 dias, até
 2 ativas por motorista, e uma conta só tem um papel (família ou motorista não
-viram auxiliar com a mesma conta). O vínculo mora em `auxiliares/{uid}`
-(de quem, desde, ativa, até) — ela lê o dela, ele lê os dele, ninguém escreve
-pelo cliente — e `users.motoristaUid` é proibido ao cliente. Ela lê o doc do
-motorista só com o vínculo ativo. O tio convida, desativa e vê quem já
+viram auxiliar com a mesma conta). ⚠️ **O VÍNCULO É POR PAR (05/10/2026):**
+`auxiliares/{motoristaUid}_{auxiliarUid}` (os dois uids, nome, telefone,
+valor, `marcaDoMotorista`, `ativa`, `aceitoEm`, `encerradoEm` e `periodos:
+[{de, ate}]`) — ela lê os dela, ele lê os dele, ninguém escreve pelo cliente.
+**O histórico nunca é apagado:** desativar fecha o período, o mesmo tio
+recontratando reabre o MESMO doc com período novo, e o convite de outro tio
+cria o doc dele. **Até 2 tios ativos por auxiliar** (quem já é auxiliar aceita
+o convite de um segundo tio; com dois, o Hoje dela troca de perua, lembrada
+por aparelho em `usePeruaDaAuxiliar`) e até 2 auxiliares por tio, conferidos
+de novo no aceite. `users.motoristaUids` (os tios ATIVOS) é do servidor, e
+`motoristaUid` (o singular antigo) e `motoristaUids` são proibidos ao cliente.
+Ela lê o doc do tio, a cópia da turma e a falta é escrita só pelo vínculo do
+PAR ativo, e `marcarParadaPelaAuxiliar` recebe o `motoristaUid`. Régua nova:
+`idDoVinculo`, `cabeMaisUmTio` e `diasDeVinculo` (soma dos períodos, o aberto
+até agora — a recomendação vai exigir 30 dias por ela; espelho no app,
+comparado caso a caso). Sem migração: a conta da auxiliar ainda não foi ao
+ar. O tio convida, desativa e vê quem já
 trabalhou com ele na seção "Auxiliar" da Central
 ([AuxiliarNaCentral](src/components/auxiliar/AuxiliarNaCentral.jsx), um
 espaço na rolagem, não aba) e no detalhe em `/tio/finance/auxiliar` — atrás
@@ -645,7 +658,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `faturasParceiro` · `contratosAssociacao` · `pedidosAdesivo` ·
 `indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `leadsInvestidor` · `acessosTemporarios` · `niveis` · `atividadesDaPlatina` · `platformConfig` ·
 `limitesDeTentativa`, `asaasEventosProcessados`, `senhasDoFinanceiro`, `codigosDeIndicacao`, `convitesDeAuxiliar` e `documentosDeAssinante` (um CPF/CNPJ, uma conta) (só o servidor) ·
-`auxiliares` (o vínculo da auxiliar; ela e o motorista dela leem, ninguém escreve pelo cliente) ·
+`auxiliares` (o vínculo do PAR `{motorista}_{auxiliar}`, com os períodos; nunca apagado; os dois do par leem, ninguém escreve pelo cliente) ·
 `faltasDaAuxiliar` e `substitutasDoTio` (a falta da auxiliar e a lista de substitutas; só o próprio motorista lê e escreve) ·
 `turmaDaAuxiliar` (a cópia sem valor da turma; só a auxiliar ativa lê) ·
 `pagamentosDaAuxiliar` (o recibo do pagamento dela; lê só quem está nele, escreve só o servidor) ·

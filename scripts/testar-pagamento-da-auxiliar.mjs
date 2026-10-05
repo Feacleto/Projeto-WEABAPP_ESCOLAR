@@ -119,7 +119,7 @@ checar('do mais novo para o mais velho', ['2026-10', '2026-10', '2026-09'], reci
 checar('os três estados', ['sem_anotacao', 'esperando', 'confirmado'],
   [estadoDoRecibo(null), estadoDoRecibo(lista[1]), estadoDoRecibo(lista[0])]);
 checar('o histórico leva o valor do convite (o botão nasce com ele)', [900, null],
-  historicoDeAuxiliares([{ uid: 'a', ativa: true, valorMensal: 900 }, { uid: 'b', ativa: true }]).map((h) => h.valorMensal));
+  historicoDeAuxiliares([{ auxiliarUid: 'a', ativa: true, valorMensal: 900 }, { auxiliarUid: 'b', ativa: true }]).map((h) => h.valorMensal));
 
 console.log('\n8. as travas (servidor e rules)');
 const regua = ler('functions/lib/reguaDoPagamentoDaAuxiliar.js');
@@ -129,10 +129,12 @@ const anotar = servidor.slice(servidor.indexOf('function makeAnotarPagamentoDaAu
 const confirmar = servidor.slice(servidor.indexOf('function makeConfirmarRecebimentoDaAuxiliar'), servidor.indexOf('module.exports'));
 checar('anotar é do motorista', true, anotar.includes('await exigirMotorista(db, request)'));
 checar('o id da auxiliar passa no idValido ANTES de virar caminho', true,
-  anotar.indexOf('idValido(auxiliarUid)') > -1 && anotar.indexOf('idValido(auxiliarUid)') < anotar.indexOf('auxiliares/${auxiliarUid}'));
+  anotar.indexOf('idValido(auxiliarUid)') > -1 && anotar.indexOf('idValido(auxiliarUid)') < anotar.indexOf('auxiliares/${idDoVinculo(uid, auxiliarUid)}'));
 checar('o mês e o valor passam pela régua', true, anotar.includes('R.mesPodeSerAnotado(mes') && anotar.includes('R.valorValido('));
 checar('a conta dele precisa estar operando', true, anotar.includes('exigirContaDoMotoristaOperando(db, uid)'));
 checar('o vínculo precisa ser DELE e ATIVO', true, anotar.includes('v.motoristaUid !== uid') && anotar.includes('v.ativa !== true'));
+checar('o vínculo lido é o do PAR (ele e ela), nunca o da auxiliar sozinha', [true, false],
+  [anotar.includes('auxiliares/${idDoVinculo(uid, auxiliarUid)}'), anotar.includes('auxiliares/${auxiliarUid}')]);
 checar('recibo e despesa no MESMO lote, e o segundo toque é recusado', true,
   ['runTransaction', 'tx.get(reciboRef)', 'recibo.exists', 'tx.create(reciboRef', 'tx.set(despesaRef'].every((p) => anotar.includes(p)));
 checar('a despesa é a categoria que o caixa chama de Auxiliar', true, anotar.includes("category: 'monitor'"));

@@ -3,7 +3,7 @@ import { KeyRound, LogOut } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../hooks/useAuth';
-import { useMeuVinculo } from '../../hooks/useAuxiliares';
+import { useMeusVinculos } from '../../hooks/useAuxiliares';
 import { DEV_EMAIL } from '../../config/developer';
 
 /**
@@ -19,7 +19,7 @@ import { DEV_EMAIL } from '../../config/developer';
 export default function AuxPerfil() {
   const navigate = useNavigate();
   const { profile, logout } = useAuth();
-  const vinculo = useMeuVinculo();
+  const { vinculos, ativos } = useMeusVinculos();
   const email = DEV_EMAIL;
 
   return (
@@ -30,7 +30,11 @@ export default function AuxPerfil() {
           <p className="font-display text-xl font-bold text-text">{profile?.name || 'Auxiliar'}</p>
           <p className="mt-1 text-base text-textBody">{profile?.email}</p>
           <p className="mt-1 text-base text-textBody">
-            {vinculo === undefined ? '…' : vinculo?.ativa ? 'Auxiliar ativa' : 'Acesso encerrado pelo motorista'}
+            {vinculos === undefined
+              ? '…'
+              : ativos.length > 0
+                ? `Auxiliar na perua de ${ativos.map((v) => v.marcaDoMotorista || 'um motorista').join(' e de ')}`
+                : 'Acesso encerrado pelo motorista'}
           </p>
         </section>
         <Button

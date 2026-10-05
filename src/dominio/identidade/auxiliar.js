@@ -2,9 +2,11 @@
  * A AUXILIAR, DO LADO DO APP — régua pura (05/10/2026).
  *
  * O histórico e a rotatividade que o motorista vê em "Quem já trabalhou
- * comigo", e a mensagem do convite. O vínculo vem de `auxiliares/{uid}`
- * (`desde`, `ate`, `ativa`); a conta é feita aqui, sem Firebase, para o Node
- * dos testes alcançar.
+ * comigo", e a mensagem do convite. O vínculo vem de
+ * `auxiliares/{motoristaUid}_{auxiliarUid}` — um documento por PAR, com
+ * `aceitoEm`, `encerradoEm`, `ativa` e `periodos: [{ de, ate }]`; quem saiu e
+ * voltou tem um documento só, com dois períodos. A conta é feita aqui, sem
+ * Firebase, para o Node dos testes alcançar.
  *
  * A rotatividade aparece SÓ para o próprio motorista e não compara com
  * ninguém: média da cidade fica para quando houver base.
@@ -26,25 +28,65 @@ export function mesesEntre(desdeMs, ateMs) {
   return Math.max(1, Math.round((ateMs - desdeMs) / (30.4 * DIA)));
 }
 
+/** O id do vínculo do par — o mesmo desenho do servidor (`idDoVinculo`). */
+export function idDoVinculo(motoristaUid, auxiliarUid) {
+  return `${motoristaUid}_${auxiliarUid}`;
+}
+
+/**
+ * Dias de vínculo, SOMANDO os períodos (o aberto conta até agora), em dias
+ * inteiros para baixo. ⚠️ ESPELHO de `diasDeVinculo` em
+ * functions/lib/reguaDoAuxiliar.js — o deploy das functions não alcança
+ * `src/`, e `testar:auxiliar` compara os dois caso a caso.
+ */
+export function diasDeVinculo(periodos, agoraMs) {
+  let total = 0;
+  for (const p of Array.isArray(periodos) ? periodos : []) {
+    const de = ms(p?.de);
+    if (de == null) continue;
+    const ate = p.ate == null ? agoraMs : ms(p.ate);
+    if (ate == null || ate <= de) continue;
+    total += ate - de;
+  }
+  return Math.floor(total / DIA);
+}
+
+/** Meses pela soma dos períodos, no mínimo 1 (quem ficou dias conta 1). */
+function mesesDeVinculo(dias) {
+  return Math.max(1, Math.round(dias / 30.4));
+}
+
 /**
  * A lista de "Quem já trabalhou comigo": as ativas primeiro, depois as que
  * saíram, da saída mais recente para a mais antiga.
  */
 export function historicoDeAuxiliares(vinculos, agoraMs = Date.now()) {
   const lista = (Array.isArray(vinculos) ? vinculos : []).map((v) => {
-    const desde = ms(v.desde);
-    const ate = v.ativa ? null : ms(v.ate);
+    const periodos = Array.isArray(v.periodos) ? v.periodos : [];
+    // O período de AGORA (o último), para o "Desde" de quem está ativa; o
+    // primeiro aceite, para quando ela chegou pela primeira vez.
+    const ultimo = periodos[periodos.length - 1];
+    const primeiro = ms(v.aceitoEm) ?? ms(periodos[0]?.de);
+    const desde = ms(ultimo?.de) ?? primeiro;
+    const ate = v.ativa ? null : ms(v.encerradoEm) ?? ms(ultimo?.ate);
+    const dias = diasDeVinculo(periodos, agoraMs);
     return {
-      uid: v.uid,
+      // O uid DELA (o doc é do par; quem desativa, paga e registra falta
+      // fala da auxiliar).
+      uid: v.auxiliarUid || v.uid,
       nome: v.nome || 'Auxiliar',
       telefone: v.telefone || '',
       // O que ele disse no convite que ia pagar — o botão do pagamento
       // (fase 4) já nasce com ele. Sem valor, a tela pede o valor.
       valorMensal: Number(v.valorMensal) > 0 ? Number(v.valorMensal) : null,
       ativa: !!v.ativa,
+      primeiroMs: primeiro,
       desdeMs: desde,
       ateMs: ate,
-      meses: mesesEntre(desde, ate ?? agoraMs),
+      dias,
+      meses: mesesDeVinculo(dias),
+      // Saiu e voltou: um nome só na lista, com o tempo SOMADO.
+      voltas: Math.max(0, periodos.length - 1),
     };
   });
   return lista.sort((a, b) => {
@@ -67,7 +109,7 @@ export function rotatividade(vinculos, agoraMs = Date.now()) {
     total: h.length,
     ativas: h.filter((x) => x.ativa).length,
     mediaDeMeses: media,
-    ultimos12: h.filter((x) => x.desdeMs != null && x.desdeMs >= umAno).length,
+    ultimos12: h.filter((x) => x.primeiroMs != null && x.primeiroMs >= umAno).length,
   };
 }
 

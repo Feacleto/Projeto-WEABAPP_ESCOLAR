@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from './useAuth';
 import {
   watchAuxiliaresDoMotorista,
-  watchMeuVinculo,
+  watchMeusVinculos,
   watchTurmaDaAuxiliar,
   watchFaltasDaAuxiliar,
   watchPagamentosDoMotorista,
@@ -26,18 +26,26 @@ export function useAuxiliaresDoMotorista() {
 }
 
 /**
- * O vínculo da auxiliar logada: `undefined` enquanto carrega, `null` se não há
- * (conta sem vínculo), o vínculo depois.
+ * Os vínculos da auxiliar logada, um por tio: `undefined` enquanto carrega,
+ * a lista depois (vazia = conta sem vínculo). `ativos` são os tios de agora,
+ * do primeiro aceite para o último — a ordem dos botões da troca de perua.
  */
-export function useMeuVinculo() {
+export function useMeusVinculos() {
   const { user } = useAuth();
   const uid = user?.uid || null;
-  const [snap, setSnap] = useState({ chave: null, vinculo: undefined });
+  const [snap, setSnap] = useState({ chave: null, lista: undefined });
   useEffect(() => {
     if (!uid) return undefined;
-    return watchMeuVinculo(uid, (vinculo) => setSnap({ chave: uid, vinculo }), () => setSnap({ chave: uid, vinculo: null }));
+    return watchMeusVinculos(uid, (lista) => setSnap({ chave: uid, lista }), () => setSnap({ chave: uid, lista: [] }));
   }, [uid]);
-  return snap.chave === uid ? snap.vinculo : undefined;
+  const lista = snap.chave === uid ? snap.lista : undefined;
+  const ativos = useMemo(
+    () => (lista || [])
+      .filter((v) => v.ativa === true)
+      .sort((a, b) => (a.aceitoEm?.toMillis?.() || 0) - (b.aceitoEm?.toMillis?.() || 0)),
+    [lista]
+  );
+  return { vinculos: lista, ativos };
 }
 
 /**

@@ -1,4 +1,4 @@
-import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, db, functions } from '../firebase/config';
@@ -9,7 +9,12 @@ import { exigirCloud } from './callableError';
  *
  * Convidar, aceitar e desativar são callables (`functions/lib/auxiliares.js`):
  * o cliente não escreve `role` nem o vínculo. Aqui só se chama o servidor e se
- * escuta o vínculo, que as rules deixam ler: ela o dela, o motorista os dele.
+ * escuta o vínculo, que as rules deixam ler: ela os dela, o motorista os dele.
+ *
+ * O vínculo é por PAR — `auxiliares/{motoristaUid}_{auxiliarUid}` — e as
+ * duas escutas são consultas por campo (`motoristaUid` ou `auxiliarUid`), não
+ * leitura pelo id: ele vê todas as que já trabalharam com ele, ela vê os tios
+ * dela (até dois ativos, e os que já encerraram).
  */
 
 function chamar(nome) {
@@ -36,8 +41,8 @@ export async function aceitarConviteDeAuxiliar({ codigo, acceptedLegalVersion })
   return data;
 }
 
-export async function desativarAuxiliar(auxUid) {
-  await chamar('desativarAuxiliar')({ auxUid });
+export async function desativarAuxiliar(auxiliarUid) {
+  await chamar('desativarAuxiliar')({ auxiliarUid });
 }
 
 /**
@@ -66,7 +71,8 @@ export function watchAuxiliaresDoMotorista(motoristaUid, onUpdate, onError) {
   }
   return onSnapshot(
     query(collection(db, 'auxiliares'), where('motoristaUid', '==', motoristaUid)),
-    (snap) => onUpdate(snap.docs.map((d) => ({ uid: d.id, ...d.data() }))),
+    // `uid` é o DELA: o id do documento é o do par.
+    (snap) => onUpdate(snap.docs.map((d) => ({ id: d.id, ...d.data(), uid: d.data().auxiliarUid }))),
     (err) => {
       console.error('watchAuxiliaresDoMotorista:', err);
       onError?.(err);
@@ -74,17 +80,20 @@ export function watchAuxiliaresDoMotorista(motoristaUid, onUpdate, onError) {
   );
 }
 
-/** O vínculo da própria auxiliar: de quem, desde quando, se está ativa. */
-export function watchMeuVinculo(auxUid, onUpdate, onError) {
+/**
+ * Os vínculos da própria auxiliar — um por tio, os ativos e os encerrados.
+ * Os encerrados ficam porque os pagamentos dizem de qual perua vieram.
+ */
+export function watchMeusVinculos(auxUid, onUpdate, onError) {
   if (!auxUid) {
-    onUpdate(null);
+    onUpdate([]);
     return () => {};
   }
   return onSnapshot(
-    doc(db, 'auxiliares', auxUid),
-    (snap) => onUpdate(snap.exists() ? { uid: snap.id, ...snap.data() } : null),
+    query(collection(db, 'auxiliares'), where('auxiliarUid', '==', auxUid)),
+    (snap) => onUpdate(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
     (err) => {
-      console.error('watchMeuVinculo:', err);
+      console.error('watchMeusVinculos:', err);
       onError?.(err);
     }
   );
@@ -129,8 +138,9 @@ export function watchFaltasDaAuxiliar(motoristaUid, dateKey, onUpdate, onError) 
  * A AUXILIAR MARCA NA ROTA (fase 3): EMBARQUEI / ENTREGUEI pelo servidor —
  * ela não escreve em `children`. Só para a frente; desfazer é do motorista.
  */
-export async function marcarParadaPelaAuxiliar(childId, proximo) {
-  const { data } = await chamar('marcarParadaPelaAuxiliar')({ childId, proximo });
+export async function marcarParadaPelaAuxiliar(childId, proximo, motoristaUid) {
+  // Com dois tios, o servidor confere o vínculo DAQUELE par.
+  const { data } = await chamar('marcarParadaPelaAuxiliar')({ childId, proximo, motoristaUid });
   return data;
 }
 

@@ -59,8 +59,9 @@ export function ehResponsavel(profile) {
 }
 
 /**
- * A AUXILIAR (05/10/2026) — o quinto papel, sempre ligado a um motorista
- * (`users.motoristaUid`). A conta nasce só pelo convite dele, pelo servidor:
+ * A AUXILIAR (05/10/2026) — o quinto papel, ligado a um motorista ou a dois
+ * (`users.motoristaUids`, os tios ativos; o vínculo de cada par mora em
+ * `auxiliares/{motorista}_{auxiliar}`). A conta nasce só pelo convite, pelo servidor:
  * o cliente não escreve `role`. Ver functions/lib/auxiliares.js.
  */
 export function ehAuxiliar(profile) {

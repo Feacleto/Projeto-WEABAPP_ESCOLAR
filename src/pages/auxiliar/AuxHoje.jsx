@@ -5,8 +5,8 @@ import { Phone, MessageCircle, School, Wallet } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Avatar from '../../components/common/Avatar';
 import Skeleton from '../../components/common/Skeleton';
-import { useAuth } from '../../hooks/useAuth';
-import { useMeuVinculo, useTurmaDaAuxiliar } from '../../hooks/useAuxiliares';
+import { useMeusVinculos, useTurmaDaAuxiliar } from '../../hooks/useAuxiliares';
+import { usePeruaDaAuxiliar } from '../../hooks/usePeruaDaAuxiliar';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
 import { getEffectiveStatus } from '../../services/childrenService';
 import { statusNaDirecao, getActionForStatus } from '../../services/routeStatusService';
@@ -30,6 +30,12 @@ import { linkDoZap } from '../../dominio/identidade/auxiliar.js';
  * (`marcarParadaPelaAuxiliar`) — ela não escreve em `children`. Só para a
  * frente: desfazer um toque errado é do motorista. O "Mostrar PIX da perua"
  * mostra a chave DELE.
+ *
+ * DOIS TIOS (05/10/2026, vínculo por par): com dois vínculos ativos, o topo
+ * ganha a troca de perua — um botão por tio, a escolha lembrada neste
+ * aparelho — e a marcação vai com o tio escolhido. Com um tio, a tela é a de
+ * sempre. O acesso encerrado só aparece quando NÃO sobra tio ativo: se um
+ * desativa e o outro continua, ela só deixa de ver aquela perua.
  */
 const ROTULO_DO_STATUS = {
   home: 'Em casa',
@@ -40,13 +46,13 @@ const ROTULO_DO_STATUS = {
 
 export default function AuxHoje() {
   const navigate = useNavigate();
-  const { profile } = useAuth();
-  const vinculo = useMeuVinculo();
-  const motoristaUid = profile?.motoristaUid || null;
-  const { admin: motorista } = useAdminProfile(vinculo?.ativa ? motoristaUid : null);
-  const marca = motorista?.marcaNome || motorista?.name || 'o motorista';
+  const { vinculos, ativos } = useMeusVinculos();
+  const { motoristaUid, escolher } = usePeruaDaAuxiliar(ativos);
+  const { admin: motorista } = useAdminProfile(motoristaUid);
+  const vinculoAtual = ativos.find((v) => v.motoristaUid === motoristaUid);
+  const marca = motorista?.marcaNome || motorista?.name || vinculoAtual?.marcaDoMotorista || 'o motorista';
   const hoje = getDateKey();
-  const { criancas, faltas } = useTurmaDaAuxiliar(vinculo?.ativa ? motoristaUid : null, hoje);
+  const { criancas, faltas } = useTurmaDaAuxiliar(motoristaUid, hoje);
 
   const blocos = useMemo(
     () => (criancas ? diaCompleto(criancas, { declaracoes: faltas, escolasPorId: {} }) : []),
@@ -56,7 +62,7 @@ export default function AuxHoje() {
   async function marcar(child, acao) {
     setMarcando(child.id);
     try {
-      const r = await marcarParadaPelaAuxiliar(child.id, acao.nextStatus);
+      const r = await marcarParadaPelaAuxiliar(child.id, acao.nextStatus, motoristaUid);
       toast.success(r?.avisou ? 'Marcado. A família foi avisada.' : 'Marcado.');
       if (navigator.vibrate) navigator.vibrate(30);
     } catch (err) {
@@ -67,13 +73,13 @@ export default function AuxHoje() {
   }
   const vaoHoje = new Set(blocos.flatMap((b) => b.paradas.filter((p) => precisaDaPerua(p.estado)).map((p) => p.child.id))).size;
 
-  if (vinculo && !vinculo.ativa) {
+  if (vinculos?.length > 0 && ativos.length === 0) {
     return (
       <>
         <Header title="Hoje" />
         <div className="space-y-4 p-4">
           <section className="rounded-2xl bg-card p-5 shadow-rest">
-            <h2 className="font-display text-xl font-bold text-text">{marca} encerrou o seu acesso</h2>
+            <h2 className="font-display text-xl font-bold text-text">Seu acesso foi encerrado</h2>
             <p className="mt-2 text-base text-textBody">Você não vê mais a turma nem a rota. Obrigado pelo trabalho.</p>
           </section>
           {/* Os pagamentos continuam dela depois do acesso encerrado (fase 4). */}
@@ -94,6 +100,26 @@ export default function AuxHoje() {
     <>
       <Header title="Hoje" />
       <div className="space-y-4 p-4">
+        {ativos.length > 1 && (
+          <div className="grid grid-cols-2 gap-2" role="group" aria-label="Escolher a perua">
+            {ativos.map((v) => {
+              const escolhida = v.motoristaUid === motoristaUid;
+              return (
+                <button
+                  key={v.motoristaUid}
+                  type="button"
+                  aria-pressed={escolhida}
+                  onClick={() => escolher(v.motoristaUid)}
+                  className={`tap min-h-12 rounded-xl border-2 px-2 text-base font-bold ${
+                    escolhida ? 'border-primary bg-primarySoft text-primary' : 'border-border bg-card text-text'
+                  }`}
+                >
+                  Perua {v.marcaDoMotorista ? `de ${v.marcaDoMotorista}` : 'do motorista'}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <section className="rounded-2xl bg-primary p-5 text-white">
           <p className="rotulo text-menta">Perua de {marca}</p>
           <p className="mt-1 font-display text-2xl font-extrabold leading-tight">

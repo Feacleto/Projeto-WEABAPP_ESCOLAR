@@ -159,8 +159,10 @@ checar('substituta: só o próprio motorista, com a conta valendo', true,
   blocoSub.includes('allow read, delete: if isAdmin() && resource.data.motoristaUid == request.auth.uid')
   && blocoSub.includes('d.motoristaUid == request.auth.uid'));
 checar('falta: o id é motorista_auxiliar_dia', true, blocoFalta.includes("id == request.auth.uid + '_' + d.auxiliarUid + '_' + d.dateKey"));
-checar('falta: a auxiliar precisa ser dele', true,
-  blocoFalta.includes('get(/databases/$(database)/documents/auxiliares/$(d.auxiliarUid)).data.motoristaUid == request.auth.uid'));
+checar('falta: a auxiliar precisa ser dele (o vínculo do PAR)', true,
+  blocoFalta.includes("exists(/databases/$(database)/documents/auxiliares/$(request.auth.uid + '_' + d.auxiliarUid))"));
+checar('falta nova: o vínculo do par precisa estar ativo', true,
+  blocoFalta.includes("auxiliares/$(request.auth.uid + '_' + request.resource.data.auxiliarUid)).data.get('ativa', false) == true"));
 checar('falta: só o próprio motorista lê', true, blocoFalta.includes('allow read: if isAdmin() && resource.data.motoristaUid == request.auth.uid'));
 checar('o valor do dia tem teto de 5000 nas rules', true, regras.includes('v is number && v > 0 && v <= 5000'));
 checar('o telefone tem 10 ou 11 dígitos nas rules', true, regras.includes("t.matches('^[0-9]{10,11}$')"));

@@ -40,6 +40,10 @@ import { maskPhone, unmaskPhone, isValidPhone } from '../../compartilhado/masks'
  * confirma "Recebi").
  * Fase 5: a falta de hoje no cartão de cada ativa (`HojeDaAuxiliar`), o
  * controle do mês e a porta para "Minhas substitutas".
+ *
+ * O vínculo é por PAR (`auxiliares/{ele}_{ela}`): desativar fecha o período e
+ * o documento fica, então "Quem já trabalhou comigo" nunca perde ninguém — nem
+ * quando ela vai trabalhar também para outro tio.
  */
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 function mesAno(ms) {
@@ -187,7 +191,10 @@ export default function TioAuxiliar() {
                 <span className="min-w-0 flex-1">
                   <span className="block text-base font-bold text-text">{h.nome}</span>
                   <span className="block text-sm text-textMuted">
-                    {mesAno(h.desdeMs)} a {mesAno(h.ateMs)} · {h.meses} {h.meses === 1 ? 'mês' : 'meses'}
+                    {/* O tempo é a SOMA dos períodos (`diasDeVinculo`): quem
+                      * saiu e voltou aparece uma vez, com tudo somado. */}
+                    {mesAno(h.primeiroMs)} a {mesAno(h.ateMs)} · {h.meses} {h.meses === 1 ? 'mês' : 'meses'}
+                    {h.voltas > 0 ? ` em ${h.voltas + 1} períodos` : ''}
                   </span>
                 </span>
                 <a

@@ -4,9 +4,7 @@ import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
 import Skeleton from '../../components/common/Skeleton';
 import GuardaDosPagamentos from '../../components/auxiliar/GuardaDosPagamentos';
-import { useAuth } from '../../hooks/useAuth';
-import { useMeuVinculo, useMeusPagamentosDeAuxiliar } from '../../hooks/useAuxiliares';
-import { useAdminProfile } from '../../hooks/useAdminProfile';
+import { useMeusVinculos, useMeusPagamentosDeAuxiliar } from '../../hooks/useAuxiliares';
 import { confirmarRecebimentoDaAuxiliar } from '../../services/auxiliarService';
 import { formatCurrency } from '../../compartilhado/formatters';
 import { diaCurto, mesEAnoDoPagamento, recibosEmOrdem } from '../../dominio/identidade/auxiliar.js';
@@ -22,6 +20,11 @@ import { diaCurto, mesEAnoDoPagamento, recibosEmOrdem } from '../../dominio/iden
  * motorista encerrar o acesso: o pagamento é dela.
  *
  * Protegida pela senha DELA (`GuardaDosPagamentos`).
+ *
+ * DOIS TIOS (vínculo por par): a lista é por auxiliar, então já traz os
+ * recibos dos dois, e cada cartão diz de quem é. O nome vem da marca copiada
+ * no VÍNCULO (`marcaDoMotorista`), não do doc do tio — esse fecha para ela
+ * quando ele a desativa, e o recibo continua sendo dela.
  */
 export default function AuxPagamentos() {
   return (
@@ -32,13 +35,10 @@ export default function AuxPagamentos() {
 }
 
 function ListaDePagamentos() {
-  const { profile } = useAuth();
   const pagamentos = useMeusPagamentosDeAuxiliar();
-  const vinculo = useMeuVinculo();
-  // O doc do motorista só abre a ela com o vínculo ATIVO (rules); depois de
-  // desativada a tela segue, com "O motorista" no lugar da marca.
-  const { admin: motorista } = useAdminProfile(vinculo?.ativa ? profile?.motoristaUid || null : null);
-  const marca = motorista?.marcaNome || motorista?.name || 'O motorista';
+  const { vinculos } = useMeusVinculos();
+  const marcaDe = (uid) => (vinculos || []).find((v) => v.motoristaUid === uid)?.marcaDoMotorista || 'O motorista';
+  const umTioSo = (vinculos || []).length === 1;
   const [confirmando, setConfirmando] = useState(null);
 
   async function recebi(p) {
@@ -62,7 +62,9 @@ function ListaDePagamentos() {
       <Header title="Pagamentos" />
       <div className="space-y-4 p-4">
         <p className="px-1 text-base text-textBody">
-          O que {marca} anotou que te pagou. Só você e ele veem.
+          {umTioSo
+            ? `O que ${marcaDe(vinculos[0].motoristaUid)} anotou que te pagou. Só você e ele veem.`
+            : 'O que cada motorista anotou que te pagou. Só você e ele veem.'}
         </p>
 
         {pagamentos === null && <Skeleton className="h-32 rounded-2xl" />}
@@ -79,7 +81,7 @@ function ListaDePagamentos() {
               <p className="rotulo text-textMuted">{mesEAnoDoPagamento(p.mes)}</p>
               <p className="font-display text-2xl font-extrabold text-text">{formatCurrency(p.valor)}</p>
               <p className="mt-1 text-base text-textBody">
-                O tio anotou que pagou em {diaCurto(p.anotadoEm) || 'hoje'}.
+                {marcaDe(p.motoristaUid)} anotou que pagou em {diaCurto(p.anotadoEm) || 'hoje'}.
               </p>
             </div>
             {p.recebidoEm ? (

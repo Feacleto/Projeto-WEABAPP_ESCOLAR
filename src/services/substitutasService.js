@@ -27,7 +27,8 @@ import {
  * Por que o CLIENTE escreve, e não uma callable: é dado do próprio tio, sem
  * efeito em ninguém — como `expenses`. As rules prendem cada documento ao
  * `motoristaUid` dele, conferem os campos e, na falta, exigem que o id seja
- * `{ele}_{auxiliar}_{dia}` e que a auxiliar seja DELE (`auxiliares/{uid}`).
+ * `{ele}_{auxiliar}_{dia}` e que a auxiliar seja DELE (o vínculo do par,
+ * `auxiliares/{ele}_{auxiliar}`).
  * A auxiliar não lê nada disto.
  *
  * ⚠️ TUDO DE UMA SUBSTITUIÇÃO VAI NUM LOTE SÓ: a falta ganha a substituta, a

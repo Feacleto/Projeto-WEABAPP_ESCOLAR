@@ -11,19 +11,28 @@
  * ── POR QUE É TUDO NO SERVIDOR
  * O cliente não escreve `role` (foi assim que a auto-promoção fechou), e a
  * ligação auxiliar → motorista é o que vai abrir a turma dele para ela. Se o
- * cliente escrevesse `auxiliares/{uid}`, qualquer conta se ligaria a qualquer
+ * cliente escrevesse o vínculo em `auxiliares`, qualquer conta se ligaria a qualquer
  * motorista. As rules fecham `convitesDeAuxiliar` e a escrita de `auxiliares`
  * a todo cliente.
  *
  * ── O QUE A CONTA DELA GUARDA
- * `users/{uid}`: role 'auxiliar', nome, e-mail, WhatsApp e `motoristaUid`.
- * `auxiliares/{uid}`: o vínculo — de quem, desde quando, se está ativa e até
- * quando. É ele que o histórico do motorista ("quem já trabalhou comigo") lê.
+ * `users/{uid}`: role 'auxiliar', nome, e-mail, WhatsApp e `motoristaUids` —
+ * a LISTA dos tios com vínculo ATIVO (até dois). Era `motoristaUid`, um só.
+ * `auxiliares/{motoristaUid}_{auxiliarUid}`: o vínculo do PAR — os dois uids,
+ * nome, telefone e valor do convite, `ativa`, `aceitoEm` (o primeiro aceite),
+ * `encerradoEm` e `periodos: [{ de, ate }]`. É ele que o histórico do
+ * motorista ("quem já trabalhou comigo") lê, e ele NUNCA é apagado: desativar
+ * fecha o período, recontratar abre outro no mesmo documento, e o convite de
+ * um segundo tio cria o documento DELE, sem tocar no do primeiro.
+ *
+ * ⚠️ SEM MIGRAÇÃO (05/10/2026): o formato antigo (`auxiliares/{auxiliarUid}`,
+ * `desde`/`ate`, `users.motoristaUid`) nunca foi a produção — a conta da
+ * auxiliar espera a revisão da Política de Privacidade.
  *
  * A régua (validade, teto de 2, formato) é pura: `reguaDoAuxiliar.js`.
  */
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
-const { FieldValue } = require('firebase-admin/firestore');
+const { FieldValue, Timestamp } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
 const { exigirMotorista } = require('./papeis');
 const R = require('./reguaDoAuxiliar');
@@ -121,6 +130,11 @@ function makeVerConviteDeAuxiliar(db) {
     if (!idValido(codigo) || !R.codigoValido(codigo)) return { vale: false, frase: FRASE_DO_LINK_QUE_NAO_VALE };
     const snap = await db.doc(`convitesDeAuxiliar/${codigo}`).get();
     const convite = snap.exists ? snap.data() : null;
+    // Quem já aceitou e abre o link de novo vai direto ao app dela. Só a
+    // própria sessão fica sabendo — a um estranho, a frase de sempre.
+    if (convite?.usadoPor && request.auth?.uid && convite.usadoPor === request.auth.uid) {
+      return { vale: false, jaEhSeu: true, frase: FRASE_DO_LINK_QUE_NAO_VALE };
+    }
     if (!R.conviteVale(convite, Date.now()).vale) return { vale: false, frase: FRASE_DO_LINK_QUE_NAO_VALE };
     const tio = await db.doc(`users/${convite.motoristaUid}`).get();
     const t = tio.exists ? tio.data() : {};
@@ -142,13 +156,12 @@ function makeAceitarConviteDeAuxiliar(db) {
 
     const conviteRef = db.doc(`convitesDeAuxiliar/${codigo}`);
     const userRef = db.doc(`users/${uid}`);
-    const vinculoRef = db.doc(`auxiliares/${uid}`);
 
     const previo = await conviteRef.get();
     if (previo.exists && previo.data().motoristaUid) await exigirContaDoMotoristaOperando(db, previo.data().motoristaUid);
 
     const resultado = await db.runTransaction(async (tx) => {
-      const [cSnap, uSnap, vSnap] = await Promise.all([tx.get(conviteRef), tx.get(userRef), tx.get(vinculoRef)]);
+      const [cSnap, uSnap] = await Promise.all([tx.get(conviteRef), tx.get(userRef)]);
       const convite = cSnap.exists ? cSnap.data() : null;
       const usuario = uSnap.exists ? uSnap.data() : null;
 
@@ -159,36 +172,82 @@ function makeAceitarConviteDeAuxiliar(db) {
       // ⚠️ UMA CONTA, UM PAPEL. A mãe que já usa o app como família, ou o
       // motorista, não vira auxiliar com a mesma conta: o papel decide o
       // painel inteiro, e misturar daria a ela a turma de outro motorista
-      // dentro da conta de responsável.
+      // dentro da conta de responsável. Quem JÁ é auxiliar pode aceitar o
+      // convite de um segundo tio — é o mesmo papel.
       if (usuario?.role && usuario.role !== 'auxiliar') {
         throw new HttpsError('failed-precondition', 'Esta conta já é usada no app como motorista ou família. Entre com outra conta para ser auxiliar.');
       }
-      if (vSnap.exists && vSnap.data().ativa && vSnap.data().motoristaUid !== convite.motoristaUid) {
-        throw new HttpsError('failed-precondition', 'Você já é auxiliar de outro motorista. Peça para ele encerrar antes.');
+
+      const tioUid = convite.motoristaUid;
+      const vinculoRef = db.doc(`auxiliares/${R.idDoVinculo(tioUid, uid)}`);
+      const [vSnap, tioSnap, dela, dele] = await Promise.all([
+        tx.get(vinculoRef),
+        tx.get(db.doc(`users/${tioUid}`)),
+        tx.get(db.collection('auxiliares').where('auxiliarUid', '==', uid).where('ativa', '==', true)),
+        tx.get(db.collection('auxiliares').where('motoristaUid', '==', tioUid).where('ativa', '==', true)),
+      ]);
+      const vinculo = vSnap.exists ? vSnap.data() : null;
+      const agora = FieldValue.serverTimestamp();
+
+      // Já trabalha com ele (convite repetido do mesmo tio): nada a abrir.
+      if (vinculo?.ativa) {
+        tx.update(conviteRef, { usadoPor: uid, usadoEm: agora });
+        return { ok: true, jaEra: true, motoristaUid: tioUid };
+      }
+      // Os limites contam os OUTROS: o par deste convite está inativo aqui.
+      const outrosTios = dela.docs.filter((d) => d.data().motoristaUid !== tioUid).length;
+      if (!R.cabeMaisUmTio(outrosTios)) {
+        throw new HttpsError('failed-precondition', `Você já trabalha em ${R.MAX_TIOS_ATIVOS} peruas. Peça a um dos motoristas para encerrar antes.`);
+      }
+      // O teto dele é conferido de novo aqui: dois convites abertos ao mesmo
+      // tempo passariam juntos pelo `convidarAuxiliar`.
+      const outrasDele = dele.docs.filter((d) => d.data().auxiliarUid !== uid).length;
+      if (!R.cabeMaisUma(outrasDele)) {
+        throw new HttpsError('failed-precondition', `O motorista já tem ${R.MAX_AUXILIARES_ATIVAS} auxiliares. Peça a ele para desativar uma antes.`);
       }
 
-      const agora = FieldValue.serverTimestamp();
+      // O instante vai PRONTO dentro de `periodos`: o Firestore recusa
+      // `serverTimestamp` dentro de array.
+      const instante = Timestamp.now();
+      const tio = tioSnap.exists ? tioSnap.data() : {};
+      // A marca vai copiada para o vínculo porque ela continua lendo o
+      // vínculo depois de desativada (os pagamentos dizem de qual perua
+      // vieram), e o doc do tio fecha para ela nesse dia. Recontratar a
+      // atualiza.
+      const marcaDoMotorista = String(tio.marcaNome || tio.name || '').slice(0, 60) || null;
       const email = request.auth.token?.email || usuario?.email || '';
       tx.set(userRef, {
         role: 'auxiliar',
         name: usuario?.name || convite.nome,
         email,
         phone: usuario?.phone || convite.telefone,
-        motoristaUid: convite.motoristaUid,
+        motoristaUids: FieldValue.arrayUnion(tioUid),
         ...(usuario ? {} : { createdAt: agora }),
         ...(versao ? { termsVersion: versao, termsAcceptedAt: agora, privacyVersion: versao, privacyAcceptedAt: agora } : {}),
       }, { merge: true });
-      tx.set(vinculoRef, {
-        motoristaUid: convite.motoristaUid,
+      const termos = {
         nome: convite.nome,
         telefone: convite.telefone,
         valorMensal: convite.valorMensal ?? null,
-        desde: agora,
+        marcaDoMotorista,
         ativa: true,
-        ate: null,
-      });
+        encerradoEm: null,
+      };
+      if (vinculo) {
+        // RECONTRATAÇÃO: o mesmo documento, um período a mais. O primeiro
+        // aceite e os períodos antigos ficam — são a história dos dois.
+        tx.update(vinculoRef, { ...termos, periodos: R.abrirPeriodo(vinculo.periodos, instante) });
+      } else {
+        tx.set(vinculoRef, {
+          motoristaUid: tioUid,
+          auxiliarUid: uid,
+          ...termos,
+          aceitoEm: instante,
+          periodos: R.abrirPeriodo([], instante),
+        });
+      }
       tx.update(conviteRef, { usadoPor: uid, usadoEm: agora });
-      return { ok: true, jaEra: false, motoristaUid: convite.motoristaUid };
+      return { ok: true, jaEra: false, motoristaUid: tioUid };
     });
 
     // A TURMA DELA (fase 2): a primeira auxiliar ativa liga a cópia que o
@@ -204,22 +263,38 @@ function makeAceitarConviteDeAuxiliar(db) {
 }
 
 /**
- * O MOTORISTA ENCERRA O ACESSO, NA HORA. O vínculo fica (`ativa: false` e
- * `ate`) porque é ele que conta o histórico e a rotatividade; a conta dela
- * continua existindo — os pagamentos dela são dela.
+ * O MOTORISTA ENCERRA O ACESSO, NA HORA. O vínculo do par FICA (`ativa:
+ * false`, `encerradoEm` e o período fechado) porque é ele que conta o
+ * histórico e a rotatividade; a conta dela continua existindo — os
+ * pagamentos dela são dela — e, se ela trabalha também para outro tio, ela
+ * só deixa de ver ESTA perua.
+ *
+ * Recebe `auxiliarUid`; o tio é sempre quem está autenticado.
  */
 function makeDesativarAuxiliar(db) {
   return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = await exigirMotorista(db, request);
-    const auxUid = String(request.data?.auxUid || '');
-    if (!idValido(auxUid)) throw new HttpsError('invalid-argument', 'Qual auxiliar?');
-    const ref = db.doc(`auxiliares/${auxUid}`);
-    const snap = await ref.get();
-    if (!snap.exists || snap.data().motoristaUid !== uid) throw new HttpsError('permission-denied', 'Esta auxiliar não é sua.');
-    if (!snap.data().ativa) return { ok: true };
-    await ref.update({ ativa: false, ate: FieldValue.serverTimestamp() });
-    // A última saiu: a cópia da turma some. Dado de criança não fica parado
-    // num lugar que ninguém usa.
+    const auxiliarUid = String(request.data?.auxiliarUid || '');
+    if (!idValido(auxiliarUid)) throw new HttpsError('invalid-argument', 'Qual auxiliar?');
+    const ref = db.doc(`auxiliares/${R.idDoVinculo(uid, auxiliarUid)}`);
+    const mudou = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const v = snap.exists ? snap.data() : null;
+      if (!v || v.motoristaUid !== uid || v.auxiliarUid !== auxiliarUid) {
+        throw new HttpsError('permission-denied', 'Esta auxiliar não é sua.');
+      }
+      if (!v.ativa) return false;
+      tx.update(ref, {
+        ativa: false,
+        encerradoEm: FieldValue.serverTimestamp(),
+        periodos: R.fecharPeriodo(v.periodos, Timestamp.now()),
+      });
+      tx.set(db.doc(`users/${auxiliarUid}`), { motoristaUids: FieldValue.arrayRemove(uid) }, { merge: true });
+      return true;
+    });
+    if (!mudou) return { ok: true };
+    // A última dele saiu: a cópia da turma some. Dado de criança não fica
+    // parado num lugar que ninguém usa.
     const restam = await db.collection('auxiliares').where('motoristaUid', '==', uid).where('ativa', '==', true).count().get();
     if (restam.data().count === 0) await apagarTurmaDaAuxiliar(db, uid);
     return { ok: true };
@@ -250,13 +325,17 @@ function makeMarcarParadaPelaAuxiliar(db) {
     if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta.');
     const childId = String(request.data?.childId || '');
     const proximo = String(request.data?.proximo || '');
+    // Com dois tios, ela diz de qual perua é a marcação; o vínculo DAQUELE
+    // par é que precisa estar ativo.
+    const motoristaUid = String(request.data?.motoristaUid || '');
     if (!idValido(childId)) throw new HttpsError('invalid-argument', 'Qual criança?');
+    if (!idValido(motoristaUid)) throw new HttpsError('invalid-argument', 'De qual perua?');
 
-    const vinculo = await db.doc(`auxiliares/${uid}`).get();
-    if (!vinculo.exists || !vinculo.data().ativa) {
-      throw new HttpsError('permission-denied', 'O seu acesso foi encerrado pelo motorista.');
+    const vinculo = await db.doc(`auxiliares/${R.idDoVinculo(motoristaUid, uid)}`).get();
+    const v = vinculo.exists ? vinculo.data() : null;
+    if (!v || v.ativa !== true || v.auxiliarUid !== uid || v.motoristaUid !== motoristaUid) {
+      throw new HttpsError('permission-denied', 'O seu acesso a esta perua foi encerrado pelo motorista.');
     }
-    const motoristaUid = vinculo.data().motoristaUid;
     await exigirContaDoMotoristaOperando(db, motoristaUid);
     const childRef = db.doc(`children/${childId}`);
 

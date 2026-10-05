@@ -37,6 +37,7 @@ const { exigirMotorista } = require('./papeis');
 const { idValido } = require('./reguaDosIds');
 const { exigirContaDoMotoristaOperando } = require('./auxiliares');
 const R = require('./reguaDoPagamentoDaAuxiliar');
+const { idDoVinculo } = require('./reguaDoAuxiliar');
 
 const REGION = 'southamerica-east1';
 const COLECAO = 'pagamentosDaAuxiliar';
@@ -57,14 +58,16 @@ function makeAnotarPagamentoDaAuxiliar(db) {
 
     const id = R.idDoPagamento(uid, auxiliarUid, mes);
     if (!idValido(id)) throw new HttpsError('invalid-argument', 'Qual auxiliar?');
-    const vinculoRef = db.doc(`auxiliares/${auxiliarUid}`);
+    // O vínculo do PAR (ele e ela): com a auxiliar trabalhando para dois
+    // tios, cada um só anota o pagamento da relação dele.
+    const vinculoRef = db.doc(`auxiliares/${idDoVinculo(uid, auxiliarUid)}`);
     const reciboRef = db.doc(`${COLECAO}/${id}`);
     const despesaRef = db.collection('expenses').doc();
 
     return db.runTransaction(async (tx) => {
       const [vinculo, recibo] = await Promise.all([tx.get(vinculoRef), tx.get(reciboRef)]);
       const v = vinculo.exists ? vinculo.data() : null;
-      if (!v || v.motoristaUid !== uid || v.ativa !== true) {
+      if (!v || v.motoristaUid !== uid || v.auxiliarUid !== auxiliarUid || v.ativa !== true) {
         throw new HttpsError('permission-denied', 'Esta auxiliar não está ativa com você.');
       }
       // Um por mês: o segundo toque acha o primeiro e para, sem segunda despesa.

@@ -3,7 +3,8 @@
  * Auxiliar do Motorista" aprovadas pelo dono).
  *
  * A auxiliar é o QUINTO papel do app (`role: 'auxiliar'`), sempre ligada a um
- * motorista. A conta dela nasce só pelo convite dele — ninguém se cadastra
+ * motorista — ou a dois, desde o vínculo por par. A conta dela nasce só pelo
+ * convite de um deles — ninguém se cadastra
  * como auxiliar sozinho —, e ele a desativa quando quiser. Cada um tem a sua
  * conta: não existe "modo auxiliar" no celular do tio (decisão do dono).
  *
@@ -59,6 +60,68 @@ function conviteVale(convite, agoraMs) {
 /** Ele ainda pode chamar mais uma? Conta as ativas. */
 function cabeMaisUma(ativas) {
   return Math.max(0, Number(ativas) || 0) < MAX_AUXILIARES_ATIVAS;
+}
+
+/**
+ * ⚠️ O VÍNCULO É POR PAR (05/10/2026, decisão do dono com a QA):
+ * `auxiliares/{motoristaUid}_{auxiliarUid}`. Era `auxiliares/{auxiliarUid}`,
+ * um documento por AUXILIAR — e isso tinha dois defeitos que só aparecem com
+ * o tempo:
+ *   - o convite de um SEGUNDO tio sobrescrevia o vínculo do primeiro, e o
+ *     "quem já trabalhou comigo" dele perdia a pessoa (o histórico é o que a
+ *     recomendação, na próxima etapa, vai ler);
+ *   - ela não podia trabalhar para dois tios, e há auxiliar que faz a ida
+ *     com um e a volta com outro.
+ * Por par, cada relação tem a sua história, e o mesmo tio recontratando a
+ * mesma pessoa reabre o MESMO documento com um período novo.
+ *
+ * SEM MIGRAÇÃO: a conta da auxiliar ainda não foi ao ar (espera a revisão da
+ * Política), então não há documento no formato antigo em produção.
+ */
+function idDoVinculo(motoristaUid, auxiliarUid) {
+  return `${motoristaUid}_${auxiliarUid}`;
+}
+
+/** Até dois tios ativos por auxiliar — a ida com um, a volta com outro. */
+const MAX_TIOS_ATIVOS = 2;
+
+/** Ela ainda pode aceitar mais um tio? Conta os vínculos ATIVOS dela. */
+function cabeMaisUmTio(ativosDaAuxiliar) {
+  return Math.max(0, Number(ativosDaAuxiliar) || 0) < MAX_TIOS_ATIVOS;
+}
+
+/**
+ * OS PERÍODOS DE TRABALHO. `periodos: [{ de, ate }]`, `ate: null` no aberto.
+ * Desativar FECHA o período; recontratar ABRE um novo — nada é apagado.
+ * As datas vão como instante pronto (não `serverTimestamp`): o Firestore
+ * recusa sentinela dentro de array.
+ */
+function abrirPeriodo(periodos, agora) {
+  const lista = Array.isArray(periodos) ? periodos.map((p) => ({ ...p })) : [];
+  if (lista.some((p) => p && p.ate == null)) return lista; // já tem um aberto
+  lista.push({ de: agora, ate: null });
+  return lista;
+}
+function fecharPeriodo(periodos, agora) {
+  return (Array.isArray(periodos) ? periodos : []).map((p) => (p && p.ate == null ? { ...p, ate: agora } : { ...p }));
+}
+
+/**
+ * Quantos dias de vínculo, somando os períodos — o aberto conta até agora.
+ * É a régua que a recomendação vai usar (30 dias de vínculo, pela SOMA: quem
+ * trabalhou duas temporadas de 20 dias trabalhou 40). Dias INTEIROS, para
+ * baixo: 29 dias e 23 horas ainda não são 30.
+ */
+function diasDeVinculo(periodos, agoraMs) {
+  let total = 0;
+  for (const p of Array.isArray(periodos) ? periodos : []) {
+    const de = msDe(p?.de);
+    if (de == null) continue;
+    const ate = p.ate == null ? agoraMs : msDe(p.ate);
+    if (ate == null || ate <= de) continue;
+    total += ate - de;
+  }
+  return Math.floor(total / DIA_MS);
 }
 
 /**
@@ -179,4 +242,10 @@ module.exports = {
   telefoneLimpo,
   conviteVale,
   cabeMaisUma,
+  idDoVinculo,
+  MAX_TIOS_ATIVOS,
+  cabeMaisUmTio,
+  abrirPeriodo,
+  fecharPeriodo,
+  diasDeVinculo,
 };

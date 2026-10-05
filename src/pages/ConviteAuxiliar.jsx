@@ -22,6 +22,12 @@ import { LEGAL_VERSION } from './legal/legalContent';
  *
  * Link que não vale mais recebe UMA frase só, como o convite da família —
  * dizer "foi usado" ou "venceu" a quem tem o link na mão conta coisa demais.
+ *
+ * DOIS TIOS (05/10/2026, vínculo por par): quem JÁ é auxiliar pode aceitar o
+ * convite de um segundo motorista — a tela diz "Você vai trabalhar também na
+ * perua de …". Por isso ser auxiliar não leva mais direto ao app: só leva
+ * quem abre de novo o link que ela mesma já usou (`jaEhSeu`, que o servidor
+ * só diz à própria sessão).
  */
 export default function ConviteAuxiliar() {
   const { codigo } = useParams();
@@ -39,12 +45,13 @@ export default function ConviteAuxiliar() {
       .then((c) => { if (vivo) setConvite(c); })
       .catch(() => { if (vivo) setConvite({ vale: false, frase: 'Não deu para abrir o convite agora. Tente de novo.' }); });
     return () => { vivo = false; };
-  }, [codigo]);
+  }, [codigo, user?.uid]); // com sessão, o servidor diz se o link já é dela
 
-  // Já é auxiliar: o link aberto de novo leva direto ao app dela.
+  // O link que ela mesma já aceitou, aberto de novo, leva direto ao app dela.
   useEffect(() => {
-    if (profile?.role === 'auxiliar') navigate('/aux', { replace: true });
-  }, [profile?.role, navigate]);
+    if (convite?.jaEhSeu && profile?.role === 'auxiliar') navigate('/aux', { replace: true });
+  }, [convite?.jaEhSeu, profile?.role, navigate]);
+  const jaEhAuxiliar = profile?.role === 'auxiliar';
 
   async function aceitar() {
     setErro('');
@@ -52,7 +59,7 @@ export default function ConviteAuxiliar() {
     try {
       await aceitarConviteDeAuxiliar({ codigo, acceptedLegalVersion: LEGAL_VERSION });
       await refreshProfile?.();
-      toast.success('Pronto. Você já é auxiliar.');
+      toast.success(jaEhAuxiliar ? 'Pronto. Mais uma perua no seu app.' : 'Pronto. Você já é auxiliar.');
       navigate('/aux', { replace: true });
     } catch (err) {
       setErro(err?.message || 'Não deu para aceitar agora. Tente de novo.');
@@ -96,7 +103,9 @@ export default function ConviteAuxiliar() {
           <p className="mt-2 font-display text-2xl font-extrabold">Abrindo o convite…</p>
         ) : convite?.vale ? (
           <h1 className="mt-2 font-display text-[28px] font-extrabold leading-tight">
-            {convite.marca} te chamou para ser auxiliar
+            {jaEhAuxiliar
+              ? `Você vai trabalhar também na perua de ${convite.marca}`
+              : `${convite.marca} te chamou para ser auxiliar`}
           </h1>
         ) : (
           <h1 className="mt-2 font-display text-[26px] font-extrabold leading-tight">{convite?.frase}</h1>

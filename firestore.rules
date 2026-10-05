@@ -435,13 +435,15 @@ service cloud.firestore {
         )
         || (
           // A AUXILIAR lê o doc do motorista DELA (a marca, o PIX da perua),
-          // e só enquanto o vínculo estiver ativo (05/10/2026). É o mesmo
-          // documento que as famílias dele já leem.
+          // e só enquanto o vínculo DAQUELE PAR estiver ativo (05/10/2026).
+          // É o mesmo documento que as famílias dele já leem. O vínculo é
+          // `auxiliares/{motorista}_{auxiliar}` — com dois tios, cada um abre
+          // só pelo próprio par, sem depender de campo do perfil dela.
           isAppUser()
           && resource.data.role == 'admin'
           && userDoc().get('role', '') == 'auxiliar'
-          && userDoc().get('motoristaUid', '') == uid
-          && get(/databases/$(database)/documents/auxiliares/$(request.auth.uid)).data.get('ativa', false) == true
+          && exists(/databases/$(database)/documents/auxiliares/$(uid + '_' + request.auth.uid))
+          && get(/databases/$(database)/documents/auxiliares/$(uid + '_' + request.auth.uid)).data.get('ativa', false) == true
         )
         || (
           // E o motorista lê o doc do responsável dele — só dele.
@@ -731,11 +733,14 @@ service cloud.firestore {
                // com ele. Escrito pelo cliente, bastaria pôr aqui um número
                // nunca conferido para assinar sem passar pela unicidade.
                'documentoDaAssinatura',
-               // ⚠️ A AUXILIAR (05/10/2026): a ligação dela ao motorista é o
-               // que vai abrir a turma dele para ela. Escrita pelo cliente,
-               // qualquer conta se ligaria a qualquer motorista. Só
-               // `aceitarConviteDeAuxiliar` grava.
+               // ⚠️ A AUXILIAR (05/10/2026): a ligação dela aos motoristas. Escrita
+               // pelo cliente, qualquer conta se ligaria a qualquer motorista.
+               // Só `aceitarConviteDeAuxiliar` e `desativarAuxiliar` gravam
+               // `motoristaUids` (a lista dos tios ATIVOS, até dois). O
+               // singular `motoristaUid` é do formato anterior ao vínculo por
+               // par e continua proibido: campo sem gravador não é campo livre.
                'motoristaUid',
+               'motoristaUids',
                // O número que a pessoa DIGITOU ao pedir acesso sem link — não
                // comprovado. Gera pedido para o motorista aprovar, nunca
                // vínculo; mesmo assim é do servidor.
@@ -2519,26 +2524,29 @@ service cloud.firestore {
     //
     // `convitesDeAuxiliar` é só do servidor: o código é o segredo do link, e
     // a tela pública lê pela callable `verConviteDeAuxiliar`, que devolve o
-    // mínimo. `auxiliares/{uid}` é o vínculo: ela lê o dela, o motorista lê
-    // os dele (é o histórico e a rotatividade). Ninguém escreve pelo cliente
-    // — convidar, aceitar e desativar são callables.
+    // mínimo. `auxiliares/{motoristaUid}_{auxiliarUid}` é o vínculo do PAR:
+    // ela lê os dela, o motorista lê os dele (é o histórico e a
+    // rotatividade). Ninguém escreve pelo cliente — convidar, aceitar e
+    // desativar são callables — e nada ali é apagado: desativar fecha o
+    // período, recontratar abre outro.
     // -----------------------------------------------------------------
     match /convitesDeAuxiliar/{codigo} {
       allow read, write: if false;
     }
     // A TURMA DA AUXILIAR (fase 2): a cópia sem valor que o servidor mantém.
-    // Só a auxiliar ATIVA daquele motorista lê; ninguém escreve pelo cliente.
+    // Só a auxiliar ATIVA daquele motorista lê (o vínculo do par); ninguém
+    // escreve pelo cliente. Com dois tios, ela lê as duas cópias, cada uma
+    // pelo seu par.
     match /turmaDaAuxiliar/{motoristaUid}/{resto=**} {
       allow read: if isSignedIn()
-        && exists(/databases/$(database)/documents/auxiliares/$(request.auth.uid))
-        && get(/databases/$(database)/documents/auxiliares/$(request.auth.uid)).data.motoristaUid == motoristaUid
-        && get(/databases/$(database)/documents/auxiliares/$(request.auth.uid)).data.ativa == true;
+        && exists(/databases/$(database)/documents/auxiliares/$(motoristaUid + '_' + request.auth.uid))
+        && get(/databases/$(database)/documents/auxiliares/$(motoristaUid + '_' + request.auth.uid)).data.ativa == true;
       allow write: if false;
     }
-    match /auxiliares/{auxUid} {
+    match /auxiliares/{id} {
       allow read: if isSignedIn() && (
-        request.auth.uid == auxUid
-        || resource.data.motoristaUid == request.auth.uid
+        resource.data.motoristaUid == request.auth.uid
+        || resource.data.auxiliarUid == request.auth.uid
       );
       allow write: if false;
     }
@@ -2600,7 +2608,8 @@ service cloud.firestore {
         && substitutaValida();
     }
     // Uma falta por auxiliar por dia: o id É `{motorista}_{auxiliar}_{dia}`,
-    // e a auxiliar precisa ser dele (o vínculo em `auxiliares/`). Sem isso,
+    // e a auxiliar precisa ser dele (o vínculo do par em
+    // `auxiliares/{motorista}_{auxiliar}` — o id já diz de quem é). Sem isso,
     // um motorista gravaria falta na auxiliar de outro.
     match /faltasDaAuxiliar/{id} {
       function substitutaDaFaltaValida(s) {
@@ -2627,8 +2636,7 @@ service cloud.firestore {
           && (!('despesaId' in d) || d.despesaId == null
               || (d.despesaId is string && d.despesaId.size() <= 40))
           && (!('criadaEm' in d) || d.criadaEm is timestamp)
-          && exists(/databases/$(database)/documents/auxiliares/$(d.auxiliarUid))
-          && get(/databases/$(database)/documents/auxiliares/$(d.auxiliarUid)).data.motoristaUid == request.auth.uid;
+          && exists(/databases/$(database)/documents/auxiliares/$(request.auth.uid + '_' + d.auxiliarUid));
       }
       allow read: if isAdmin() && resource.data.motoristaUid == request.auth.uid;
       allow delete: if isAdmin() && resource.data.motoristaUid == request.auth.uid
@@ -2638,7 +2646,7 @@ service cloud.firestore {
       // O update fica sem essa exigência — desativar no meio do dia não pode
       // impedir de registrar a substituta da falta que já existe.
       allow create: if isAdmin() && faltaValida()
-        && get(/databases/$(database)/documents/auxiliares/$(request.resource.data.auxiliarUid)).data.get('ativa', false) == true;
+        && get(/databases/$(database)/documents/auxiliares/$(request.auth.uid + '_' + request.resource.data.auxiliarUid)).data.get('ativa', false) == true;
       allow update: if isAdmin() && resource.data.motoristaUid == request.auth.uid
         && faltaValida();
     }
