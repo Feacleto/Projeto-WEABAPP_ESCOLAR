@@ -579,7 +579,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `feedbacks` · `supportTickets` · `expenses` · `taxaConfig` · `taxaParceiros` ·
 `faturasParceiro` · `contratosAssociacao` · `pedidosAdesivo` ·
 `indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `leadsInvestidor` · `acessosTemporarios` · `niveis` · `atividadesDaPlatina` · `platformConfig` ·
-`limitesDeTentativa`, `asaasEventosProcessados` e `senhasDoFinanceiro` (só o servidor) ·
+`limitesDeTentativa`, `asaasEventosProcessados`, `senhasDoFinanceiro` e `codigosDeIndicacao` (só o servidor) ·
 `configFinanceiro` (só o próprio motorista lê) ·
 `indicesEconomicos` (o IPCA; só o servidor escreve, motorista lê) ·
 `appState`
@@ -1732,6 +1732,15 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   `indicesEconomicos/ipca` só se mudou. Régua pura em
   [reguaDosIndices.js](functions/lib/reguaDosIndices.js) (`testar:indices`);
   ⚠️ o mês vem na coluna `D3C`, não `D2C`.
+- **Cupom do cartão do app:** `meuCodigoDeIndicacao`
+  ([codigoDeIndicacao.js](functions/lib/codigoDeIndicacao.js), régua pura em
+  [reguaDoCodigo.js](functions/lib/reguaDoCodigo.js), casos em
+  `testar:indicacao`). Cria uma vez, único (transação em
+  `codigosDeIndicacao/{codigo}`), e grava `users.codigoDeIndicacao` — proibido
+  ao cliente nas rules, senão um tio copiava o código de outro. Formato
+  "NINO-4821": a marca sem o "Tio", até 6 letras, e 4 dígitos. Decisão do
+  dono: o cupom dá ACESSO (o app completo por um tempo), não preço; quem lê o
+  `?cupom=` no cadastro e o benefício ainda estão por construir.
 - **Outros:** `getShowcase`,
   `flagDuplicateReceipts`, `backfillTestimonialPrivacy`
 

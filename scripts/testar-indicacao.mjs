@@ -650,6 +650,25 @@ checar('cadastrado não conta como ativa', 0,
 checar('e a transição pendente → cadastrado continua valendo', true,
   podeTransitar(ESTADO.PENDENTE, ESTADO.CADASTRADO));
 
+// ─────────────── o código de indicação (o cupom do cartão do app) ───────────────
+// Régua de `functions/lib/reguaDoCodigo.js` (04/10/2026). O código nasce no
+// servidor; aqui só o formato, que é o que a pessoa lê e digita.
+{
+  const { createRequire } = await import('node:module');
+  const req = createRequire(import.meta.url);
+  const cod = req('../functions/lib/reguaDoCodigo.js');
+  checar('a marca vira o prefixo, sem o "Tio"', 'NINO', cod.prefixoDoCodigo('Tio Nino Transporte'));
+  checar('acento sai, e corta em 6 letras', 'CONCEI', cod.prefixoDoCodigo('Tia Conceição'));
+  checar('sem nome útil, "TIO"', 'TIO', cod.prefixoDoCodigo('Tio Do Transporte Escolar'));
+  checar('quatro dígitos depois do hífen', true, /^NINO-\d{4}$/.test(cod.gerarCodigo('Tio Nino', () => 0.5)));
+  checar('o menor e o maior número cabem em 4 dígitos', ['NINO-1000', 'NINO-9999'],
+    [cod.gerarCodigo('Nino', () => 0), cod.gerarCodigo('Nino', () => 0.99999)]);
+  checar('o digitado vira a chave', 'NINO-4821', cod.normalizarCodigo(' nino 4821 '));
+  checar('o que não parece código não é adivinhado', null, cod.normalizarCodigo('NINO-48'));
+  const regras = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
+  checar('o cliente não escreve o próprio código (rules)', true, regras.includes("'codigoDeIndicacao',"));
+}
+
 // ──────────────────────────────── resumo ───────────────────────────────────
 
 console.log(`\n${'═'.repeat(64)}`);

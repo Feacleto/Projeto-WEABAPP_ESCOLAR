@@ -711,6 +711,10 @@ service cloud.firestore {
                // `redeemInvite` grava, a partir do número que o MOTORISTA
                // digitou — `phone`, que o próprio edita, não conta.
                'phoneChave',
+               // ⚠️ O CUPOM DO TIO (04/10/2026). O código de indicação casa a
+               // indicação: escrito pelo cliente, um tio copiaria o código de
+               // outro e levaria o crédito. Só `meuCodigoDeIndicacao` grava.
+               'codigoDeIndicacao',
                // O número que a pessoa DIGITOU ao pedir acesso sem link — não
                // comprovado. Gera pedido para o motorista aprovar, nunca
                // vínculo; mesmo assim é do servidor.

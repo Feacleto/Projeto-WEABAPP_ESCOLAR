@@ -25,6 +25,7 @@ const { makeVincularIrmao, makeRecusarIrmao } = require('./lib/vincularIrmao');
 const { makeDesvincularResponsavel } = require('./lib/desvincularResponsavel');
 const { makeAceitarContrato } = require('./lib/aceitarContrato');
 const { makeInformarTelefoneDaEscola } = require('./lib/telefoneDaEscola');
+const { makeMeuCodigoDeIndicacao } = require('./lib/codigoDeIndicacao');
 const { makeRegistrarInteresseInvestidor } = require('./lib/interesseInvestidor');
 const {
   makePedirAcessoPeloTelefone,
@@ -335,6 +336,9 @@ exports.recusarIrmao = makeRecusarIrmao(db);
 exports.desvincularResponsavel = makeDesvincularResponsavel(db);
 exports.aceitarContrato = makeAceitarContrato(db);
 exports.informarTelefoneDaEscola = makeInformarTelefoneDaEscola(db);
+// O CUPOM DO "CARTÃO DO APP" (04/10/2026): o código de indicação do tio nasce
+// no servidor, único, e é proibido ao cliente — ver o arquivo.
+exports.meuCodigoDeIndicacao = makeMeuCodigoDeIndicacao(db);
 
 // A SENHA DO FINANCEIRO (03/10/2026). A auxiliar usa o celular do motorista e
 // não deve ver valores: o Financeiro abre com 4 números num teclado de banco.
