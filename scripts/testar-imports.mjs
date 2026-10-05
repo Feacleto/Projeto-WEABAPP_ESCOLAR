@@ -206,6 +206,8 @@ console.log('\n─── todo scripts/testar-*.mjs está na bateria ───');
       'idem — mede os dois agendados escrevendo na mesma base, que é onde a colisão vivia',
     'testar-limpeza-checkpoint.mjs':
       'idem — mede o único script de manutenção que APAGA dado, antes de ele encostar em produção',
+    'testar-jornada-auxiliar.mjs':
+      'precisa dos emuladores auth+firestore+storage e importa o Admin SDK de propósito — chama as functions da auxiliar de verdade e ESCREVE',
     'testar-avatar.mjs': 'bate na API do DiceBear — precisa de rede',
     'testar-navegador.mjs': 'precisa de navegador',
     'testar-imports.mjs': 'é este arquivo',
