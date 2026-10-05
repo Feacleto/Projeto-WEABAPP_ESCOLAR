@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRightLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import ConfirmDialog from '../common/ConfirmDialog';
 import { responderTransferencia, watchPedidosParaMim } from '../../services/transferenciasService';
 import { estaAberta, prazoDoPedido } from '../../dominio/identidade/transferencia.js';
 import { AVISO_DA_VOLTA, guardarVolta, limparVolta } from './voltaAoAceite';
@@ -32,6 +33,8 @@ export default function PedidosParaVoce() {
   const [ocupado, setOcupado] = useState(null);
   // O id do pedido que pediu a assinatura (ou null).
   const [assinar, setAssinar] = useState(null);
+  // O pedido que ele está recusando (abre a confirmação).
+  const [recusando, setRecusando] = useState(null);
   const voltouPara = location.state?.pedidoAberto || null;
 
   useEffect(() => watchPedidosParaMim(user?.uid, setPedidos), [user?.uid]);
@@ -94,26 +97,44 @@ export default function PedidosParaVoce() {
           <p className="mt-1 text-base text-textMuted">
             O endereço e o contato da família chegam quando ela aceitar.
           </p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              disabled={ocupado === t.id}
-              onClick={() => responder(t, false)}
-              className="min-h-12 rounded-xl border-2 border-border text-base font-bold text-text disabled:opacity-60"
-            >
-              Não posso
-            </button>
+          {/* AUDITORIA DE USO (05/10/2026): um embaixo do outro, o aceite em
+            * cima; recusar pede confirmação, porque não tem volta. Com a caixa
+            * de assinar aberta, o verde cheio é o dela, e este vira contorno. */}
+          <div className="mt-3 space-y-2">
             <button
               type="button"
               disabled={ocupado === t.id}
               onClick={() => responder(t, true)}
-              className="min-h-12 rounded-xl bg-primary text-base font-bold text-white disabled:opacity-60"
+              className={`min-h-12 w-full rounded-xl text-base font-bold disabled:opacity-60 ${
+                assinar ? 'border-2 border-primary text-primary' : 'bg-primary text-white'
+              }`}
             >
               Aceito receber
+            </button>
+            <button
+              type="button"
+              disabled={ocupado === t.id}
+              onClick={() => setRecusando(t)}
+              className="min-h-12 w-full rounded-xl border-2 border-border text-base font-bold text-text disabled:opacity-60"
+            >
+              Não posso
             </button>
           </div>
         </div>
       ))}
+      <ConfirmDialog
+        open={!!recusando}
+        title={`Recusar ${recusando?.previa?.primeiroNome || 'a criança'}?`}
+        description={`${recusando?.marcaDe || 'O tio parceiro'} recebe o aviso, e a criança continua com ele.`}
+        confirmLabel="Recusar"
+        variant="danger"
+        loading={!!recusando && ocupado === recusando.id}
+        onConfirm={async () => {
+          await responder(recusando, false);
+          setRecusando(null);
+        }}
+        onCancel={() => setRecusando(null)}
+      />
     </section>
   );
 }

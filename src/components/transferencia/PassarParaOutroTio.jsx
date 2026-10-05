@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { useCobrancaLigada } from '../../hooks/useCobrancaLigada';
 import Sheet, { SheetCTA, SheetGhost } from '../common/Sheet';
+import ConfirmDialog from '../common/ConfirmDialog';
 import { meusParceiros } from '../../services/comunidadeService';
 import {
   cancelarTransferencia,
@@ -36,6 +37,7 @@ export default function PassarParaOutroTio({ child }) {
   const [parceiros, setParceiros] = useState(null);
   const [escolhido, setEscolhido] = useState(null);
   const [enviando, setEnviando] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
   // O relógio da tela: o prazo de 7 dias não muda em segundos.
   const [agora] = useState(() => Date.now());
 
@@ -74,12 +76,13 @@ export default function PassarParaOutroTio({ child }) {
   };
 
   const cancelar = async () => {
-    if (!window.confirm('Cancelar o pedido? A criança continua na sua turma.')) return;
     try {
       await cancelarTransferencia(atual.id);
       toast.success('Pedido cancelado.');
     } catch (err) {
       toast.error(err.message);
+    } finally {
+      setCancelando(false);
     }
   };
 
@@ -96,11 +99,20 @@ export default function PassarParaOutroTio({ child }) {
         </p>
         <button
           type="button"
-          onClick={cancelar}
+          onClick={() => setCancelando(true)}
           className="mt-3 min-h-12 w-full rounded-xl border-2 border-border text-base font-bold text-text"
         >
           Cancelar pedido
         </button>
+        <ConfirmDialog
+          open={cancelando}
+          title="Cancelar o pedido?"
+          description={`${nome} continua na sua turma.`}
+          confirmLabel="Cancelar pedido"
+          cancelLabel="Voltar"
+          onConfirm={cancelar}
+          onCancel={() => setCancelando(false)}
+        />
       </div>
     );
   }
@@ -177,7 +189,7 @@ function ListaDeParceiros({ parceiros, onEscolher }) {
             <span className="min-w-0">
               <span className="block truncate text-base font-bold text-text">{p.marca}</span>
               {p.escolas?.length > 0 && (
-                <span className="block truncate text-sm text-textMuted">{p.escolas.join(' · ')}</span>
+                <span className="block text-base text-textMuted">{p.escolas.join(' · ')}</span>
               )}
             </span>
           </button>

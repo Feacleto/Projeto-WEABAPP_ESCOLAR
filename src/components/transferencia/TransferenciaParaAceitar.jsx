@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowRightLeft, Check, X } from 'lucide-react';
+import { Check, MessageCircle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import Sheet, { SheetCTA, SheetGhost } from '../common/Sheet';
@@ -18,6 +18,11 @@ import { O_QUE_NAO_VAI, O_QUE_VAI, prazoDoPedido } from '../../dominio/identidad
  * tio, e ele cancela o pedido. O "Aceito" mora DENTRO da folha, depois do
  * que vai e do que fica: ninguém aceita sem ter visto (pedido da sessão de
  * uso). Aceitar é o que cria a criança na turma do parceiro.
+ *
+ * AUDITORIA DE USO (05/10/2026): o cartão abre pelo rosto de QUEM pede (o
+ * logo do tio dela), e "Quero falar com o tio" existe SEMPRE — sumir quando o
+ * telefone não carrega deixava uma saída só, "Ler e aceitar", e o botão que
+ * chegava depois empurrava a tela embaixo do dedo. Sem telefone, ele explica.
  */
 export default function TransferenciaParaAceitar() {
   const { user } = useAuth();
@@ -44,27 +49,7 @@ export default function TransferenciaParaAceitar() {
   return (
     <>
       {pedidos.map((t) => (
-        <section key={t.id} className="rounded-2xl border-2 border-primary bg-card p-4">
-          <p className="flex items-start gap-2 text-base font-bold text-text">
-            <ArrowRightLeft size={20} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
-            {t.marcaDe || 'Seu tio'} vai passar o transporte de {t.previa?.primeiroNome || 'seu filho'} para{' '}
-            {t.marcaPara || 'outro tio'}
-          </p>
-          <p className="mt-1 text-base text-textMuted">
-            {t.marcaPara || 'O novo tio'} já aceitou. Falta você.
-            {prazoDoPedido(t) ? ` Responda até ${prazoDoPedido(t)}.` : ''}
-          </p>
-          <div className="mt-3 space-y-2">
-            <button
-              type="button"
-              onClick={() => setAberto(t)}
-              className="min-h-12 w-full rounded-xl bg-primary text-base font-bold text-white"
-            >
-              Ler e aceitar
-            </button>
-            <FalarComOTio uid={t.deUid} marca={t.marcaDe} />
-          </div>
-        </section>
+        <CartaoDoPedido key={t.id} t={t} onAbrir={() => setAberto(t)} />
       ))}
 
       <Sheet open={!!aberto} onClose={() => setAberto(null)} title={`Passar para ${aberto?.marcaPara || 'o novo tio'}`}>
@@ -88,27 +73,91 @@ export default function TransferenciaParaAceitar() {
   );
 }
 
-function FalarComOTio({ uid, marca }) {
-  const [fone, setFone] = useState(null);
+/**
+ * Um pedido: o rosto do tio DELA no topo esquerdo (quem pede é quem ela
+ * conhece), a frase, e as duas saídas. O perfil do tio é lido uma vez (ela
+ * alcança o documento dele pela lista `adminUids`).
+ */
+function CartaoDoPedido({ t, onAbrir }) {
+  const [tio, setTio] = useState(null);
   useEffect(() => {
     let vivo = true;
-    getUserDoc(uid)
-      .then((u) => vivo && setFone(String(u?.phone || '').replace(/\D/g, '') || null))
-      .catch(() => {});
+    getUserDoc(t.deUid)
+      .then((u) => vivo && setTio(u || {}))
+      .catch(() => vivo && setTio({}));
     return () => {
       vivo = false;
     };
-  }, [uid]);
-  if (!fone) return null;
-  const numero = fone.startsWith('55') ? fone : `55${fone}`;
+  }, [t.deUid]);
+  const marca = t.marcaDe || 'Seu tio';
+
   return (
-    <a
-      href={`https://wa.me/${numero}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-border text-base font-bold text-text"
-    >
-      Quero falar com {marca || 'o tio'}
-    </a>
+    <section className="rounded-2xl border-2 border-primary bg-card p-4">
+      <div className="flex items-start gap-3">
+        {tio?.marcaLogoURL ? (
+          <img src={tio.marcaLogoURL} alt="" className="h-12 w-12 shrink-0 rounded-full bg-white object-cover" />
+        ) : (
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primarySoft text-lg font-bold text-primary">
+            {marca.slice(0, 1).toUpperCase()}
+          </span>
+        )}
+        <p className="text-base font-bold text-text">
+          {marca} vai passar o transporte de {t.previa?.primeiroNome || 'seu filho'} para {t.marcaPara || 'outro tio'}
+        </p>
+      </div>
+      <p className="mt-2 text-base text-textMuted">
+        {t.marcaPara || 'O novo tio'} já aceitou. Falta você.
+        {prazoDoPedido(t) ? ` Responda até ${prazoDoPedido(t)}.` : ''}
+      </p>
+      <div className="mt-3 space-y-2">
+        <button
+          type="button"
+          onClick={onAbrir}
+          className="min-h-12 w-full rounded-xl bg-primary text-base font-bold text-white"
+        >
+          Ler e aceitar
+        </button>
+        <FalarComOTio telefone={tio?.phone} carregou={tio !== null} marca={t.marcaDe} />
+      </div>
+    </section>
+  );
+}
+
+/**
+ * "Quero falar com o tio" — sempre à vista. Com telefone, abre o WhatsApp;
+ * sem ele (ou antes de carregar), diz o que fazer em vez de sumir.
+ */
+function FalarComOTio({ telefone, carregou, marca }) {
+  const [semTelefone, setSemTelefone] = useState(false);
+  const digitos = String(telefone || '').replace(/\D/g, '');
+  const quem = marca || 'o tio';
+
+  const tocar = () => {
+    if (!digitos) {
+      setSemTelefone(true);
+      return;
+    }
+    const numero = digitos.startsWith('55') ? digitos : `55${digitos}`;
+    window.open(`https://wa.me/${numero}`, '_blank', 'noopener');
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={tocar}
+        disabled={!carregou}
+        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-border text-base font-bold text-text"
+      >
+        <MessageCircle size={20} aria-hidden="true" />
+        Quero falar com {quem}
+      </button>
+      {semTelefone && (
+        <p className="text-base text-text">
+          {quem} não tem o WhatsApp cadastrado no app. Fale com ele pelo número de sempre, o mesmo que mandou o
+          convite.
+        </p>
+      )}
+    </>
   );
 }
