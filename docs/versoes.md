@@ -5,6 +5,29 @@ edite à mão. Cada versão é UMA publicação em produção; o número depois 
 ponto sobe de um em um, e o da frente só muda por decisão do dono. A regra
 mora em `src/compartilhado/versaoDoApp.js` e em `scripts/versao.mjs`.
 
+## 1.4 · 6 de outubro de 2026
+
+commit 541 (`0b73e5e`)
+
+- A Política diz o que guardamos de quem nos procura pelo site como investidor, e por quanto tempo
+- O relatório de sustentabilidade ganha página própria, e investidores e home só apontam para ela
+- A página de investidores deixa de revelar preço, fase e canal, e o contato passa a exigir o LinkedIn de quem escreve
+- A página de investidores mostra o mercado com fonte e o modelo de ganho, e o relatório de sustentabilidade 2026 entra nela e na home
+- A criança cadastrada só com o nome fica fora da rota até o tio completar o cadastro
+- Tocar na vaga livre pede só o nome da criança; o resto se completa depois
+- A cláusula de bloqueio bate com o código e vai ao ar como 1.5, e o projeto diz que os textos foram publicados sem advogado
+- Com a cobrança desligada, suspender por atraso é recusado com a frase certa, e a jornada testa isso de verdade
+- A tela da auxiliar para de sobrar espaço vazio embaixo do menu
+- Os Termos ganham a cláusula de suspensão e bloqueio: motivo dito, chance de responder e registro
+- A família não apaga a própria suspensão, e ninguém a grava pelo app
+- Casos de regra do bloqueio da família, escritos antes da regra
+- O dono suspende uma família: a conta dela é desativada, os avisos param, a criança segue na perua e o tio é avisado para combinar por telefone
+- O tio liga o próprio cartão público ao mandá-lo, pode desligar na folha, e a página mostra só a cidade
+- O cartão público do tio só existe se ele ligar, e nunca mostra o bairro
+- Tocar no logo do tio abre a folha da marca, e o cartão dele leva a uma página para a família conhecê-lo
+- O link /conheca/<uid> mostra no WhatsApp o cartão "Conheça {marca}", e a página dele lê só a marca do tio
+- A lista de versões ganha a 1.3, publicada em 05/10/2026
+
 ## 1.3 · 5 de outubro de 2026
 
 commit 523 (`1a53333`)
