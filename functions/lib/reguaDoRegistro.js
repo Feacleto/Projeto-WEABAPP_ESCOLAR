@@ -171,6 +171,11 @@ function validarPedido(dados, { agora = new Date(), cobrancaLigada = false, alvo
     if (doAlvo !== papel) return { ok: false, erro: 'Esta conta não é do papel escolhido.' };
   }
 
+  // ⚠️ COM A COBRANÇA DESLIGADA NÃO EXISTE ATRASO com a plataforma
+  // (cláusula 5): a frase diz isso, em vez do genérico "escolha da lista".
+  if (d.motivo === 'atraso' && acao !== ACAO.REATIVAR && papel === PAPEL.MOTORISTA && !cobrancaLigada) {
+    return { ok: false, erro: 'Com a cobrança desligada, não existe atraso.' };
+  }
   const motivos = motivosPara(acao, { cobrancaLigada, papel });
   if (!motivos.some((m) => m.id === d.motivo)) return { ok: false, erro: 'Escolha um motivo da lista.' };
 

@@ -311,9 +311,14 @@ async function main() {
   const s4 = await chamar('suspenderConta', DONO, { ...pedido, alvoUid: DONO });
   checar('o próprio dono como alvo é recusado', 'invalid-argument', codigo(s4));
   // O marcador da cláusula saiu em 05/10/2026 (a 11b dos Termos existe):
-  // o caso inválido agora é suspender por ATRASO com a cobrança desligada.
+  // o caso inválido agora é suspender por ATRASO com a cobrança DESLIGADA.
+  // ⚠️ A jornada liga a cobrança no bloco 5, e com ela ligada "atraso" é
+  // motivo válido: desliga só em volta deste caso e religa depois.
+  await db.doc('platformConfig/app').set({ cobrancaLigada: false });
   const s5 = await chamar('suspenderConta', DONO, { ...pedido, alvoUid: TIO_B, motivo: 'atraso' });
+  await db.doc('platformConfig/app').set({ cobrancaLigada: true });
   checar('atraso com a cobrança desligada é recusado', 'invalid-argument', codigo(s5));
+  checar('com a frase certa', true, /não existe atraso/.test(s5.erro?.message || ''));
   checar('e B segue sem suspensão', undefined, (await db.doc(`users/${TIO_B}`).get()).data().suspenso);
 
   const s6 = await chamar('suspenderConta', DONO, { alvoUid: TIO_A, acao: 'reativar', motivo: 'engano', mensagem: '' });

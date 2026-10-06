@@ -131,7 +131,9 @@ $FuncoesNucleoLista = @(
   'functions:limparContatosAntigos',
   'functions:vigiarSeguranca',
   'functions:marcarFaltaPelaAuxiliar',
-  'functions:espelharQuemBuscaParaAuxiliar'
+  'functions:espelharQuemBuscaParaAuxiliar',
+  'functions:reabrirSuspensoesVencidas',
+  'functions:verCartaoDoTio'
 )
 $FuncoesNucleo = $FuncoesNucleoLista -join ','
 

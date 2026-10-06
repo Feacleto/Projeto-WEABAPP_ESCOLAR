@@ -73,6 +73,9 @@ checar('resposta registrada não vem pelo painel', false, v({ ...base, acao: 're
 bloco('─── 2. motivos: lista fechada ───');
 checar('motivo inventado é recusado', false, v({ ...base, motivo: 'nao_gostei' }).ok);
 checar('atraso NÃO existe com a cobrança desligada', false, v({ ...base, motivo: 'atraso' }).ok);
+checar('e a frase diz por quê', 'Com a cobrança desligada, não existe atraso.', v({ ...base, motivo: 'atraso' }).erro);
+checar('o servidor diz a mesma frase', 'Com a cobrança desligada, não existe atraso.',
+  servidor.validarPedido({ ...base, motivo: 'atraso' }, { agora: AGORA, alvo: MOTORISTA, donoUid: 'dono1' }).erro);
 checar('atraso existe com a cobrança ligada', true, v({ ...base, motivo: 'atraso' }, { cobrancaLigada: true }).ok);
 checar('motivo de suspender não serve para reativar', false, v({ acao: 'reativar', alvoUid: 'gil123', motivo: 'fraude' }).ok);
 checar('reativar com motivo próprio', true, v({ acao: 'reativar', alvoUid: 'gil123', motivo: 'resposta_aceita' }).ok);
