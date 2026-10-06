@@ -14,6 +14,11 @@ import {
   mensagemDaIndicacao,
   mensagemDoConvite,
   quemFala,
+  mensagemDoCartaoDoTio,
+  fraseDoCartaoDoTio,
+  botaoDoCartaoDoTio,
+  deQuem,
+  MENSAGEM_DE_QUEM_VIU_O_CARTAO,
 } from '../src/marca/mensagensDoLink.js';
 import { podeDizer } from '../src/marca/promessas.js';
 
@@ -99,6 +104,21 @@ eq('o texto, com o WhatsApp formatado', indicando, 'Oi! Aqui é o Tio Nino. Quer
 eq('parceiro "Tio" ganha o artigo', mensagemDeIndicarParceiro({ marca: 'Tia Cida', parceiro: { marca: 'Tio Zé' } }).includes('indicar o Tio Zé, que'), true);
 eq('sem WhatsApp, a frase não quebra', mensagemDeIndicarParceiro({ marca: 'Tio Nino', parceiro: { marca: 'Zé' } }).includes('WhatsApp'), false);
 eq('não promete nada sobre o colega', podeDizer(indicando), true);
+
+console.log('\n\x1b[1m7. O cartão do tio para uma família NOVA (05/10/2026)\x1b[0m');
+const URL_CONHECA = 'https://alobuzinou.com/conheca/UID1';
+eq('o texto aprovado pelo dono', mensagemDoCartaoDoTio({ marca: 'Tio Nino', url: URL_CONHECA }),
+  `Oi! Aqui é o Tio Nino, transporte escolar. Na minha perua os avisos para as famílias vão pelo app Alô Buzinou. Quer conversar sobre vaga? É só me responder aqui. ${URL_CONHECA}`);
+eq('tia: "a Tia Rosa"', mensagemDoCartaoDoTio({ marca: 'Tia Rosa', url: URL_CONHECA }).startsWith('Oi! Aqui é a Tia Rosa, transporte escolar.'), true);
+eq('sem marca, "do transporte escolar"', mensagemDoCartaoDoTio({ marca: '', url: URL_CONHECA }).startsWith('Oi! Aqui é do transporte escolar. Na minha perua'), true);
+eq('nunca "entrar"', /entrar|entre\b/i.test(mensagemDoCartaoDoTio({ marca: 'Tio Nino', url: URL_CONHECA })), false);
+eq('o link no fim', mensagemDoCartaoDoTio({ marca: 'Tio Nino', url: URL_CONHECA }).endsWith(URL_CONHECA), true);
+eq('sem número e sem promessa', [/\d/.test(mensagemDoCartaoDoTio({ marca: 'Tio Nino', url: '' })), podeDizer(mensagemDoCartaoDoTio({ marca: 'Tio Nino', url: '' }))], [false, true]);
+eq('"de quem" segue o artigo', [deQuem('Tio Nino'), deQuem('Tia Rosa'), deQuem('Transportes Silva')], ['do Tio Nino', 'da Tia Rosa', 'de Transportes Silva']);
+eq('a frase da página', fraseDoCartaoDoTio('Tia Rosa'), 'Na perua da Tia Rosa, os avisos vão pelo app Alô Buzinou: quando a perua sai, quando está chegando e quando a criança chega.');
+eq('o botão', botaoDoCartaoDoTio('Tia Rosa'), 'Falar com a Tia Rosa no WhatsApp');
+eq('a mensagem de quem viu o cartão', MENSAGEM_DE_QUEM_VIU_O_CARTAO, 'Oi! Vi o seu cartão e quero conversar sobre vaga na perua.');
+eq('a frase e a mensagem não prometem segurança', podeDizer(fraseDoCartaoDoTio('Tio Nino')) && podeDizer(MENSAGEM_DE_QUEM_VIU_O_CARTAO), true);
 
 console.log(`\n${ok} ok, ${falhou} falharam\n`);
 process.exit(falhou ? 1 : 0);

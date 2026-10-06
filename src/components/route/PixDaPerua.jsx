@@ -20,8 +20,12 @@ import { PIX_KEY_TYPES } from '../../services/userService';
  *
  * `perfil` é o do MOTORISTA quando quem abre é a auxiliar na conta dela
  * (05/10/2026): a chave é dele, não dela.
+ *
+ * `gatilho` (opcional) troca o botão que abre: a folha da marca da auxiliar
+ * (05/10/2026) abre esta MESMA folha com um botão de contorno dela, "Ver o
+ * PIX da perua". A chave continua mostrada por um lugar só.
  */
-export default function PixDaPerua({ perfil = null }) {
+export default function PixDaPerua({ perfil = null, gatilho = null }) {
   const { profile: proprio } = useAuth();
   const profile = perfil || proprio;
   const [aberta, setAberta] = useState(false);
@@ -40,6 +44,7 @@ export default function PixDaPerua({ perfil = null }) {
 
   return (
     <>
+      {gatilho ? gatilho(() => setAberta(true)) : (
       <button
         type="button"
         onClick={() => setAberta(true)}
@@ -49,6 +54,7 @@ export default function PixDaPerua({ perfil = null }) {
         <span className="flex-1">Mostrar PIX da perua</span>
         <span className="text-sm font-medium text-textMuted">só a chave</span>
       </button>
+      )}
 
       <AppSheet open={aberta} onClose={() => setAberta(false)} title="PIX da perua" icon={QrCode}>
         <div className="space-y-3">

@@ -10,6 +10,7 @@ import { useActiveChild } from '../../hooks/useActiveChild';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
 import { useMarcaDoTio } from '../../hooks/useMarcaDoTio';
 import { useAvisosDoCabecalho } from '../../context/AvisosDoCabecalhoContext';
+import { useFolhaDaMarca } from '../../context/folhaDaMarcaContextObject';
 
 /**
  * Header sticky comum às páginas autenticadas.
@@ -185,7 +186,7 @@ export default function Header({
  * nome da marca e agora mora no menu do perfil (`ProfileMenu`).
  */
 function MarcaOuTitulo({ titulo }) {
-  const { nome, logoURL } = useMarcaDoTio();
+  const { nome, logoURL, folha } = useMarcaDoCabecalho();
   const { role } = useAuth();
 
   if (!nome && !logoURL) {
@@ -199,13 +200,57 @@ function MarcaOuTitulo({ titulo }) {
 
   return (
     <div className="flex items-center gap-2 min-w-0">
-      {logoURL && <LogoDaMarca src={logoURL} />}
+      {logoURL && (
+        <LogoTocavel folha={folha} nome={nome}>
+          <LogoDaMarca src={logoURL} />
+        </LogoTocavel>
+      )}
       <h1
         className={soLogo ? 'sr-only' : 'na-marca font-display text-lg font-bold text-text truncate'}
       >
-        {nome || titulo}
+        {!logoURL && folha ? (
+          <LogoTocavel folha={folha} nome={nome}>{nome || titulo}</LogoTocavel>
+        ) : (
+          nome || titulo
+        )}
       </h1>
     </div>
+  );
+}
+
+/**
+ * A MARCA DO CABEÇALHO E A FOLHA DELA (05/10/2026). A folha só existe no app
+ * do TIO e no da AUXILIAR — o layout dos dois a entrega pelo contexto. Para
+ * a auxiliar, a marca é a do tio da perua escolhida, que vem junto.
+ * ⚠️ A FAMÍLIA NÃO TEM FOLHA: mesmo que um contexto vazasse até ela, o papel
+ * fecha a porta aqui.
+ */
+function useMarcaDoCabecalho() {
+  const propria = useMarcaDoTio();
+  const contexto = useFolhaDaMarca();
+  const { role } = useAuth();
+  const folha = contexto && (role === 'admin' || role === 'auxiliar') ? contexto : null;
+  const marca = folha?.marca || propria;
+  return { nome: marca.nome, logoURL: marca.logoURL, folha };
+}
+
+/**
+ * O LOGO VIRA BOTÃO quando há folha: 48px de alvo no mínimo, e a palavra
+ * escrita para o leitor de tela. Sem folha (a família), o logo fica como
+ * sempre foi — só um logo.
+ */
+function LogoTocavel({ folha, nome, children }) {
+  if (!folha) return children;
+  return (
+    <button
+      type="button"
+      onClick={folha.abrir}
+      aria-label={`Abrir a marca do ${nome || 'motorista'}`}
+      aria-haspopup="dialog"
+      className="tap inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-lg"
+    >
+      {children}
+    </button>
   );
 }
 
@@ -215,10 +260,20 @@ function MarcaOuTitulo({ titulo }) {
  * então vai em `<span>`. Sem marca nenhuma, a barra fica só com os botões.
  */
 function MarcaNaBarra() {
-  const { nome, logoURL } = useMarcaDoTio();
-  if (logoURL) return <LogoDaMarca src={logoURL} alt={nome || ''} />;
+  const { nome, logoURL, folha } = useMarcaDoCabecalho();
+  if (logoURL) {
+    return (
+      <LogoTocavel folha={folha} nome={nome}>
+        <LogoDaMarca src={logoURL} alt={folha ? '' : nome || ''} />
+      </LogoTocavel>
+    );
+  }
   if (nome) {
-    return <span className="font-display text-lg font-bold text-text truncate">{nome}</span>;
+    return (
+      <LogoTocavel folha={folha} nome={nome}>
+        <span className="font-display text-lg font-bold text-text truncate">{nome}</span>
+      </LogoTocavel>
+    );
   }
   return null;
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Mail,
   Phone,
@@ -113,6 +113,14 @@ export default function Profile() {
   const [addChildOpen, setAddChildOpen] = useState(false);
   const [saidasAbertas, setSaidasAbertas] = useState(false);
   const [soundsEnabled, setSoundsEnabledState] = useSoundsEnabled();
+  // "TROCAR LOGO OU COR", NA FOLHA DA MARCA (05/10/2026), chega aqui com
+  // `#sua-marca`: a tela rola até o cartão da marca quando o perfil chega —
+  // antes dele, o cartão ainda não existe para onde rolar.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash !== '#sua-marca' || !profile) return;
+    document.getElementById('sua-marca')?.scrollIntoView({ block: 'start' });
+  }, [hash, profile]);
 
   if (!profile) {
     return (
@@ -299,6 +307,7 @@ export default function Profile() {
         {isAdmin ? (
           <Bloco titulo="Seu transporte">
             {/* A marca vem primeiro: é como as famílias o veem. */}
+            <div id="sua-marca" className="scroll-mt-20">
             <MarcaCard
               uid={user?.uid}
               nome={profile?.marcaNome || ''}
@@ -307,6 +316,7 @@ export default function Profile() {
               cores={profile?.marcaCoresSugeridas || []}
               onChanged={refreshProfile}
             />
+            </div>
             {/* ⚠️ A CHAVE PIX NÃO SE TROCA AQUI (D2, 04/10/2026). O Perfil
               * não pede senha, e a auxiliar com o celular na mão trocava a
               * chave pela dela: as mensalidades da turma passavam a cair

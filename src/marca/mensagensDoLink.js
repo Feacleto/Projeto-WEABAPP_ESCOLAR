@@ -103,6 +103,52 @@ export function mensagemDeIndicarParceiro({ marca, parceiro }) {
   return `${abertura} Quero te indicar ${quemFala(nome)}${lugar}, que também usa o Alô Buzinou.${contato} Se chamar, diz que fui eu que indiquei.`;
 }
 
+/**
+ * O CARTÃO DO TIO PARA UMA FAMÍLIA NOVA (05/10/2026, texto aprovado pelo
+ * dono). É para CONHECER o tio, não para entrar no app — a família só entra
+ * pelo convite de uma criança cadastrada. Por isso a mensagem não fala em
+ * "entrar": ela abre a conversa sobre vaga, e o link (`/conheca/<uid>`)
+ * mostra o cartão dele.
+ *
+ * "Oi! Aqui é o Tio Nino, transporte escolar. Na minha perua os avisos para
+ * as famílias vão pelo app Alô Buzinou. Quer conversar sobre vaga? É só me
+ * responder aqui. <url>"
+ */
+export function mensagemDoCartaoDoTio({ marca, url }) {
+  const quem = quemFala(marca);
+  const abertura = quem ? `Oi! Aqui é ${quem}, transporte escolar.` : 'Oi! Aqui é do transporte escolar.';
+  return `${abertura} Na minha perua os avisos para as famílias vão pelo app Alô Buzinou. Quer conversar sobre vaga? É só me responder aqui. ${url}`;
+}
+
+/**
+ * "do Tio Nino", "da Tia Rosa", "de Transportes Silva" — o mesmo critério de
+ * `quemFala` para o artigo.
+ */
+export function deQuem(marca) {
+  const m = String(marca || '').trim();
+  if (!m) return 'do motorista';
+  if (/^tio\b/i.test(m)) return `do ${m}`;
+  if (/^tia\b/i.test(m)) return `da ${m}`;
+  return `de ${m}`;
+}
+
+/**
+ * A PÁGINA `/conheca/<uid>`: a frase sobre o app, o botão e a mensagem que a
+ * família manda ao tocar nele. Cada promessa da frase existe no app: "a
+ * perua saiu" (`saidaDaViagem`), "está chegando" (`avisarAproximacao`) e a
+ * criança chegou (a entrega marcada avisa a família).
+ */
+export function fraseDoCartaoDoTio(marca) {
+  return `Na perua ${deQuem(marca)}, os avisos vão pelo app Alô Buzinou: quando a perua sai, quando está chegando e quando a criança chega.`;
+}
+
+export function botaoDoCartaoDoTio(marca) {
+  const quem = quemFala(marca) || 'o motorista';
+  return `Falar com ${quem} no WhatsApp`;
+}
+
+export const MENSAGEM_DE_QUEM_VIU_O_CARTAO = 'Oi! Vi o seu cartão e quero conversar sobre vaga na perua.';
+
 function formatarWhatsApp(digitos) {
   const d = String(digitos || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
   if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;

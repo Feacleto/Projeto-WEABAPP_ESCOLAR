@@ -39,6 +39,8 @@ import AuthAction from './pages/AuthAction';
  * download dela de todo mundo que abre o app pra ver a rota. O `Respiro`
  * cobre os 300ms dela, e é exatamente pra isso que ele existe. */
 const Acompanhar = lazy(() => import('./pages/Acompanhar'));
+// O cartão do tio para uma família NOVA conhecê-lo (05/10/2026): pública, sem conta.
+const Conheca = lazy(() => import('./pages/Conheca'));
 // A substituta de um dia (F3): pública, sem conta, como o acompanhar.
 const Substituta = lazy(() => import('./pages/Substituta'));
 const Welcome = lazy(() => import('./pages/Welcome'));
@@ -144,6 +146,7 @@ import { hasAcceptedCurrentTerms } from './services/consentService';
 import { estadoDoContrato } from './dominio/cobranca/contratoDaFamilia.js';
 import Respiro from './components/common/Respiro';
 import TemaDaMarca, { ZonaDaPlataforma } from './components/common/TemaDaMarca';
+import FolhaDaMarcaDoTio from './components/marca/FolhaDaMarcaDoTio';
 import TelaNovaNoTopo from './components/common/TelaNovaNoTopo';
 import { SITE_INSTITUCIONAL } from './config/vitrine';
 import Travessia from './components/common/Travessia';
@@ -644,6 +647,7 @@ export default function App() {
           * pra uma tarde. O que ela vê é decidido no servidor, campo a
           * campo (`functions/lib/reguaDoAcompanhamento.js`), e o link morre
           * à meia-noite. */}
+        <Route path="/conheca/:uid" element={<Conheca />} />
         <Route path="/acompanhar/:token" element={<Acompanhar />} />
         {/* O aviso do acesso de 24h abre sem token: o aparelho lembra (Acompanhar.jsx). */}
         <Route path="/acompanhar" element={<Acompanhar />} />
@@ -709,7 +713,11 @@ export default function App() {
             <TemaDaMarca />
             <PrimeiroAcessoGate>
               <GuardaDaConta>
-                <TioLayout />
+                {/* Tocar no logo do cabeçalho abre a folha da marca
+                  * (05/10/2026). Mora aqui, fora do TioLayout. */}
+                <FolhaDaMarcaDoTio>
+                  <TioLayout />
+                </FolhaDaMarcaDoTio>
               </GuardaDaConta>
             </PrimeiroAcessoGate>
           </PrivateRoute>

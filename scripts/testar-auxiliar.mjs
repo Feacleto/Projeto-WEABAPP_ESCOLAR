@@ -357,7 +357,18 @@ checar('o app da auxiliar não lê mais profile.motoristaUid', [],
 
 console.log('\n10. o app dela com dois tios');
 const hojeSrc = ler('src/pages/auxiliar/AuxHoje.jsx');
-checar('com dois tios, a troca de perua (um botão por tio)', true, hojeSrc.includes('ativos.length > 1') && hojeSrc.includes('escolher(b.motoristaUid)'));
+// A troca de perua MUDOU DE LUGAR (05/10/2026, decisão do dono): saiu do
+// topo do Hoje e mora na folha da marca (o logo do cabeçalho), em
+// "Trabalhando para". A trava é a mesma — conferida no bloco 11.
+const folhaSrc = ler('src/components/marca/FolhaDaMarca.jsx');
+checar('com dois tios, a troca de perua mora na folha da marca (um botão por tio)', true,
+  folhaSrc.includes('mostraTrabalhandoPara(ativos)') && folhaSrc.includes('escolher(botao.motoristaUid)'));
+checar('e a barra de duas metades saiu do topo do Hoje', false,
+  /ativos\.length > 1|escolher\(|trocaDePerua\(/.test(semComentarios(hojeSrc)));
+checar('o cartão do dia diz de quem é a perua ("Perua do {marca} · ida sai …")', true,
+  hojeSrc.includes('rotuloDaPerua({') && hojeSrc.includes('{rotuloDoCartao}'));
+checar('a folha e o Hoje leem a MESMA escolha (o hook avisa as outras instâncias)', true,
+  ler('src/hooks/usePeruaDaAuxiliar.js').includes('dispatchEvent') && ler('src/components/marca/FolhaDaMarcaDaAuxiliar.jsx').includes('usePeruaDaAuxiliar(ativos)'));
 checar('o acesso encerrado só quando não sobra tio ativo', true, hojeSrc.includes('vinculos?.length > 0 && ativos.length === 0'));
 const perua = ler('src/hooks/usePeruaDaAuxiliar.js');
 checar('a escolha da perua é lembrada no aparelho, com try/catch', true,
@@ -388,14 +399,18 @@ console.log('\n11. a troca de perua trava com a rota rodando (F4.1)');
   checar('com um tio só, não há frase de troca', null, trocaDePerua([ativos[0]], 't1', true, { marca: 'Tio Nino' }).aviso);
   checar('o rótulo do botão é "Perua de {marca}"', 'Perua de Tia Cida', presa.botoes[1].rotulo);
 
-  const tela = semComentarios(ler('src/pages/auxiliar/AuxHoje.jsx'));
-  checar('a tela decide pela régua, com a turma da cópia', true,
+  // Desde 05/10/2026 a troca mora na FOLHA DA MARCA (o logo do cabeçalho);
+  // a trava é a mesma régua, com a mesma turma da cópia.
+  const tela = semComentarios(ler('src/components/marca/FolhaDaMarca.jsx'));
+  checar('a folha decide pela régua, com a turma da cópia', true,
     tela.includes('rotaDaPeruaRodando(criancas)') && tela.includes('trocaDePerua(ativos, motoristaUid, rodando'));
   checar('o botão travado fica desabilitado, não some', true, tela.includes('disabled={botao.travado}'));
-  checar('a frase da trava em 16px (text-base)', true, /text-base[^"]*">\{troca\.aviso\}/.test(tela));
+  checar('a frase da trava em 16px (text-base), visível logo abaixo dos botões', true, /text-base[^"]*">\{troca\.aviso\}/.test(tela));
   checar('a auxiliar não lê liveLocation (nenhuma escuta da posição)', false, /liveLocation|useLiveLocation/.test(tela));
+  const hoje = semComentarios(ler('src/pages/auxiliar/AuxHoje.jsx'));
+  checar('o Hoje também não lê liveLocation', false, /liveLocation|useLiveLocation/.test(hoje));
   checar('a cor do tio passa pela paletaDaMarca (contraste do app)', true,
-    tela.includes('paletaDaMarca(motorista?.marcaCor)') && tela.includes('paletaDaMarca(admin?.marcaCor)'));
+    hoje.includes('paletaDaMarca(motorista?.marcaCor)') && tela.includes('paletaDaMarca(admin?.marcaCor)'));
 }
 
 console.log(`\n${'═'.repeat(64)}`);

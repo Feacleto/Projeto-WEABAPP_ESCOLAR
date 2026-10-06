@@ -19,7 +19,7 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 99 scripts. O PRIMEIRO é
+npm run testar                   # 101 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -49,7 +49,8 @@ npm run testar                   # 99 scripts. O PRIMEIRO é
                                  # auxiliar, pagamento-da-auxiliar,
                                  # substitutas, avaliacao-da-auxiliar,
                                  # substituta-de-um-dia, calendario-da-auxiliar,
-                                 # vagas-da-perua e, no fim, rota-ao-vivo
+                                 # vagas-da-perua, rota-ao-vivo e, no fim,
+                                 # folha-da-marca
 npm run testar:fechamento        # ⚠️ O ÚNICO TESTE QUE ESCREVE. Roda
                                  # `fecharMes` de verdade contra o Firestore
                                  # do emulador, com o Admin SDK, e lê os
@@ -581,7 +582,8 @@ src/
 │                      call, notifications, landing, tutorial, festive,
 │                      acesso (o responsável sem link pedindo entrada),
 │                      endereco (`BuscaDeRua`: digita a rua, o CEP vem junto),
-│                      perua (a perua em vagas, só do motorista)…
+│                      perua (a perua em vagas, só do motorista),
+│                      marca (a folha que abre ao tocar no logo do tio)…
 ├── services/          39 módulos — TODO acesso ao Firestore passa aqui
 ├── hooks/             23 hooks, quase todos onSnapshot de um service
 ├── design/            tokens.css — GERADO do tailwind.config.js (`npm run
@@ -2018,8 +2020,11 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   (`familia_pede_outro_tio`, um por criança por mês). Teto mensal e o
   caminho de assinar do parceiro: sessão negocio (F2.4).
 - **Cartão do link (04/10/2026):** `cartaoDoLink` (HTTP público) responde
-  `/convite/**` e `/quero-fazer-parte` (rewrites do hosting do app, ANTES do
-  `**`) e devolve o MESMO index.html com as tags de prévia trocadas: o
+  `/convite/**`, `/quero-fazer-parte` e, desde 05/10/2026, `/conheca/**`
+  (rewrites do hosting do app, ANTES do `**`; `/conheca/<uid>` é o cartão
+  para uma família NOVA conhecer o tio — "Conheça {marca}", só motorista não
+  suspenso e com marca, mesmo limite do convite público, `noindex`; ⚠️ o
+  deploy do hosting e o das functions sobem JUNTOS) e devolve o MESMO index.html com as tags de prévia trocadas: o
   CARTÃO DO TIO ("Tio Nino te convidou para o app", a marca do motorista da
   criança) e o CARTÃO DO APP ("Tio Nino te indicou o Alô Buzinou", por
   `?cupom=`, achado em `users.codigoDeIndicacao`). ⚠️ Nada da criança no
@@ -2043,6 +2048,11 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   Régua em [reguaDoCartao.js](functions/lib/reguaDoCartao.js), `testar:cartao`.
   As MENSAGENS que vão junto (texto "Direto", quem fala é a marca dele) estão
   em [mensagensDoLink.js](src/marca/mensagensDoLink.js), `testar:mensagens-do-link`.
+- **Cartão para conhecer o tio:** `verCartaoDoTio` (pública,
+  [cartaoDoTio.js](functions/lib/cartaoDoTio.js)) — seis campos (marca,
+  logo, cor, cidade, bairro, WhatsApp), só motorista não suspenso e com
+  marca, uma frase só para toda recusa, e nenhuma escrita além do contador
+  do limite por IP.
 - **Convite:** `lookupInvite`, `redeemInvite`, `getInvitePreview` — único
   caminho para criar conta de pai. ⚠️ **Desde 03/10/2026 (segurança):** o
   convite ainda não usado vale **15 DIAS** (decisão do dono; conta de
@@ -2362,6 +2372,35 @@ Tudo o mais funciona. Push sem `VITE_FIREBASE_VAPID_KEY` vira no-op silencioso.
 Nino"). Não é `name`, que é o nome civil do contrato. Resolve em
 [useMarcaDoTio.js](src/hooks/useMarcaDoTio.js) — o pai vê a marca do motorista
 DELE, pelo `adminUid` da criança ativa. Sem marca, volta o título.
+
+⚠️ **TOCAR NO LOGO DO CABEÇALHO ABRE A FOLHA DA MARCA** (05/10/2026,
+protótipo "Abrir o logo do tio", versão A + dados do B, aprovado pelo dono)
+— [FolhaDaMarca](src/components/marca/FolhaDaMarca.jsx), régua em
+[folhaDaMarca.js](src/marca/folhaDaMarca.js) (`npm run testar:folha-da-marca`).
+Só no app do TIO e no da AUXILIAR: os provedores
+([FolhaDaMarcaDoTio](src/components/marca/FolhaDaMarcaDoTio.jsx) em volta do
+`TioLayout` no App.jsx, [FolhaDaMarcaDaAuxiliar](src/components/marca/FolhaDaMarcaDaAuxiliar.jsx)
+no `AuxLayout`) entregam o `abrir` ao `Header` pelo contexto, e o Header só
+torna o logo um botão para `admin`/`auxiliar` — ⚠️ **a família não tem
+folha**. Pela METADE: o logo em círculo (sem logo, as iniciais na cor da
+marca), o nome e o subtítulo. O TIO vê "Transporte escolar · {bairro},
+{cidade}" e três botões: "Mandar meu cartão a uma família" (cheio — o texto
+aprovado `mensagemDoCartaoDoTio`, para CONHECER o tio — nunca "entrar" —,
+com o link `/conheca/<uid>`: prévia "Conheça {marca}" e a página pública
+[Conheca](src/pages/Conheca.jsx), que apresenta o tio e tem um só botão, o
+WhatsApp dele; sem criança, preço nem lista de outros tios), "Ver como as
+famílias me veem" (o topo do app delas e o cartão "Entrando" da cortina,
+nada inventado) e "Trocar logo ou cor" (`/tio/profile#sua-marca`). A
+AUXILIAR vê a marca do tio da perua escolhida, "Você trabalha nesta perua
+desde {mês}", "Falar com o {marca}" (cheio, WhatsApp dele) e "Ver o PIX da
+perua" (o mesmo `PixDaPerua`); ⚠️ **com dois tios, a troca de perua mora
+AQUI** ("Trabalhando para", com a trava da rota rodando e a frase "A rota do
+{marca} está rodando.") — a barra do topo do Hoje saiu, e o cartão do dia
+dela passou a dizer "Perua do {marca} · ida sai {hora}". Ela não vê nada do
+tio além da marca (nível, plano, nota, dinheiro: o teste procura). Puxar a
+alça para cima (ou tocar nela) abre a TELA CHEIA, que é o SELO: a cor da
+marca, o logo num círculo branco grande, o nome, e a faixa verde do Alô
+Buzinou do adesivo ("Eu uso o app Alô Buzinou") — sem botão e sem dado.
 
 ⚠️ **E A COR DO APP É A DO LOGO DELE** (03/10/2026, pedido do dono). Trocar o
 logo lê a cor mais forte da imagem no aparelho e grava `users.marcaCor` (e

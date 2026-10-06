@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Camera, Phone, MessageCircle, School, Wallet } from 'lucide-react';
+import { Camera, ChevronRight, Phone, MessageCircle, School, Wallet } from 'lucide-react';
 import Header from '../../components/layout/Header';
 import Avatar from '../../components/common/Avatar';
 import Skeleton from '../../components/common/Skeleton';
@@ -18,7 +18,8 @@ import FichaRapidaDaAuxiliar from '../../components/route/FichaRapidaDaAuxiliar'
 import { diaCompleto, blocoDoMomento, getDateKey, horaCurta, deMinutos, precisaDaPerua, ROTULO_ESTADO } from '../../dominio/rota/horarios';
 import { zonasDaRota, viagemAoVivo, rotuloDaVez } from '../../dominio/rota/zonasDaRota.js';
 import { pendentesEmOrdem, focoDaViagem } from '../../dominio/rota/focoDaViagem.js';
-import { linkDoZap, rotaDaPeruaRodando, trocaDePerua } from '../../dominio/identidade/auxiliar.js';
+import { linkDoZap, rotaDaPeruaRodando } from '../../dominio/identidade/auxiliar.js';
+import { rotuloDaPerua } from '../../marca/folhaDaMarca.js';
 import { paletaDaMarca } from '../../marca/corDaMarca.js';
 import EstrelasParaOTio from '../../components/avaliacaoDaAuxiliar/EstrelasParaOTio';
 
@@ -38,21 +39,20 @@ import EstrelasParaOTio from '../../components/avaliacaoDaAuxiliar/EstrelasParaO
  * frente: desfazer um toque errado é do motorista. O "Mostrar PIX da perua"
  * mostra a chave DELE.
  *
- * DOIS TIOS (05/10/2026, vínculo por par): com dois vínculos ativos, o topo
- * ganha a troca de perua — um botão por tio, a escolha lembrada neste
- * aparelho — e a marcação vai com o tio escolhido. Com um tio, a tela é a de
- * sempre. O acesso encerrado só aparece quando NÃO sobra tio ativo: se um
- * desativa e o outro continua, ela só deixa de ver aquela perua.
+ * DOIS TIOS (05/10/2026, vínculo por par): a marcação vai com o tio
+ * escolhido. ⚠️ A TROCA DE PERUA SAIU DO TOPO (05/10/2026, decisão do dono):
+ * mora na FOLHA DA MARCA, que abre ao tocar no logo do cabeçalho
+ * (`FolhaDaMarca`, "Trabalhando para"), com a mesma trava da rota rodando
+ * (`rotaDaPeruaRodando` + `trocaDePerua`). A escolha é a mesma
+ * `usePeruaDaAuxiliar`, e esta tela muda junto. O cartão do dia diz de quem
+ * é a perua: "Perua do Tio Nino · ida sai 6h40" (`rotuloDaPerua`), na cor do
+ * tio (`marcaCor` pela `paletaDaMarca`, que garante a leitura); sem cor, o
+ * verde. O acesso encerrado só aparece quando NÃO sobra tio ativo.
  *
- * F4.1: a troca TRAVA com a rota da perua escolhida rodando (alguma criança
- * "Na perua" hoje, lida da cópia da turma — ela não lê `liveLocation`; ver
- * `rotaDaPeruaRodando`). O outro botão fica, desabilitado, com a frase. E
- * cada botão e a faixa ganham a cor do tio (`marcaCor` do doc dele, pela
- * mesma `paletaDaMarca` do app, que garante a leitura); sem cor, o verde.
- *
- * F1.5: "Foto da turma", em contorno, logo abaixo da turma — de manhã ela já
- * está aqui. Leva a /aux/foto, onde ela posta para as famílias da perua
- * escolhida no topo. O cheio da tela continua sendo a marcação.
+ * F1.5: "Postar foto da turma" é uma LINHA no fim da lista (05/10/2026,
+ * decisão do dono), no molde das linhas do app. Leva a /aux/foto, onde ela
+ * posta para as famílias da perua escolhida. O cheio da tela continua sendo
+ * a marcação.
  *
  * A ROTA AO VIVO (05/10/2026, decisão do dono): o foco dela são as CRIANÇAS
  * o dia todo — tocar numa criança abre a FICHA RÁPIDA dela
@@ -84,7 +84,7 @@ const ROTULO_DO_STATUS = {
 export default function AuxHoje() {
   const navigate = useNavigate();
   const { vinculos, ativos } = useMeusVinculos();
-  const { motoristaUid, escolher } = usePeruaDaAuxiliar(ativos);
+  const { motoristaUid } = usePeruaDaAuxiliar(ativos);
   const { admin: motorista } = useAdminProfile(motoristaUid);
   const vinculoAtual = ativos.find((v) => v.motoristaUid === motoristaUid);
   const marca = motorista?.marcaNome || motorista?.name || vinculoAtual?.marcaDoMotorista || 'o motorista';
@@ -126,7 +126,6 @@ export default function AuxHoje() {
     }
   }
   const rodando = rotaDaPeruaRodando(criancas);
-  const troca = trocaDePerua(ativos, motoristaUid, rodando, { marca, genero: motorista?.gender });
   const cor = paletaDaMarca(motorista?.marcaCor);
   // A VIAGEM DO MOMENTO, com a mesma régua do tio (`blocoDoMomento` +
   // `focoDaViagem`): o cartão da vez dela e o rodapé dele apontam a mesma
@@ -157,6 +156,18 @@ export default function AuxHoje() {
     }
     return null;
   })();
+  // DE QUEM É A PERUA, NO CARTÃO DO DIA (05/10/2026, decisão do dono): a
+  // troca de tio saiu do topo e foi para a folha da marca (o logo do
+  // cabeçalho), então é este cartão que diz em qual perua ela está. A hora é
+  // a da viagem de agora; sem ela, a próxima do dia; sem nenhuma, só a perua.
+  const minutosAgora = agora.getHours() * 60 + agora.getMinutes();
+  const viagemDoCartao = blocoAgora || blocos.find((b) => b.inicio >= minutosAgora) || null;
+  const rotuloDoCartao = rotuloDaPerua({
+    marca,
+    genero: motorista?.gender,
+    direcao: viagemDoCartao?.direcao,
+    hora: viagemDoCartao ? horaCurta(deMinutos(viagemDoCartao.inicio)) : null,
+  });
   const vaoHoje = new Set(blocos.flatMap((b) => b.paradas.filter((p) => precisaDaPerua(p.estado)).map((p) => p.child.id))).size;
 
   if (vinculos?.length > 0 && ativos.length === 0) {
@@ -190,21 +201,11 @@ export default function AuxHoje() {
     <>
       <Header title="Hoje" />
       <div className="space-y-4 p-4">
-        {ativos.length > 1 && (
-          <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2" role="group" aria-label="Escolher a perua">
-              {troca.botoes.map((b) => (
-                <BotaoDaPerua key={b.motoristaUid} botao={b} onEscolher={() => escolher(b.motoristaUid)} />
-              ))}
-            </div>
-            {troca.aviso && <p className="px-1 text-base font-semibold text-textBody">{troca.aviso}</p>}
-          </div>
-        )}
         <section
           className={`rounded-2xl p-5 ${cor ? '' : 'bg-primary text-white'}`}
           style={cor ? { backgroundColor: cor.marca, color: cor.naMarca } : undefined}
         >
-          <p className={`rotulo ${cor ? 'opacity-80' : 'text-menta'}`} style={cor ? { color: cor.naMarca } : undefined}>Perua de {marca}</p>
+          <p className={`rotulo ${cor ? 'opacity-80' : 'text-menta'}`} style={cor ? { color: cor.naMarca } : undefined}>{rotuloDoCartao}</p>
           <p className="mt-1 font-display text-2xl font-extrabold leading-tight">
             {criancas === null ? 'Carregando a turma…' : blocos.length === 0 ? 'Sem viagem hoje' : `${vaoHoje} ${vaoHoje === 1 ? 'criança vai' : 'crianças vão'} hoje`}
           </p>
@@ -289,13 +290,17 @@ export default function AuxHoje() {
           </section>
         ))}
 
+        {/* A FOTO DA TURMA É UMA LINHA NO FIM DA LISTA (05/10/2026, decisão
+          * do dono): no molde das linhas do app, nunca botão cheio — o cheio
+          * da tela é a marcação. */}
         <button
           type="button"
           onClick={() => navigate('/aux/foto')}
-          className="tap flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-primary bg-card text-base font-bold text-primary"
+          className="tap flex min-h-14 w-full items-center gap-3 rounded-xl border border-border bg-card px-4 text-left text-base font-bold text-text"
         >
-          <Camera size={20} aria-hidden="true" />
-          Foto da turma
+          <Camera size={20} className="shrink-0 text-primary" aria-hidden="true" />
+          <span className="flex-1">Postar foto da turma</span>
+          <ChevronRight size={20} className="shrink-0 text-textMuted" aria-hidden="true" />
         </button>
 
         <PixDaPerua perfil={motorista} />
@@ -322,38 +327,6 @@ export default function AuxHoje() {
         </p>
       </div>
     </>
-  );
-}
-
-/**
- * Um botão da troca de perua, na cor DAQUELE tio. O doc dele vem pela mesma
- * escuta de `useAdminProfile` que a tela já usa (ela lê o doc do tio só com
- * o vínculo ativo); um componente por botão porque o número de tios varia e
- * hook não mora em laço. Escolhido: contorno e fundo claro na cor dele.
- * Travado: desabilitado, mas na tela — a frase embaixo diz por quê.
- */
-function BotaoDaPerua({ botao, onEscolher }) {
-  const { admin } = useAdminProfile(botao.motoristaUid);
-  const cor = paletaDaMarca(admin?.marcaCor);
-  const estilo = botao.escolhida && cor
-    ? { borderColor: cor.primary, backgroundColor: cor.primarySoft, color: cor.primary }
-    : undefined;
-  return (
-    <button
-      type="button"
-      aria-pressed={botao.escolhida}
-      disabled={botao.travado}
-      onClick={onEscolher}
-      style={estilo}
-      className={`tap flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 px-2 text-base font-bold disabled:opacity-50 ${
-        botao.escolhida ? (cor ? '' : 'border-primary bg-primarySoft text-primary') : 'border-border bg-card text-text'
-      }`}
-    >
-      {!botao.escolhida && cor && (
-        <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: cor.marca }} />
-      )}
-      {botao.rotulo}
-    </button>
   );
 }
 
