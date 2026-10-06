@@ -661,12 +661,15 @@ landing/               O SITE INSTITUCIONAL — HTML estático, sem build.
                        ⚠️ `/investidores` (06/10/2026): mercado só com
                        número que tem fonte linkada e conferida na página
                        dela (o "4 mil vans" do TEG ainda é [a confirmar]);
-                       usuários não têm número até a base existir. O bloco
-                       "Relatório de sustentabilidade" (investidores e fim da
-                       home) sai da lista `RELATORIOS` em `landing/relatorio.js`
-                       — hoje só 2026, `pdf: null` ("Em breve"); PDF vai em
-                       `landing/relatorios/` e abre num iframe (a CSP de
-                       `/relatorios/**` libera `frame-ancestors 'self'`).
+                       usuários não têm número até a base existir. O relatório de sustentabilidade tem
+                       PÁGINA PRÓPRIA, `/sustentabilidade` (visor com as abas da
+                       lista `RELATORIOS` em `landing/relatorio.js` — hoje só
+                       2026, `pdf: null` = "Em breve"; PDF vai em
+                       `landing/relatorios/` e abre num iframe, a CSP de
+                       `/relatorios/**` libera `frame-ancestors 'self'`); na
+                       `/investidores` e no fim da home há só um bloco breve
+                       com o link. Nada de S.A., IPO ou crowdfunding no site.
+                       O rodapé de toda página tem o link Sustentabilidade.
                        As páginas próprias seguem a MESMA régua do pouco
                        texto (04/10/2026): Como funciona virou telas que
                        passam com o dedo, Motorista "o seu dia com o app"

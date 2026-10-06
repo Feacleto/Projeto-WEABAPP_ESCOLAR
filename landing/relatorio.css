@@ -13,3 +13,4 @@
 .rel-baixar{display:inline-block; margin-top:12px; font-weight:700; color:var(--verde)}
 .fonte{font-size:14px; margin-top:6px}
 .fonte a{color:var(--verde)}
+.rel-ver{display:flex; align-items:center; justify-content:center; min-height:56px; padding:0 20px; border-radius:14px; border:2px solid var(--linha); background:#fff; color:var(--preto); font:800 18px var(--corpo); text-decoration:none}

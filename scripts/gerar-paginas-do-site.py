@@ -98,7 +98,11 @@ def icones(itens):
     """Três ícones grandes com uma frase cada (família, sobre)."""
     return '<div class="icones">' + ''.join('<div class="rv">%s<b>%s</b><p>%s</p></div>' % (ic(i), t, l) for i, t, l in itens) + '</div>'
 
-RELATORIO = """<section class="rel" data-relatorio><span class="rel-chapeu">transparência</span><h2>Relatório de sustentabilidade</h2><p class="rel-linha">Um relatório por ano.</p><div class="rel-abas" role="tablist" aria-label="Ano do relatório"></div><div class="rel-painel"><p class="rel-breve">Em breve lançamos nosso relatório de sustentabilidade 2026.</p></div></section>"""
+RELATORIO_BREVE = """<section class="rel" data-relatorio-breve><span class="rel-chapeu">transparência</span><h2>Relatório de sustentabilidade</h2><p class="rel-linha">Em breve: o relatório de 2026.</p><a class="rel-ver" href="/sustentabilidade">Ver a página de sustentabilidade</a></section>"""
+
+RELATORIO_VISOR = """<section class="rel" data-relatorio><div class="rel-abas" role="tablist" aria-label="Ano do relatório"></div><div class="rel-painel"><p class="rel-breve">Em breve lançamos nosso relatório de sustentabilidade 2026.</p></div></section>"""
+
+RELATORIO_ANTIGO = """<section class="rel" data-relatorio><span class="rel-chapeu">transparência</span><h2>Relatório de sustentabilidade</h2><p class="rel-linha">Um relatório por ano.</p><div class="rel-abas" role="tablist" aria-label="Ano do relatório"></div><div class="rel-painel"><p class="rel-breve">Em breve lançamos nosso relatório de sustentabilidade 2026.</p></div></section>"""
 
 PAGINAS = {
  'como-funciona': dict(cena='como', titulo='Como funciona', desc='Como o Alô Buzinou funciona: o tio cadastra a turma, a família entra pelo link, a rota roda e a mensalidade se organiza sozinha.', corpo=
@@ -169,22 +173,25 @@ PAGINAS = {
   '<a class="btn" data-zap href="'+html.escape(ZAP_CONTATO)+'" target="_blank" rel="noopener">'+ZAP+'<span class="txt">Chamar no WhatsApp</span></a>'
   '<a class="btn esc" href="mailto:contato@alobuzinou.com">'+MAIL+'Mandar e-mail</a>'
   '<p style="font-size:16px">O WhatsApp abre com a conversa já começada. Você escreve e envia.</p>'),
+ 'sustentabilidade': dict(cena='investidores', titulo='Sustentabilidade', desc='O relatório anual de sustentabilidade do Alô Buzinou.', corpo=
+  '<span class="chapeu">transparência</span><h1>Relatório de sustentabilidade</h1><p class="sub">Um relatório por ano sobre o que o Alô Buzinou faz e como faz.</p>'
+  + RELATORIO_VISOR),
  'investidores': dict(cena='investidores', titulo='Investidores', desc='O mercado do transporte escolar em São Paulo, como o Alô Buzinou ganha dinheiro e o contato para receber o material completo.', corpo=
   '<span class="chapeu">para quem investe</span><h1>O app do transporte escolar que é do motorista.</h1><p class="sub">Alô Buzinou · São Paulo/SP · CNPJ 65.000.217/0001-47</p>'
   # NÚMERO SÓ COM FONTE, conferida na página da fonte. Não invente número.
   '<h2>O mercado</h2><div class="cards rv">'
   '<div><b>Cerca de 140 mil crianças</b><p>no Transporte Escolar Gratuito (TEG) da Prefeitura de São Paulo (144 mil atendimentos em 2025).</p><p class="fonte"><a href="https://www.saopaulo.sp.leg.br/blog/reformulacao-do-transporte-escolar-gratuito-e-tema-de-audiencia-publica/" target="_blank" rel="noopener">Fonte: Câmara Municipal de São Paulo</a></p></div>'
   '<div><b>Cerca de 12,7 mil veículos</b><p>de transporte escolar cadastrados e regularizados no DTP da cidade de São Paulo.</p><p class="fonte"><a href="https://prefeitura.sp.gov.br/web/mobilidade/w/transporte-escolar-oferece-seguran%C3%A7a-a-pais-de-alunos-veja-o-que-checar-para-contratar-o-servi%C3%A7o" target="_blank" rel="noopener">Fonte: Prefeitura de São Paulo</a></p></div></div>'
-  '<p>Só na cidade de São Paulo, são milhares de motoristas autônomos — e quase toda operação ainda roda em caderno e WhatsApp.</p>'
-  '<h2>Próximo passo</h2><p>Mais ferramentas para o negócio do motorista.</p>'
+  '<p>Só na cidade de São Paulo, são milhares de motoristas levando crianças para a escola todos os dias — cada um com o próprio negócio para cuidar.</p>'
+  '<h2>Para onde vamos</h2><p>Próximo passo: mais ferramentas para o negócio do motorista.</p>'
   '<h2>Como ganhamos dinheiro</h2><p>Assinatura do motorista, cobrada por criança atendida. A família não paga. A mensalidade da família vai direto ao motorista, pelo PIX: a plataforma não toca nesse dinheiro.</p>'
   '<h2>Por que ganhamos</h2><div class="cards rv">'
   '<div><b>O app é do motorista</b><p>A família vê o logo, a cor e o nome dele.</p></div>'
   '<div><b>Preço por criança, sem plano capado</b><p>O app inteiro em qualquer tamanho de perua.</p></div>'
   '<div><b>Família grátis, auxiliar com conta própria</b><p>Três usuários, só um paga.</p></div>'
   '<div><b>Feito para o celular de quem dirige</b><p>Abre no navegador, sem loja, letra grande.</p></div></div>'
-  + RELATORIO +
-  '<form class="lead rv" novalidate><h2>Quer conversar?</h2><p>Deixe seu contato e o link do seu LinkedIn. A gente responde.</p>'
+  + RELATORIO_BREVE +
+  '<form class="lead rv" novalidate><h2>Quer conversar?</h2><p>Deixe seu contato e o link do seu LinkedIn. A gente envia os dados e os relatórios do negócio.</p>'
   '<label class="campo">Seu nome<input name="nome" autocomplete="name" maxlength="80" required></label>'
   '<label class="campo">Seu e-mail<input name="email" type="email" autocomplete="email" maxlength="120" required></label>'
   '<label class="campo">Seu LinkedIn <small>(link do perfil)</small><input name="linkedin" type="text" inputmode="url" autocomplete="url" maxlength="200" placeholder="linkedin.com/in/seu-nome" required></label>'
@@ -209,6 +216,7 @@ RODAPE = '''<section class="fecho"><div class="wrap"><h2>Daqui em diante, você 
     <a href="/duvidas"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg></span><span><b>Dúvidas</b><span class="ver">Ver <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></a>
     <a href="/contato"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-13.4 7.9L3 21l1.1-4.6A9 9 0 1 1 21 12z"/></svg></span><span><b>Contato</b><span class="ver">Ver <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></a>
     <a href="/investidores"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg></span><span><b>Investidores</b><span class="ver">Ver <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></a>
+    <a href="/sustentabilidade"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></span><span><b>Sustentabilidade</b><span class="ver">Ver <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></span></a>
   </nav>
   <a class="rodape-app" href="https://alobuzinou.com/login">Entrar no app <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
   <div class="rodape-contato">

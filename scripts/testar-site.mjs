@@ -96,6 +96,19 @@ checar('o © do rodapé não conta como emoji', false, EMOJI.test('© 2026 Alô 
 checar('o detector pega emoji (sonda positiva)', true, EMOJI.test('Chamar no WhatsApp \u{1F4AC}'));
 checar('e pega a entidade HTML de emoji (sonda positiva)', true, EMOJI.test('&#128172; Chamar'));
 
+bloco('7 · A PÁGINA DE SUSTENTABILIDADE');
+const todasHtml = readdirSync(new URL('landing/', raiz)).filter((f) => f.endsWith('.html'));
+checar('a página /sustentabilidade existe', true, existsSync(new URL('landing/sustentabilidade.html', raiz)));
+const sust = ler('landing/sustentabilidade.html');
+checar('ela tem Voltar, Entrar no app e o visor', true, sust.includes('data-voltar') && sust.includes('Entrar no app</a>') && sust.includes('data-relatorio>') && sust.includes('Em breve lançamos nosso relatório de sustentabilidade 2026.'));
+checar('o sitemap lista /sustentabilidade', true, ler('landing/sitemap.xml').includes('https://alobuzinou.com.br/sustentabilidade<'));
+checar('o rodapé de TODAS as páginas tem o link Sustentabilidade', [], todasHtml.filter((f) => !ler(`landing/${f}`).includes('<a href="/sustentabilidade">')));
+for (const f of ['index', 'investidores']) {
+  const h = ler(`landing/${f}.html`);
+  checar(`${f}: tem o bloco breve e NÃO o visor`, [true, false], [h.includes('data-relatorio-breve') && h.includes('Ver a página de sustentabilidade'), h.includes('data-relatorio>')]);
+}
+checar('nenhum IPO, crowdfunding ou S.A. no site', [], todasHtml.filter((f) => /\bIPO\b|crowdfunding|S\.A\./i.test(ler(`landing/${f}`))));
+
 bloco('6 · O CONTATO DO INVESTIDOR');
 const LI = 'https://www.linkedin.com/in/ana-souza';
 checar('contato válido passa', { ok: true, lead: { nome: 'Ana Souza', email: 'ana@exemplo.com', whatsapp: '11987654321', linkedin: LI } },
