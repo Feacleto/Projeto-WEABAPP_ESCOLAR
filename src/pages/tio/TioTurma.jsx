@@ -133,7 +133,7 @@ export default function TioTurma() {
       crianca: c.name,
       assinatura: profile?.marcaNome || profile?.name || '',
       familiaEntrou: !!c.parentUid,
-      linkDoConvite: c.inviteStatus === 'pending' && c.inviteCode ? inviteUrl(c.inviteCode) : null,
+      linkDoConvite: c.inviteStatus === 'pending' && c.inviteCode && !c.cadastroRapido ? inviteUrl(c.inviteCode) : null,
     });
 
   const acoes = { valor, lembreteDe, onMudar: setMudando, onFicha: setFichaDe };

@@ -2780,7 +2780,12 @@ o resto. Régua pura em
   No card a perua SÓ MOSTRA (ele cobre o app).
 - **Onde aparece (só o motorista):** no Início, a linha "Sua perua" com a
   miniatura e "14 de 15 vagas", abaixo do cartão do dia e sem botão cheio;
-  tocar abre a perua inteira numa folha, onde a VAGA LIVRE é tocável e leva a
+  tocar abre a perua inteira numa folha, onde a VAGA LIVRE é tocável e abre o
+  CADASTRO RÁPIDO (só o nome e menino/menina: `FolhaDaVagaRapida`, que oferece a
+  próxima vaga em sequência; grava `cadastroRapido: true`, a ficha e a lista
+  dizem "Falta completar o cadastro" e `/tio/children/:id/completar` reabre o
+  ChildForm com o nome; convite e contrato esperam, e sem mensalidade não há
+  cobrança) — "Cadastro completo" leva a
   `/tio/children/new`, e onde dá para mudar o número. Nos planos, a mesma
   miniatura com "14 crianças × R$ 5,90" (só até 40, por causa da taxa
   marginal) e "Vaga livre não entra na conta" — ⚠️ **nunca sugere encher a

@@ -240,8 +240,8 @@ function LinhaDaCrianca({ child, onAbrir, onAcoes }) {
         <Avatar photoURL={child.photoURL} gender={child.gender} seed={child.id} kind="child" size="sm" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-base font-bold text-text">{child.name}</span>
-          <span className="block truncate text-base text-textMuted">
-            {[child.school || 'Escola não informada', child.period && PERIOD_LABELS[child.period]]
+          <span className={`block truncate text-base ${child.cadastroRapido ? 'font-semibold text-warningText' : 'text-textMuted'}`}>
+            {child.cadastroRapido ? 'Falta completar o cadastro' : [child.school || 'Escola não informada', child.period && PERIOD_LABELS[child.period]]
               .filter(Boolean)
               .join(' · ')}
           </span>

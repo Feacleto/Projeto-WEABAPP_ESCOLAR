@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   User,
   MapPin,
@@ -156,8 +156,27 @@ function vigenciaDoForm() {
  */
 export default function ChildForm() {
   const navigate = useNavigate();
+  // COMPLETAR (05/10/2026): `/tio/children/:id/completar` abre o MESMO
+  // formulário com a criança posta pelo assento (só o nome) já preenchida; ao
+  // salvar, `cadastroRapido` vira false. Sem `id`, é o cadastro de sempre.
+  const { id: idParaCompletar } = useParams();
+  const { child: paraCompletar } = useChild(idParaCompletar);
+  const preenchido = useRef(false);
   // A vigência nasce pronta (de hoje até o fim do ano) — ver `vigenciaPadrao`.
   const [form, setForm] = useState(() => ({ ...EMPTY_FORM, ...vigenciaDoForm() }));
+  useEffect(() => {
+    if (!paraCompletar || preenchido.current) return;
+    preenchido.current = true;
+    const trazido = {};
+    for (const k of Object.keys(EMPTY_FORM)) {
+      const v = paraCompletar[k];
+      if (v == null || v === '' || v === 0) continue;
+      trazido[k] = typeof v === 'number' ? String(v) : v;
+    }
+    if (trazido.parentPhone) trazido.parentPhone = maskPhone(trazido.parentPhone);
+    if (trazido.parent2Phone) trazido.parent2Phone = maskPhone(trazido.parent2Phone);
+    setForm((prev) => ({ ...prev, ...trazido }));
+  }, [paraCompletar]);
   const [step, setStep] = useState(1);
   // As escolas moram AQUI, e não só no passo 3, porque o rodapé precisa
   // saber se há alguma: sem escola, o protagonista do passo é "Cadastrar
@@ -166,7 +185,7 @@ export default function ChildForm() {
   const semEscola = step === 3 && !carregandoEscolas && escolas.length === 0;
   // O id da criança, reservado já no começo: é ele que sorteia o avatar, e o
   // topo mostra a criança desde o passo 2 com o MESMO rosto da ficha.
-  const [idReservado, setIdReservado] = useState(() => reservarIdDeCrianca());
+  const [idReservado, setIdReservado] = useState(() => idParaCompletar || reservarIdDeCrianca());
   // CADA PASSO ABRE NO TOPO, como uma tela nova (03/10/2026): o passo muda
   // sem mudar o endereço, e ele tocava em Avançar no fim da página e caía
   // no meio do passo seguinte, sem ver o título.
@@ -303,7 +322,7 @@ export default function ChildForm() {
       // (os dados do contrato são pedidos DEPOIS de salvar, no lugar do
       // convite — ver `InviteShare`. Salvar primeiro é deliberado: barrar
       // aqui perderia o que ele acabou de digitar.)
-      const { id, inviteCode } = await addChild({
+      const payload = {
         id: idReservado,
         ...form,
         horaPega: horaPega || '',
@@ -340,7 +359,23 @@ export default function ChildForm() {
         // QUANDO, e é o quando que a torna uma declaração em vez de uma
         // caixa marcada.
         autorizacaoDeclaradaEm: new Date().toISOString(),
-      });
+      };
+      let id;
+      let inviteCode;
+      if (idParaCompletar) {
+        // Completar: só atualiza; os campos de apoio do formulário (número,
+        // complemento, partes do CEP) não são do documento.
+        const resto = { ...payload };
+        for (const k of ['id', 'numero', 'complemento', 'cepPartes', 'semNumero']) delete resto[k];
+        await updateChild(idParaCompletar, {
+          ...resto,
+          cadastroRapido: false,
+        });
+        id = idParaCompletar;
+        inviteCode = paraCompletar?.inviteCode || '';
+      } else {
+        ({ id, inviteCode } = await addChild(payload));
+      }
       setCreatedCode(inviteCode);
       setCreatedId(id);
       setPixPerguntado(false);
@@ -426,7 +461,7 @@ export default function ChildForm() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Passou das vagas da perua? Pergunta e deixa — nunca trava. */}
-      <PerguntaDasVagas chave={idReservado} />
+      {!idParaCompletar && <PerguntaDasVagas chave={idReservado} />}
       {/* Header próprio do wizard — sem o Header global pra ter mais espaço */}
       <header className="sticky top-0 z-20 bg-bg px-5 pt-4 pb-3 space-y-3">
         <button

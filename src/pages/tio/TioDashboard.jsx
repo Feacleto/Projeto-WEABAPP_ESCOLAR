@@ -258,7 +258,7 @@ export default function TioDashboard() {
 
   const semHorario = useMemo(() => semHorarioCombinado(children), [children]);
   const convitesAbertos = useMemo(
-    () => children.filter((c) => c.inviteStatus === 'pending').length,
+    () => children.filter((c) => c.inviteStatus === 'pending' && !c.cadastroRapido).length,
     [children]
   );
 

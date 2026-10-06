@@ -726,6 +726,7 @@ export default function App() {
         <Route index element={<TioDashboard />} />
         <Route path="children" element={<TioChildren />} />
         <Route path="children/new" element={<ChildForm />} />
+        <Route path="children/:id/completar" element={<ChildForm />} />
         <Route path="children/escolas" element={<TioEscolas />} />
         <Route path="children/:id" element={<ChildDetail />} />
         <Route path="children/:id/contract" element={<TioContract />} />

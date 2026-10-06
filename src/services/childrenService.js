@@ -167,6 +167,8 @@ export async function addChild(data) {
       ? { vigenciaInicio: data.vigenciaInicio, vigenciaFim: data.vigenciaFim }
       : {}),
     notes: data.notes?.trim() || '',
+    // Posta pelo assento da perua só com o nome (05/10/2026): "falta completar".
+    ...(data.cadastroRapido ? { cadastroRapido: true } : {}),
     inviteCode,
     inviteStatus: 'pending',
     // O convite vale 15 dias a partir daqui (03/10/2026, decisão do dono) —

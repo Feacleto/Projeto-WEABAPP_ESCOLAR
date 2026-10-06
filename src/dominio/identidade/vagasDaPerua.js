@@ -172,3 +172,26 @@ export function frasesDaPerua({ vagas, criancas }) {
     passouPergunta: `Sua perua tem ${o.vagas} ${plural(o.vagas, 'vaga', 'vagas')} e já leva ${o.criancas} ${plural(o.criancas, 'criança', 'crianças')}. Quer continuar?`,
   };
 }
+
+/**
+ * O CADASTRO RÁPIDO PELO ASSENTO (05/10/2026, pedido do dono): tocar na vaga
+ * livre pede SÓ o nome (e menino ou menina, que decide o avatar). Devolve o
+ * mínimo que vai para `children` — o resto o `addChild` completa com os
+ * vazios de sempre — e `cadastroRapido: true`, que marca "falta completar".
+ * Nome vazio devolve null: não existe criança sem nome.
+ */
+export function criancaRapida({ nome, genero } = {}) {
+  const name = String(nome || '').trim();
+  if (!name) return null;
+  return {
+    name,
+    gender: genero === 'male' || genero === 'female' ? genero : null,
+    cadastroRapido: true,
+  };
+}
+
+/** A criança foi posta pelo assento e o cadastro ainda não foi completado? */
+export const faltaCompletarOCadastro = (crianca) => crianca?.cadastroRapido === true;
+
+/** Onde o "Completar" leva (o mesmo formulário, em modo edição). */
+export const caminhoDeCompletar = (id) => `/tio/children/${id}/completar`;

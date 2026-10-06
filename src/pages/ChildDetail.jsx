@@ -24,6 +24,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { faltaCompletarOCadastro, caminhoDeCompletar } from '../dominio/identidade/vagasDaPerua.js';
 import { horariosCombinados, horaCurta } from '../dominio/rota/horarios';
 import { horaFalada } from '../dominio/rota/horarioDeCostume.js';
 import { useCostumeDaCrianca } from '../hooks/useCostumeDaCrianca';
@@ -398,7 +399,8 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
           onEditar={isAdmin && !child.parentUid ? () => setEditandoResponsavel(true) : null}
           rotuloEditar="Editar o responsável"
         >
-          {isAdmin && <LinkDoResponsavel child={child} />}
+          {isAdmin && faltaCompletarOCadastro(child) && <FaltaCompletar child={child} />}
+          {isAdmin && !faltaCompletarOCadastro(child) && <LinkDoResponsavel child={child} />}
 
           <Card className="space-y-4">
             <div className="space-y-3 pb-4 border-b border-neutro last:border-0 last:pb-0">
@@ -1140,5 +1142,28 @@ function TurmaSala({ child, podeEditar }) {
         />
       </div>
     </div>
+  );
+}
+
+/**
+ * A criança posta pelo assento da perua (só o nome) ainda não tem cadastro:
+ * convite e contrato esperam. O botão abre o formulário de sempre, já com o
+ * nome preenchido (`/tio/children/:id/completar`).
+ */
+function FaltaCompletar({ child }) {
+  const navigate = useNavigate();
+  return (
+    <Card className="space-y-3 border border-warningBorder bg-warningSoft">
+      <div>
+        <p className="flex items-center gap-2 text-base font-bold text-warningText">
+          <AlertTriangle size={18} className="shrink-0" />
+          Falta completar o cadastro
+        </p>
+        <p className="mt-1 text-base text-text">Complete o cadastro para mandar o convite.</p>
+      </div>
+      <Button variant="secondary" onClick={() => navigate(caminhoDeCompletar(child.id))}>
+        Completar o cadastro
+      </Button>
+    </Card>
   );
 }

@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Sheet from '../common/Sheet';
 import MiniPerua from './MiniPerua';
 import DesenhoDaPerua from './DesenhoDaPerua';
 import SeletorDeVagas from './SeletorDeVagas';
+import FolhaDaVagaRapida from './FolhaDaVagaRapida';
 import { useAuth } from '../../hooks/useAuth';
 import { useVagasDaPerua } from '../../hooks/useVagasDaPerua';
 import { definirVagasDaPerua } from '../../services/configFinanceiroService';
@@ -20,7 +20,7 @@ import { frasesDaPerua, ocupacao } from '../../dominio/identidade/vagasDaPerua.j
  * "Iniciar a rota".
  *
  * Tocar abre a perua inteira numa folha. Ali, cada vaga livre é tocável e
- * leva ao mesmo "Cadastrar criança" de sempre (`/tio/children/new`) — é o
+ * abre a folha do cadastro RÁPIDO (só o nome; ver `FolhaDaVagaRapida`) — é o
  * caminho "tocar na vaga para cadastrar" do protótipo, fora do card do
  * primeiro acesso. A folha também deixa mudar o número (a perua pode ser
  * trocada); o "Salvar" é contorno, pelo mesmo motivo.
@@ -29,10 +29,10 @@ import { frasesDaPerua, ocupacao } from '../../dominio/identidade/vagasDaPerua.j
  * acesso. Só o motorista vê — a família e a auxiliar não têm vagas.
  */
 export default function LinhaDaPerua({ criancas = [] }) {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { vagas } = useVagasDaPerua();
   const [aberta, setAberta] = useState(false);
+  const [rapida, setRapida] = useState(false);
   const [mudando, setMudando] = useState(null);
   const [salvando, setSalvando] = useState(false);
 
@@ -80,15 +80,12 @@ export default function LinhaDaPerua({ criancas = [] }) {
 
       <Sheet open={aberta} onClose={fechar} title="Sua perua" subtitle={frases.contagem}>
         <p className="mb-3 text-base text-textBody">
-          {livres > 0 ? 'Toque numa vaga livre para cadastrar criança.' : frases.situacao}
+          {livres > 0 ? 'Toque numa vaga livre e diga o nome da criança.' : frases.situacao}
         </p>
         <DesenhoDaPerua
           vagas={vagas}
           criancas={criancas}
-          onVagaLivre={() => {
-            fechar();
-            navigate('/tio/children/new');
-          }}
+          onVagaLivre={() => setRapida(true)}
         />
         <div className="mt-5 border-t border-border pt-4">
           {mudando === null ? (
@@ -114,6 +111,7 @@ export default function LinhaDaPerua({ criancas = [] }) {
           )}
         </div>
       </Sheet>
+      <FolhaDaVagaRapida aberta={rapida} onFechar={() => setRapida(false)} vagas={vagas} criancas={criancas} />
     </>
   );
 }

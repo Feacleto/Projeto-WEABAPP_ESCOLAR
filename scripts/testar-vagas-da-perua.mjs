@@ -31,6 +31,9 @@ import {
   vagasDesenhadas,
   vagasParaGravar,
   vagasValidas,
+  criancaRapida,
+  faltaCompletarOCadastro,
+  caminhoDeCompletar,
 } from '../src/dominio/identidade/vagasDaPerua.js';
 import {
   faltaCompletarCadastro,
@@ -227,6 +230,33 @@ console.log('\n6. a perua das zonas da rota (o mesmo desenho)');
     desenho.includes('aria-label="Assento vazio"') && desenho.includes("naRota ? 'Também na perua' : 'Acima das vagas'"));
   igual('no modo da rota a vaga livre não é tocável', true, desenho.includes('onVagaLivre={naRota ? null : onVagaLivre}'));
   igual('o desenho não mostra número (nada de frasesDaPerua/ocupacao)', false, /frasesDaPerua|ocupacao\(/.test(desenho));
+}
+
+
+console.log('\n7. o cadastro rápido pelo assento');
+igual('a folha rápida grava só nome, gênero e a marca', criancaRapida({ nome: '  Ana Lima ', genero: 'female' }),
+  { name: 'Ana Lima', gender: 'female', cadastroRapido: true });
+igual('gênero fora de menino/menina vira null', criancaRapida({ nome: 'Leo', genero: 'x' }).gender, null);
+igual('sem nome não existe criança', criancaRapida({ nome: '   ', genero: 'male' }), null);
+igual('a criança rápida "falta completar"', [faltaCompletarOCadastro({ cadastroRapido: true }), faltaCompletarOCadastro({ cadastroRapido: false }), faltaCompletarOCadastro({})], [true, false, false]);
+igual('completar leva ao formulário em modo edição', caminhoDeCompletar('abc'), '/tio/children/abc/completar');
+{
+  const linha = semComentarios(ler('src/components/perua/LinhaDaPerua.jsx'));
+  igual('a vaga livre abre a folha rápida, não o ChildForm', [true, false],
+    [linha.includes('onVagaLivre={() => setRapida(true)}'), linha.includes("navigate('/tio/children/new')")]);
+  const folha = semComentarios(ler('src/components/perua/FolhaDaVagaRapida.jsx'));
+  igual('a folha grava por criancaRapida e oferece o cadastro completo', true,
+    folha.includes('criancaRapida(') && folha.includes('addChild(dados)') && folha.includes("navigate('/tio/children/new')"));
+  igual('a folha não diz "lugar"', false, /lugar/i.test(folha));
+  const ficha = semComentarios(ler('src/pages/ChildDetail.jsx'));
+  const lista = semComentarios(ler('src/pages/tio/TioChildren.jsx'));
+  igual('ficha e lista mostram "Falta completar o cadastro"', [true, true],
+    [ficha.includes('Falta completar o cadastro'), lista.includes('Falta completar o cadastro')]);
+  igual('convite escondido até completar', true, ficha.includes('faltaCompletarOCadastro(child) &&') && ficha.includes('Complete o cadastro para mandar o convite.'));
+  const serv = semComentarios(ler('src/services/childrenService.js'));
+  igual('o serviço aceita cadastroRapido', true, serv.includes('data.cadastroRapido'));
+  const form = semComentarios(ler('src/components/children/ChildForm.jsx'));
+  igual('completar atualiza e zera cadastroRapido', true, form.includes('cadastroRapido: false') && form.includes('updateChild(idParaCompletar'));
 }
 
 console.log(`\n${ok} ok, ${bad} falharam`);
