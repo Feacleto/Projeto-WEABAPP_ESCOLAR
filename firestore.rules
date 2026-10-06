@@ -725,6 +725,12 @@ service cloud.firestore {
              .hasAny([
                'role', 'childId', 'childIds', 'superAdmin',
                'suspenso', 'suspensoEm', 'notaInterna',
+               // ⚠️ `bloqueio` É A SUSPENSÃO DA FAMÍLIA (05/10/2026): grau e
+               // prazo, gravados só pela callable `suspenderConta`, junto da
+               // linha do registro. A família não apaga o próprio, e ninguém
+               // o grava pelo cliente (o dono e o tio caem nos ramos deles,
+               // que não o listam).
+               'bloqueio',
                // ⚠️ `phoneChave` É A CHAVE DO VÍNCULO AUTOMÁTICO DE IRMÃOS
                // (02/10/2026, `functions/lib/vincularIrmao.js`). Criança nova
                // cadastrada com este WhatsApp entra SOZINHA na conta que o
