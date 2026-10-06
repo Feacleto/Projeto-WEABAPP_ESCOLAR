@@ -565,6 +565,9 @@ async function main() {
   await oRegistroDaRota({ novato, dono, anon });
   await osRecadosDoDia({ novato, dono, anon });
   await quemBuscaParaAuxiliar({ novato, dono, anon });
+  await oKanbanDoDono({ novato, dono, anon });
+  await osContatosDoDono({ novato, dono, anon });
+  await oUsoDoApp({ novato, dono, anon });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -4556,4 +4559,148 @@ async function quemBuscaParaAuxiliar({ novato, dono, anon }) {
   checar(BL, 'o tio M não escreve', 'NEGA',
     await escrever(P, M, { nome: S('Outra') }, ['nome']));
   checar(BL, 'anônimo não lê', 'NEGA', await ler(P, anon));
+}
+
+/**
+ * O KANBAN DO DONO (05/10/2026) — `kanbanDoDono/{id}`: só o dono lê, lista,
+ * cria, atualiza e apaga. Casos escritos ANTES da regra: os marcados HOJE
+ * VERMELHO ficam vermelhos até ela existir.
+ */
+async function oKanbanDoDono({ novato, dono, anon }) {
+  console.log('\n=== O KANBAN DO DONO (05/10/2026) ===');
+  const BL = 'kanbanDoDono';
+  const agora = Date.now();
+  const L = (values) => ({ arrayValue: { values } });
+  const M = (fields) => ({ mapValue: { fields } });
+  const NULO = { nullValue: null };
+  const moto = await criarLogin(`kb.moto.${agora}@teste.local`);
+  const pai = await criarLogin(`kb.pai.${agora}@teste.local`);
+  const aux = await criarLogin(`kb.aux.${agora}@teste.local`);
+  await semear(`users/${moto.uid}`, { role: S('admin'), name: S('Tio Kanban') });
+  await semear(`users/${pai.uid}`, { role: S('parent'), name: S('Mae Kanban') });
+  await semear(`users/${aux.uid}`, { role: S('auxiliar'), name: S('Aux Kanban'), motoristaUids: L([S(moto.uid)]) });
+
+  const cartao = (extra = {}) => ({
+    nome: S('Falar com o Tio Nino'),
+    estado: S('a_fazer'),
+    abertoEm: T(0),
+    concluidoEm: NULO,
+    atividades: L([M({ id: S('a1'), texto: S('Ligar'), abertaEm: T(0), concluidaEm: NULO })]),
+    criadoPor: S(dono.uid),
+    atualizadoEm: T(0),
+    ...extra,
+  });
+  await semear('kanbanDoDono/semente', cartao());
+  await semear('kanbanDoDono/para-apagar', cartao());
+
+  checar(BL, 'o dono cria um cartão [HOJE VERMELHO]', 'PASSA', await criar('kanbanDoDono', 'novo', dono, cartao()));
+  checar(BL, 'o dono lê um cartão [HOJE VERMELHO]', 'PASSA', await ler('kanbanDoDono/semente', dono));
+  checar(BL, 'o dono lista os cartões [HOJE VERMELHO]', 'PASSA', await listar('kanbanDoDono', dono));
+  checar(BL, 'o dono move o cartão para fazendo [HOJE VERMELHO]', 'PASSA',
+    await escrever('kanbanDoDono/semente', dono, { estado: S('fazendo'), atualizadoEm: T(0) }, ['estado', 'atualizadoEm']));
+  checar(BL, 'o dono apaga o cartão [HOJE VERMELHO]', 'PASSA', await apagar('kanbanDoDono/para-apagar', dono));
+
+  checar(BL, 'create com campo a mais', 'NEGA',
+    await criar('kanbanDoDono', 'extra', dono, cartao({ intruso: S('x') })));
+  checar(BL, 'estado pausado', 'NEGA',
+    await criar('kanbanDoDono', 'pausado', dono, cartao({ estado: S('pausado') })));
+  checar(BL, 'criadoPor de outro uid', 'NEGA',
+    await criar('kanbanDoDono', 'outro', dono, cartao({ criadoPor: S(moto.uid) })));
+  checar(BL, 'nome de 121 letras', 'NEGA',
+    await criar('kanbanDoDono', 'longo', dono, cartao({ nome: S('a'.repeat(121)) })));
+
+  checar(BL, 'motorista não lê', 'NEGA', await ler('kanbanDoDono/semente', moto));
+  checar(BL, 'família não lê', 'NEGA', await ler('kanbanDoDono/semente', pai));
+  checar(BL, 'auxiliar não lê', 'NEGA', await ler('kanbanDoDono/semente', aux));
+  checar(BL, 'novato não lê', 'NEGA', await ler('kanbanDoDono/semente', novato));
+  checar(BL, 'anônimo não lê', 'NEGA', await ler('kanbanDoDono/semente', anon));
+  checar(BL, 'motorista não cria', 'NEGA',
+    await criar('kanbanDoDono', 'do-moto', moto, cartao({ criadoPor: S(moto.uid) })));
+}
+
+/**
+ * OS CONTATOS DO DONO (05/10/2026) — `contatosDoDono/{id}`, APPEND-ONLY: o
+ * dono cria (com a hora do servidor) e lê; ninguém edita nem apaga, e o
+ * motorista alvo não lê a conversa que o dono guardou sobre ele.
+ */
+async function osContatosDoDono({ novato, dono, anon }) {
+  console.log('\n=== OS CONTATOS DO DONO (05/10/2026) ===');
+  const BL = 'contatosDoDono';
+  const agora = Date.now();
+  const L = (values) => ({ arrayValue: { values } });
+  const moto = await criarLogin(`ct.moto.${agora}@teste.local`);
+  const pai = await criarLogin(`ct.pai.${agora}@teste.local`);
+  const aux = await criarLogin(`ct.aux.${agora}@teste.local`);
+  await semear(`users/${moto.uid}`, { role: S('admin'), name: S('Tio Contato') });
+  await semear(`users/${pai.uid}`, {
+    role: S('parent'), name: S('Mae Contato'), adminUid: S(moto.uid), adminUids: L([S(moto.uid)]),
+  });
+  await semear(`users/${aux.uid}`, { role: S('auxiliar'), name: S('Aux Contato'), motoristaUids: L([S(moto.uid)]) });
+
+  const contato = (extra = {}) => ({
+    motoristaUid: S(moto.uid),
+    canal: S('whatsapp'),
+    texto: S('Conversei sobre o plano'),
+    retomarEm: S('2026-10-20'),
+    donoUid: S(dono.uid),
+    ...extra,
+  });
+  await semear('contatosDoDono/semente', { ...contato(), em: T(0) });
+
+  checar(BL, 'o dono cria com a hora do servidor [HOJE VERMELHO]', 'PASSA',
+    await criarComHoraDoServidor('contatosDoDono/novo', dono, contato(), 'em'));
+  checar(BL, 'o dono lê um contato [HOJE VERMELHO]', 'PASSA', await ler('contatosDoDono/semente', dono));
+  checar(BL, 'o dono lista os contatos [HOJE VERMELHO]', 'PASSA', await listar('contatosDoDono', dono));
+
+  checar(BL, 'o dono não edita', 'NEGA',
+    await escrever('contatosDoDono/semente', dono, { texto: S('mudei') }, ['texto']));
+  checar(BL, 'o dono não apaga', 'NEGA', await apagar('contatosDoDono/semente', dono));
+  checar(BL, 'donoUid de outro', 'NEGA',
+    await criarComHoraDoServidor('contatosDoDono/outro', dono, contato({ donoUid: S(moto.uid) }), 'em'));
+  checar(BL, 'em com a data do cliente', 'NEGA',
+    await criar('contatosDoDono', 'cliente', dono, { ...contato(), em: T(0) }));
+  checar(BL, 'canal sms', 'NEGA',
+    await criarComHoraDoServidor('contatosDoDono/sms', dono, contato({ canal: S('sms') }), 'em'));
+  checar(BL, 'texto de 1001 letras', 'NEGA',
+    await criarComHoraDoServidor('contatosDoDono/longo', dono, contato({ texto: S('a'.repeat(1001)) }), 'em'));
+
+  checar(BL, 'o motorista alvo não lê', 'NEGA', await ler('contatosDoDono/semente', moto));
+  checar(BL, 'família não lê', 'NEGA', await ler('contatosDoDono/semente', pai));
+  checar(BL, 'auxiliar não lê', 'NEGA', await ler('contatosDoDono/semente', aux));
+  checar(BL, 'novato não lê', 'NEGA', await ler('contatosDoDono/semente', novato));
+  checar(BL, 'anônimo não lê', 'NEGA', await ler('contatosDoDono/semente', anon));
+  checar(BL, 'motorista não cria', 'NEGA',
+    await criarComHoraDoServidor('contatosDoDono/do-moto', moto, contato({ donoUid: S(moto.uid) }), 'em'));
+}
+
+/**
+ * O USO DO APP (05/10/2026) — `usoDoApp/{AAAA-MM-DD}`: só números agregados,
+ * escritos só pelo servidor; só o dono lê.
+ */
+async function oUsoDoApp({ novato, dono, anon }) {
+  console.log('\n=== O USO DO APP (05/10/2026) ===');
+  const BL = 'usoDoApp';
+  const agora = Date.now();
+  const L = (values) => ({ arrayValue: { values } });
+  const moto = await criarLogin(`uso.moto.${agora}@teste.local`);
+  const pai = await criarLogin(`uso.pai.${agora}@teste.local`);
+  const aux = await criarLogin(`uso.aux.${agora}@teste.local`);
+  await semear(`users/${moto.uid}`, { role: S('admin'), name: S('Tio Uso') });
+  await semear(`users/${pai.uid}`, { role: S('parent'), name: S('Mae Uso') });
+  await semear(`users/${aux.uid}`, { role: S('auxiliar'), name: S('Aux Uso'), motoristaUids: L([S(moto.uid)]) });
+  const P = 'usoDoApp/2026-10-05';
+  const rotas = (m) => ({ rotas: { mapValue: { fields: { motoristas: N(m) } } } });
+  await semear(P, { rotas: { mapValue: { fields: { motoristas: N(3), vezes: N(40) } } } });
+
+  checar(BL, 'o dono lê o uso do dia [HOJE VERMELHO]', 'PASSA', await ler(P, dono));
+  checar(BL, 'o dono lista o uso [HOJE VERMELHO]', 'PASSA', await listar('usoDoApp', dono));
+  checar(BL, 'motorista não lê', 'NEGA', await ler(P, moto));
+  checar(BL, 'família não lê', 'NEGA', await ler(P, pai));
+  checar(BL, 'auxiliar não lê', 'NEGA', await ler(P, aux));
+  checar(BL, 'novato não lê', 'NEGA', await ler(P, novato));
+  checar(BL, 'anônimo não lê', 'NEGA', await ler(P, anon));
+  checar(BL, 'o dono não cria', 'NEGA', await criar('usoDoApp', '2026-10-06', dono, rotas(1)));
+  checar(BL, 'o dono não altera', 'NEGA', await escrever(P, dono, rotas(99), ['rotas']));
+  checar(BL, 'o dono não apaga', 'NEGA', await apagar(P, dono));
+  checar(BL, 'motorista não cria', 'NEGA', await criar('usoDoApp', '2026-10-07', moto, rotas(1)));
 }
