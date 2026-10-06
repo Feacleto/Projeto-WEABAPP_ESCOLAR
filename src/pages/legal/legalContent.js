@@ -49,7 +49,9 @@ export const LEGAL_DATE = '5 de outubro de 2026';
  * Na mesma 1.4, ainda antes de publicar (aprovado pelo dono), a cláusula 8
  * passou a listar TODAS as leituras únicas fora da rota: a cidade do
  * primeiro acesso e o "Usar minha localização" do seletor de mapa já
- * existiam sem frase, e o "Estou na escola agora" é o da Carteira. Com um
+ * existiam sem frase. (O "Estou na escola agora", da Carteira, saiu da
+ * lista na publicação de 05/10/2026: o botão não existe, e declarar uma
+ * leitura que não acontece é afirmar o que o app não faz.) Com um
  * uso só escrito, a frase "há um único uso" era falsa no dia em que nasceu.
  * E a FOTO DA TURMA (05/10/2026, aprovada pelo dono): a imagem da criança
  * só com o "Sim" do responsável (seção 4, base legal 5.g, retenção de 30
@@ -355,7 +357,7 @@ export const TERMS_SECTIONS = [
     title: '8. Geolocalização',
     paragraphs: [
       'O Aplicativo coleta a localização do veículo do motorista enquanto ele mantém uma rota iniciada. Não há coleta em segundo plano.',
-      'Fora da rota, a localização é lida UMA vez, e só quando o motorista toca no botão que pede isso, em quatro momentos: (1) no primeiro acesso, para preencher o nome da cidade e do bairro dele; (2) no "Usar minha localização" do cadastro de uma criança ou de uma escola, para marcar aquele ponto no mapa; (3) no "Estou na escola agora", para marcar o ponto da escola; e (4) no "Sim, estou" da tela de abastecer, para anotar o endereço e o ponto do posto de combustível na lista de postos dele, que só ele vê, e reconhecer esse posto nos próximos abastecimentos. Em nenhum desses casos a posição do motorista é guardada: fica guardado apenas o nome da cidade e do bairro, ou o lugar da casa, da escola ou do posto.',
+      'Fora da rota, a localização é lida UMA vez, e só quando o motorista toca no botão que pede isso, em três momentos: (1) no primeiro acesso, para preencher o nome da cidade e do bairro dele; (2) no "Usar minha localização" do cadastro de uma criança ou de uma escola, para marcar aquele ponto no mapa; e (3) no "Sim, estou" da tela de abastecer, para anotar o endereço e o ponto do posto de combustível na lista de postos dele, que só ele vê, e reconhecer esse posto nos próximos abastecimentos. Em nenhum desses casos a posição do motorista é guardada: fica guardado apenas o nome da cidade e do bairro, ou o lugar da casa, da escola ou do posto.',
       'O COMPARTILHAMENTO COM AS FAMÍLIAS É UMA ESCOLHA DO MOTORISTA, revogável a qualquer momento e sem custo, por uma chave na própria tela de início de rota. Desligada, o veículo deixa de aparecer no mapa dos responsáveis; o aviso de aproximação continua, porque ele é calculado no aparelho do motorista e não envia a posição.',
       'A posição exibida aos responsáveis é APROXIMADA, por referência: ela é arredondada no aparelho do motorista antes de ser enviada, e não indica o ponto exato do veículo.',
       'Ao encerrar a rota, a última posição é APAGADA. O Aplicativo não mantém histórico de localização do motorista.',
