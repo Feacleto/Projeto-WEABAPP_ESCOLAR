@@ -18,6 +18,11 @@ const {
   logoConfiavel,
   cartaoDoConvite,
   cartaoDaIndicacao,
+  uidDoConheca,
+  cartaoDoConheca,
+  CAMPOS_DO_CARTAO_DO_TIO,
+  FRASE_DO_CARTAO_QUE_NAO_VALE,
+  recorteDoCartaoDoTio,
   trocarTagsDaPrevia,
 } = require('../functions/lib/reguaDoCartao.js');
 
@@ -82,14 +87,73 @@ eq('o resto da página continua (o app carrega)', trocado.includes('<div id="roo
 const padrao = trocarTagsDaPrevia(index, PADRAO, 'https://alobuzinou.com/convite/ABC');
 eq('cartão padrão mantém as dimensões da imagem', padrao.includes('og:image:width'), true);
 
-console.log('\n\x1b[1m6. O hosting manda os três endereços para as funções\x1b[0m');
+console.log('\n\x1b[1m5b. /conheca/<uid>: o cartão para CONHECER o tio (05/10/2026)\x1b[0m');
+const motorista = { role: 'admin', marcaNome: 'Tio Nino', marcaCor: '#E07A3F', marcaLogoURL: LOGO, phone: '(11) 99999-8888', name: 'Antonino Silva', city: 'São Paulo', regiao: 'Socorro', pixKey: 'chave', criancasAtivas: 12, plano: 'mensal' };
+eq('o uid do caminho é lido', uidDoConheca('/conheca/UID1'), 'UID1');
+eq('com barra no fim também', uidDoConheca('/conheca/UID1/'), 'UID1');
+eq('sem uid, nenhum', uidDoConheca('/conheca/'), null);
+eq('uid com barra codificada não vira caminho', uidDoConheca('/conheca/a%2F..%2Fb'), null);
+eq('outro endereço não é /conheca', uidDoConheca('/familia'), null);
+const conheca = cartaoDoConheca('UID1', motorista);
+eq('título "Conheça {marca}" — nunca "te convidou para o app"', conheca.titulo, 'Conheça Tio Nino');
+eq('descrição com a cidade', conheca.descricao, 'Transporte escolar · São Paulo');
+eq('sem cidade, só "Transporte escolar"', cartaoDoConheca('UID1', { ...motorista, city: '' }).descricao, 'Transporte escolar');
+eq('a imagem é a MESMA do tio', conheca.imagem, cartaoDoConvite({ uid: 'UID1', marca: 'Tio Nino', cor: '#E07A3F', logoURL: LOGO }).imagem);
+eq('o convite continua com o título dele', cartaoDoConvite({ marca: 'Tio Nino' }).titulo, 'Tio Nino te convidou para o app');
+eq('uid inválido, o padrão', cartaoDoConheca('a/../b', motorista), PADRAO);
+eq('uid que não existe, o padrão', cartaoDoConheca('UID1', null), PADRAO);
+eq('família, o padrão', cartaoDoConheca('UID2', { role: 'parent', marcaNome: 'Rita' }), PADRAO);
+eq('o dono, o padrão', cartaoDoConheca('UID3', { role: 'owner', marcaNome: 'Dono' }), PADRAO);
+eq('motorista sem marca, o padrão', cartaoDoConheca('UID1', { ...motorista, marcaNome: '' }), PADRAO);
+eq('motorista suspenso, o padrão', cartaoDoConheca('UID1', { ...motorista, suspenso: true }), PADRAO);
+eq('nada além da marca e da cidade: nem nome civil, nem telefone, nem bairro',
+  /Antonino|99999|Socorro/.test(JSON.stringify(conheca)), false);
+const comOgUrl = trocarTagsDaPrevia(fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8'), conheca, 'https://alobuzinou.com/conheca/UID1');
+eq('o og:url é o endereço do /conheca', /property="og:url" content="https:\/\/alobuzinou\.com\/conheca\/UID1"/.test(comOgUrl), true);
+const servidorDoCartao = fs.readFileSync(new URL('../functions/lib/cartaoDoLink.js', import.meta.url), 'utf8');
+eq('o servidor usa o limite do convite público em /conheca',
+  /startsWith\('\/conheca\/'\)[\s\S]*?aindaCabe\(db, REGRAS\.CONVITE_PUBLICO/.test(servidorDoCartao), true);
+eq('e lê o doc pelo uid já conferido (uidDoConheca)', servidorDoCartao.includes('uidDoConheca(caminho)'), true);
+eq('a /familia não passa mais pela função', /'\/familia'/.test(servidorDoCartao), false);
+
+console.log('\n\x1b[1m5c. a callable pública verCartaoDoTio\x1b[0m');
+const recorte = recorteDoCartaoDoTio('UID1', motorista);
+eq('só os seis campos, nessa ordem', Object.keys(recorte), ['marca', 'logoURL', 'cor', 'cidade', 'bairro', 'whatsapp']);
+eq('a lista fechada é a decidida', [...CAMPOS_DO_CARTAO_DO_TIO], ['marca', 'logoURL', 'cor', 'cidade', 'bairro', 'whatsapp']);
+eq('os valores', recorte, { marca: 'Tio Nino', logoURL: LOGO, cor: '#E07A3F', cidade: 'São Paulo', bairro: 'Socorro', whatsapp: '11999998888' });
+eq('nada de PIX, plano, turma ou nome civil', /chave|mensal|Antonino|"12"|:12/.test(JSON.stringify(recorte)), false);
+eq('sem telefone, o WhatsApp não vai', recorteDoCartaoDoTio('UID1', { ...motorista, phone: '' }).whatsapp, null);
+eq('logo de fora do projeto não vai', recorteDoCartaoDoTio('UID1', { ...motorista, marcaLogoURL: 'https://exemplo.com/a.png' }).logoURL, null);
+eq('sem cartão (família, dono, suspenso, sem marca, inválido, inexistente): null', [
+  recorteDoCartaoDoTio('UID2', { role: 'parent', marcaNome: 'Rita' }),
+  recorteDoCartaoDoTio('UID3', { role: 'owner', marcaNome: 'Dono' }),
+  recorteDoCartaoDoTio('UID1', { ...motorista, suspenso: true }),
+  recorteDoCartaoDoTio('UID1', { ...motorista, marcaNome: ' ' }),
+  recorteDoCartaoDoTio('a/../b', motorista),
+  recorteDoCartaoDoTio('UID1', null),
+], [null, null, null, null, null, null]);
+eq('a frase única', FRASE_DO_CARTAO_QUE_NAO_VALE, 'Este cartão não vale mais.');
+const callable = fs.readFileSync(new URL('../functions/lib/cartaoDoTio.js', import.meta.url), 'utf8');
+const codigoDaCallable = callable.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+eq('zero escrita (nem set, update, add, delete, nem transação)', /\.(set|update|add|delete|create)\(|runTransaction|batch\(/.test(codigoDaCallable), false);
+eq('uma resposta só para toda recusa (a mesma frase, num lugar só)', (codigoDaCallable.match(/FRASE_DO_CARTAO_QUE_NAO_VALE/g) || []).length, 2);
+eq('o recorte é o da régua (nunca um spread do doc)', codigoDaCallable.includes('recorteDoCartaoDoTio(uid,') && !/\.\.\.snap\.data|\.\.\.usuario/.test(codigoDaCallable), true);
+eq('o uid passa por idValido antes do caminho', codigoDaCallable.indexOf('idValido(uid)') > -1 && codigoDaCallable.indexOf('idValido(uid)') < codigoDaCallable.indexOf('users/${uid}'), true);
+eq('com o limite do convite público', codigoDaCallable.includes('aindaCabe(db, REGRAS.CONVITE_PUBLICO'), true);
+eq('está exportada', fs.readFileSync(new URL('../functions/index.js', import.meta.url), 'utf8').includes('exports.verCartaoDoTio ='), true);
+
+console.log('\n\x1b[1m6. O hosting manda os quatro endereços para as funções\x1b[0m');
 const hosting = JSON.parse(fs.readFileSync(new URL('../firebase.json', import.meta.url), 'utf8')).hosting.find((h) => h.target === 'app');
 const fontes = hosting.rewrites.map((r) => r.source);
 eq('/convite/** vai para cartaoDoLink', hosting.rewrites.find((r) => r.source === '/convite/**')?.function?.functionId, 'cartaoDoLink');
 eq('/quero-fazer-parte vai para cartaoDoLink', hosting.rewrites.find((r) => r.source === '/quero-fazer-parte')?.function?.functionId, 'cartaoDoLink');
 eq('/cartao/** vai para imagemDoCartao', hosting.rewrites.find((r) => r.source === '/cartao/**')?.function?.functionId, 'imagemDoCartao');
-eq('e os três vêm ANTES do "**" (senão nunca são usados)',
-  ['/convite/**', '/quero-fazer-parte', '/cartao/**'].every((f) => fontes.indexOf(f) >= 0 && fontes.indexOf('**') > fontes.indexOf(f)), true);
+eq('/conheca/** vai para cartaoDoLink', hosting.rewrites.find((r) => r.source === '/conheca/**')?.function?.functionId, 'cartaoDoLink');
+eq('a /familia NÃO passa por função (nenhuma função fria na frente dela)', fontes.includes('/familia'), false);
+eq('/conheca nunca é indexada (X-Robots-Tag noindex)',
+  /noindex/.test(hosting.headers.find((h) => h.source === '/conheca/**')?.headers?.find((x) => x.key === 'X-Robots-Tag')?.value || ''), true);
+eq('e os quatro vêm ANTES do "**" (senão nunca são usados)',
+  ['/convite/**', '/quero-fazer-parte', '/conheca/**', '/cartao/**'].every((f) => fontes.indexOf(f) >= 0 && fontes.indexOf('**') > fontes.indexOf(f)), true);
 
 console.log(`\n${ok} ok, ${falhou} falharam\n`);
 process.exit(falhou ? 1 : 0);

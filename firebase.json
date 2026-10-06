@@ -37,6 +37,10 @@
           "function": { "functionId": "cartaoDoLink", "region": "southamerica-east1" }
         },
         {
+          "source": "/conheca/**",
+          "function": { "functionId": "cartaoDoLink", "region": "southamerica-east1" }
+        },
+        {
           "source": "/cartao/**",
           "function": { "functionId": "imagemDoCartao", "region": "southamerica-east1" }
         },
@@ -90,6 +94,15 @@
         },
         {
           "source": "/acompanhar/**",
+          "headers": [
+            {
+              "key": "X-Robots-Tag",
+              "value": "noindex, nofollow"
+            }
+          ]
+        },
+        {
+          "source": "/conheca/**",
           "headers": [
             {
               "key": "X-Robots-Tag",

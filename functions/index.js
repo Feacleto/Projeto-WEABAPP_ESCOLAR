@@ -96,6 +96,7 @@ const {
 } = require('./lib/billing');
 const { makeGetInvitePreview } = require('./lib/invitePreview');
 const { makeCartaoDoLink } = require('./lib/cartaoDoLink');
+const { makeVerCartaoDoTio } = require('./lib/cartaoDoTio');
 const { makeImagemDoCartao } = require('./lib/imagemDoCartao');
 const {
   makeGerarAcessoDoDia,
@@ -228,6 +229,9 @@ exports.getInvitePreview = makeGetInvitePreview(db);
 // passam por aqui (rewrite em firebase.json), e o robô do WhatsApp lê a
 // marca do tio certo no lugar do cartão único do app. Ver lib/cartaoDoLink.js.
 exports.cartaoDoLink = makeCartaoDoLink(db);
+// O CARTÃO PARA CONHECER O TIO (05/10/2026): a página pública /conheca/<uid>
+// lê só a marca e o WhatsApp dele, por aqui — ver lib/cartaoDoTio.js.
+exports.verCartaoDoTio = makeVerCartaoDoTio(db);
 // A IMAGEM GRANDE DO CARTÃO (1200x630, cor + logo + nome do tio), em
 // /cartao/tio/<uid>.png e /cartao/app/<uid>.png. Ver lib/imagemDoCartao.js.
 exports.imagemDoCartao = makeImagemDoCartao(db);

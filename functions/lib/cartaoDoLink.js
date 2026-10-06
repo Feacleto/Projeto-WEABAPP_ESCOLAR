@@ -1,6 +1,8 @@
 /**
- * O CARTÃO DO LINK NO WHATSAPP — quem responde `/convite/**` e
- * `/quero-fazer-parte` (rewrite do hosting do app, em firebase.json).
+ * O CARTÃO DO LINK NO WHATSAPP — quem responde `/convite/**`,
+ * `/quero-fazer-parte` e `/conheca/**` (rewrite do hosting do app, em
+ * firebase.json). `/conheca/<uid>` é o cartão para uma família NOVA conhecer
+ * o tio (05/10/2026), com página própria no app.
  *
  * Devolve o MESMO index.html do app, com as tags de prévia trocadas pela
  * marca do tio certo (a régua e o porquê estão em `reguaDoCartao.js`). Para a
@@ -32,7 +34,7 @@ const limite = require('./limiteDeTentativas');
 const { REGRAS } = require('./reguaDasTentativas');
 const { normalizarCodigo, codigoValido, conviteVencido } = require('./reguaDoConvite');
 const { idValido } = require('./reguaDosIds');
-const { PADRAO, cartaoDoConvite, cartaoDaIndicacao, trocarTagsDaPrevia } = require('./reguaDoCartao');
+const { PADRAO, cartaoDoConvite, cartaoDaIndicacao, uidDoConheca, cartaoDoConheca, trocarTagsDaPrevia } = require('./reguaDoCartao');
 
 const REGION = 'southamerica-east1';
 const SITE = 'https://alobuzinou.com';
@@ -81,6 +83,18 @@ async function cartaoDoCaminho(db, req) {
     const usado = crianca.inviteStatus !== 'pending' || !!crianca.parentUid;
     if (!usado && conviteVencido(crianca, Date.now())) return recusar();
     return cartaoDoConvite((await marcaDe(db, crianca.adminUid)) || {});
+  }
+
+  // /conheca/<uid> — o cartão para conhecer o tio. O mesmo limite do
+  // convite público: conta o endereço que não deu cartão, e estourar só
+  // serve o cartão padrão.
+  if (caminho.startsWith('/conheca/')) {
+    if (!(await limite.aindaCabe(db, REGRAS.CONVITE_PUBLICO, quem))) return { ...PADRAO };
+    const uid = uidDoConheca(caminho);
+    const snap = uid ? await db.doc(`users/${uid}`).get() : null;
+    const cartao = cartaoDoConheca(uid, snap?.exists ? snap.data() : null);
+    if (cartao.titulo === PADRAO.titulo) await limite.contar(db, REGRAS.CONVITE_PUBLICO, quem);
+    return cartao;
   }
 
   // /quero-fazer-parte — a indicação. Sem cupom (ou cupom desconhecido), o

@@ -12,7 +12,15 @@
  *
  * - o CARTÃO DO TIO (`/convite/CODIGO`, para a família): a marca dele;
  * - o CARTÃO DO APP (`/quero-fazer-parte?cupom=X`, para outro motorista): o
- *   Alô Buzinou, "indicado por" quem mandou.
+ *   Alô Buzinou, "indicado por" quem mandou;
+ * - o CARTÃO DE CONHECER O TIO (`/conheca/<uid>`, 05/10/2026, decisão do
+ *   dono): o "Mandar meu cartão a uma família" da folha da marca é para uma
+ *   família NOVA conhecer o tio — não para entrar no app (a família só entra
+ *   pelo convite de uma criança cadastrada). Por isso o título é "Conheça
+ *   {marca}", nunca "te convidou para o app". A imagem é a mesma do tio.
+ *   Só vale para motorista não suspenso e com marca; qualquer outro caso dá
+ *   o cartão padrão — senão o endereço viraria um jeito de pôr o nome de uma
+ *   família, ou do dono, num cartão.
  *
  * ⚠️ O CARTÃO NUNCA LEVA NADA DA CRIANÇA. Ele viaja junto com o link
  * encaminhado, e quem recebe o encaminhamento vê o cartão também. Só a marca
@@ -95,6 +103,73 @@ function cartaoDaIndicacao({ uid, marca, cor, logoURL } = {}) {
   }, 'app', { uid, marca, cor, logoURL });
 }
 
+/**
+ * O uid de `/conheca/<uid>` — ou null. Passa por `idValido`: ele vira
+ * caminho (`users/{uid}`) e endereço de imagem.
+ */
+function uidDoConheca(caminho) {
+  const m = /^\/conheca\/([^/?#]+)\/?$/.exec(String(caminho || ''));
+  if (!m) return null;
+  let uid;
+  try {
+    uid = decodeURIComponent(m[1]);
+  } catch {
+    return null;
+  }
+  return idValido(uid) ? uid : null;
+}
+
+/**
+ * O tio pode ter cartão público? Motorista, não suspenso e com marca. É a
+ * MESMA pergunta para a prévia do link e para a página (`verCartaoDoTio`).
+ */
+function tioTemCartao(uid, usuario) {
+  return idValido(uid) && !!usuario && usuario.role === 'admin' && usuario.suspenso !== true && !!marcaLimpa(usuario.marcaNome);
+}
+
+/** "Transporte escolar · São Paulo" — sem cidade, só "Transporte escolar". */
+function descricaoDoConheca(cidade) {
+  const c = String(cidade || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+  return c ? `Transporte escolar · ${c}` : 'Transporte escolar';
+}
+
+/**
+ * A prévia de `/conheca/<uid>`, a partir do doc `users/{uid}`. Do doc, SÓ a
+ * marca, a cor, o logo e a cidade.
+ */
+function cartaoDoConheca(uid, usuario) {
+  if (!tioTemCartao(uid, usuario)) return { ...PADRAO };
+  const nome = marcaLimpa(usuario.marcaNome);
+  return comImagem({
+    titulo: `Conheça ${nome}`,
+    descricao: descricaoDoConheca(usuario.city),
+  }, 'tio', { uid, marca: nome, cor: usuario.marcaCor || null, logoURL: usuario.marcaLogoURL || null });
+}
+
+/**
+ * A PÁGINA `/conheca/<uid>` (callable pública `verCartaoDoTio`): o recorte é
+ * uma LISTA FECHADA de seis campos, nunca um spread do doc. O WhatsApp é o
+ * `phone` que ele mesmo cadastrou (é ele quem manda o próprio cartão), e só
+ * vai se existir. Qualquer caso sem cartão devolve `null`, e quem chama
+ * responde a MESMA frase — a callable não vira teste de "esse uid existe".
+ */
+const CAMPOS_DO_CARTAO_DO_TIO = Object.freeze(['marca', 'logoURL', 'cor', 'cidade', 'bairro', 'whatsapp']);
+const FRASE_DO_CARTAO_QUE_NAO_VALE = 'Este cartão não vale mais.';
+
+function recorteDoCartaoDoTio(uid, usuario) {
+  if (!tioTemCartao(uid, usuario)) return null;
+  const texto = (v, max) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, max) || null;
+  const digitos = String(usuario.phone || '').replace(/\D/g, '');
+  return {
+    marca: marcaLimpa(usuario.marcaNome),
+    logoURL: logoConfiavel(usuario.marcaLogoURL) ? usuario.marcaLogoURL : null,
+    cor: /^#[0-9a-fA-F]{6}$/.test(String(usuario.marcaCor || '')) ? usuario.marcaCor : null,
+    cidade: texto(usuario.city, 60),
+    bairro: texto(usuario.regiao, 60),
+    whatsapp: digitos.length >= 10 && digitos.length <= 13 ? digitos : null,
+  };
+}
+
 function escapar(texto) {
   return String(texto)
     .replace(/&/g, '&amp;')
@@ -140,5 +215,11 @@ module.exports = {
   logoConfiavel,
   cartaoDoConvite,
   cartaoDaIndicacao,
+  uidDoConheca,
+  tioTemCartao,
+  cartaoDoConheca,
+  CAMPOS_DO_CARTAO_DO_TIO,
+  FRASE_DO_CARTAO_QUE_NAO_VALE,
+  recorteDoCartaoDoTio,
   trocarTagsDaPrevia,
 };
