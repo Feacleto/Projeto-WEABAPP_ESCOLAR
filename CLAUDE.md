@@ -3909,7 +3909,14 @@ A saudação do Início usa o nome curto (`nomeDaSaudacao` em
 nome). **Minha turma é para GERENCIAR** ([TioChildren](src/pages/tio/TioChildren.jsx)):
 uma linha por criança, sem o status da rota, e o "···" abre a folha com
 mandar recado, abrir a ficha, desativar e — só quando der — passar para
-outro tio. `npm run testar:densidade` trava tudo isso. Os ajustes tela a
+outro tio. Também mais justos: a ficha da criança e os perfis (rosto de
+64 px ao lado do nome, câmera visível de 36 com toque de 48), Faltas (a regra
+dos 14 dias numa linha), Horários e Escolas (explicação numa linha), o estado
+vazio (`EmptyState`, ícone de 40) e o "Avisar pais" colado no menu.
+`npm run testar:densidade` trava tudo isso.
+⚠️ **`capitalize` do CSS põe maiúscula em TODA palavra** ("Outubro De 2026"):
+para a primeira letra só, é `first-letter:uppercase` (Faltas e MonthSwitcher
+já usam; outras telas ainda têm o `capitalize`). Os ajustes tela a
 tela estão no artifact, e entram um por vez.
 
 **Navegação: uma tela só.** Cada troca de tela cobra pedágio — resolva em folha

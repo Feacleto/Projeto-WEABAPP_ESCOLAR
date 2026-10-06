@@ -191,10 +191,10 @@ export default function TioHorarios() {
       />
 
       <div className="px-5 pt-4 space-y-4">
+        {/* UMA LINHA (05/10/2026, densidade aprovada pelo dono). Eram três:
+          * o resto (é este número que a família vê) o tio descobre ao usar. */}
         <p className="text-base text-textBody">
-          O horário que <b>você define</b> para cada criança. A ordem da rota
-          sai daqui — e é este número que o responsável vê pra saber a hora de
-          estar na porta.
+          A ordem da rota sai do <b>horário</b> de cada criança.
         </p>
 
         {/* Ida / volta */}

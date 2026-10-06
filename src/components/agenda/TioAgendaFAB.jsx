@@ -16,6 +16,7 @@ import {
 import toast from 'react-hot-toast';
 import Avatar from '../common/Avatar';
 import Button from '../common/Button';
+import BarraDaAcao from '../layout/BarraDaAcao';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
 import {
@@ -82,18 +83,15 @@ export default function TioAgendaFAB() {
 
   return (
     <>
-      {/* FAB com label persistente "Avisar" — sinaliza claramente que esse
-        * botão serve pra mandar recado pros pais (não é só um ícone solto). */}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Avisar os pais"
-        style={{ bottom: 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' }}
-        className="fixed right-4 z-40 h-14 px-5 rounded-full bg-gradient-to-br from-escola to-escola text-white shadow-float flex items-center gap-2 tap font-bold print:hidden"
-      >
-        <Notebook size={22} />
-        <span className="text-base">Avisar pais</span>
-      </button>
+      {/* "AVISAR PAIS" COLADO NO MENU (05/10/2026, densidade aprovada pelo
+        * dono). Era um botão redondo flutuando no canto, por cima da lista dos
+        * avisos; agora é a faixa da ação da tela, como o "Iniciar a rota" e o
+        * "Cadastrar criança". */}
+      <BarraDaAcao>
+        <Button onClick={() => setOpen(true)} icon={Notebook}>
+          Avisar pais
+        </Button>
+      </BarraDaAcao>
 
       {aberto && <AgendaSheet atalho={atalho} onClose={fechar} />}
     </>

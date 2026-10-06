@@ -306,10 +306,9 @@ export default function TioEscolas() {
       <Header title="Escolas" showBack backLabel="Minha turma" backTo="/tio/children" />
 
       <div className="px-5 pt-4 space-y-4">
+        {/* UMA LINHA (05/10/2026, densidade aprovada pelo dono). Eram quatro. */}
         <p className="text-base text-textMuted">
-          As escolas que você atende. Cadastre uma vez e escolha na hora de
-          cadastrar a criança — o aviso de “não vai ter aula” usa esta lista pra
-          saber quem avisar.
+          Cadastre uma vez e escolha na hora de cadastrar a criança.
         </p>
 
         {carregando && <Skeleton className="h-32 rounded-2xl" />}

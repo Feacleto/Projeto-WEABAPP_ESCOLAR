@@ -109,7 +109,10 @@ export default function InstallPrompt() {
   return (
     <div
       className="fixed left-0 right-0 z-40 px-4 max-w-mobile mx-auto"
-      style={{ bottom: 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' }}
+      // Acima do menu E da faixa da ação (`BarraDaAcao`, 64 px), que desde
+      // 05/10/2026 ficam colados um no outro: sem isso o convite cobriria o
+      // "Iniciar a rota".
+      style={{ bottom: 'calc(var(--altura-do-menu) + 4.5rem + env(safe-area-inset-bottom, 0px))' }}
     >
       <div className="bg-card border border-border rounded-2xl shadow-float p-4 space-y-3">
         <div className="flex items-start gap-3">

@@ -105,7 +105,7 @@ export default function PaiFaltas() {
           </button>
 
           <div className="min-w-0 flex-1 text-center">
-            <p className="text-lg font-bold capitalize leading-tight text-text">
+            <p className="text-lg font-bold leading-tight first-letter:uppercase text-text">
               {formatMonthLabel(mes)}
             </p>
             <p className="text-base text-textMuted">
@@ -149,10 +149,12 @@ export default function PaiFaltas() {
           </div>
         )}
 
-        <p className="px-1 text-center text-sm leading-relaxed text-textMuted">
-          Dá pra avisar até {DIAS_DE_AVISO_DE_FALTA} dias à frente. Mais que isso o plano costuma
-          mudar, e um aviso que ninguém lembra de desmarcar faz o motorista
-          não passar na porta.
+        {/* UMA LINHA (05/10/2026, densidade aprovada pelo dono): a regra fica
+          * na tela; o porquê dela (plano muda, ninguém lembra de desmarcar, e
+          * no dia o motorista não passa na porta) sai — texto curto para o
+          * público de 40+, e o teto continua garantido pela `AbsenceSheet`. */}
+        <p className="px-1 text-center text-base text-textMuted">
+          Dá pra avisar até {DIAS_DE_AVISO_DE_FALTA} dias à frente.
         </p>
 
         {/* A RESPOSTA JUNTO DA PERGUNTA.
@@ -250,7 +252,7 @@ function Linha({ falta }) {
         <CalendarX2 size={18} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-base font-semibold capitalize text-text">{quando}</p>
+        <p className="text-base font-semibold text-text first-letter:uppercase">{quando}</p>
         <p className="mt-0.5 text-base text-textMuted">
           {TIPO_DA_FALTA[falta.type] || 'Não vai'}
         </p>

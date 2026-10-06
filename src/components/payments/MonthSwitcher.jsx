@@ -40,7 +40,7 @@ export default function MonthSwitcher({ monthKey, onChange }) {
       >
         <ChevronLeft size={24} />
       </button>
-      <p className="text-lg font-bold capitalize text-text">
+      <p className="text-lg font-bold text-text first-letter:uppercase">
         {formatMonthLabel(monthKey)}
       </p>
       <button

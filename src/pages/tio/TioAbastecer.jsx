@@ -111,9 +111,9 @@ export default function TioAbastecer() {
       <Header title="Abastecer" showBack backTo="/tio/finance" />
       {config === null ? (
         <div className="space-y-4 p-4">
-          <Skeleton className="h-20 rounded-3xl" />
-          <Skeleton className="h-40 rounded-3xl" />
-          <Skeleton className="h-28 rounded-3xl" />
+          <Skeleton className="h-20 rounded-2xl" />
+          <Skeleton className="h-40 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
         </div>
       ) : (
         <Miolo config={config} />
@@ -700,7 +700,7 @@ function CampoGrande({ id, prefixo, value, onChange, descricao }) {
 
 function PerguntaDoCombustivel({ atual, salvando, onEscolher, onCancelar }) {
   return (
-    <section className="space-y-4 rounded-3xl bg-card p-5 shadow-rest">
+    <section className="space-y-4 rounded-2xl bg-card p-5 shadow-rest">
       <h2 className="font-display text-xl font-bold text-text">Qual combustível sua perua usa?</h2>
       <div className="flex flex-wrap gap-2.5" role="group" aria-label="Combustível da perua">
         {TIPOS_DE_COMBUSTIVEL.map((t) => (

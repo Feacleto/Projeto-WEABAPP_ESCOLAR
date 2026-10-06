@@ -190,22 +190,28 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
   return (
     <>
       <div className="space-y-6">
-        {/* Cabeçalho com avatar grande, nome e status. Tanto Tio quanto Pai
+        {/* Cabeçalho com o rosto, nome e status. Tanto Tio quanto Pai
           * podem trocar a foto da criança — backend valida permissão por
-          * parentUid (ver firestore.rules + storage.rules). */}
-        <Card className="text-center">
-          <div className="flex flex-col items-center gap-3">
-            <ChildPhotoEditor child={child} />
-            <div>
-              <h2 className="text-2xl font-bold text-text">{child.name}</h2>
+          * parentUid (ver firestore.rules + storage.rules).
+          * ⚠️ O ROSTO AO LADO DO NOME (05/10/2026, densidade aprovada pelo
+          * dono): era um rosto de 96 px centralizado, com o nome, o período e
+          * o estado empilhados embaixo — metade da tela antes do "Dia a dia".
+          * Agora é uma linha: o rosto à esquerda e o resto ao lado. */}
+        <Card>
+          <div className="flex items-center gap-4">
+            <ChildPhotoEditor child={child} tamanho="lg" />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-xl font-bold leading-tight text-text">{child.name}</h2>
               {child.period && (
-                <p className="text-base text-textMuted mt-1 flex items-center justify-center gap-1.5">
+                <p className="mt-0.5 flex items-center gap-1.5 text-base text-textMuted">
                   <GraduationCap size={16} />
                   {PERIOD_LABELS[child.period]}
                 </p>
               )}
+              <div className="mt-1.5">
+                <StatusBadge status={child.status} />
+              </div>
             </div>
-            <StatusBadge status={child.status} size="lg" />
           </div>
 
           {/* LIGAR E WHATSAPP LOGO ABAIXO DO NOME. É a primeira coisa que o
@@ -791,7 +797,7 @@ function LinkDoResponsavel({ child }) {
 // de negócio — conteúdo endereçado ao motorista.
 
 
-function ChildPhotoEditor({ child }) {
+function ChildPhotoEditor({ child, tamanho = 'xl' }) {
   const [uploading, setUploading] = useState(false);
 
   const onPick = async (e) => {
@@ -832,7 +838,7 @@ function ChildPhotoEditor({ child }) {
         gender={child.gender}
         seed={child.id}
         kind="child"
-        size="xl"
+        size={tamanho}
       />
       {/* Sem Storage não há upload, então não há botão. O avatar continua
         * ali: ele é gerado no navegador a partir do id, e ninguém fica sem
@@ -840,12 +846,16 @@ function ChildPhotoEditor({ child }) {
       {STORAGE_ENABLED && (
         <label
           htmlFor={`child-photo-${child.id}`}
-          className="absolute -bottom-1 -right-1 w-12 h-12 rounded-full bg-marca text-naMarca flex items-center justify-center shadow-lg cursor-pointer tap"
+          // A área de toque continua com 48 px; o círculo VISÍVEL é de 36,
+          // para não cobrir metade do rosto, que desde 05/10/2026 tem 64 px.
+          className="absolute -bottom-3 -right-4 flex h-12 w-12 cursor-pointer items-center justify-center tap"
         >
           {/* Texto escondido, não `aria-label`: em <label> o leitor de tela
             * ignora o atributo (axe: aria-prohibited-attr). */}
           <span className="sr-only">Trocar foto</span>
-          <Camera size={18} />
+          <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-card bg-marca text-naMarca shadow-lg">
+            <Camera size={16} />
+          </span>
           <input
             id={`child-photo-${child.id}`}
             type="file"
@@ -861,7 +871,7 @@ function ChildPhotoEditor({ child }) {
         <button
           type="button"
           onClick={onRemove}
-          className="absolute -bottom-1 -left-1 w-12 h-12 rounded-full bg-card text-dangerText border border-border shadow flex items-center justify-center tap"
+          className="absolute -bottom-2 -left-3 w-12 h-12 rounded-full bg-card text-dangerText border border-border shadow flex items-center justify-center tap"
           aria-label="Remover foto"
         >
           <Trash2 size={18} />

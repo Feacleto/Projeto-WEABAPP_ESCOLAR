@@ -223,11 +223,17 @@ export default function Profile() {
         backTo={isAdmin ? '/tio' : '/pai'}
       />
 
-      <div className="p-4 space-y-7">
+      {/* ⚠️ MAIS JUSTO (05/10/2026, densidade aprovada pelo dono): o perfil
+        * tinha 4 telas de rolagem, com 66 px entre os blocos e o rosto de
+        * 96 px centralizado num cartão próprio. O rosto foi para o lado do
+        * nome, os blocos ficaram a 20 px, e os rótulos dos campos subiram de
+        * 12 para 14 px (eram a letra mais miúda da tela). */}
+      <div className="p-4 space-y-5">
         {/* Cabeçalho com avatar + nome — botão "Trocar foto" embutido */}
-        <Card className="text-center">
-          <div className="flex flex-col items-center gap-3">
+        <Card>
+          <div className="flex items-center gap-4">
             <ProfilePhotoEditor
+              tamanho="lg"
               uid={user?.uid}
               name={profile.name}
               photoURL={profile.photoURL}
@@ -235,11 +241,11 @@ export default function Profile() {
               gender={profile.gender}
               onChanged={refreshProfile}
             />
-            <div>
-              <h2 className="text-xl font-bold text-text">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-xl font-bold leading-tight text-text">
                 {profile.name || 'Sem nome'}
               </h2>
-              <p className="text-base text-textMuted mt-1">
+              <p className="text-base text-textMuted mt-0.5">
                 {isAdmin ? 'Motorista' : 'Responsável'}
               </p>
             </div>
@@ -558,6 +564,7 @@ function ProfilePhotoEditor({
   kind = 'adult',
   gender,
   onChanged,
+  tamanho = 'xl',
 }) {
   const [uploading, setUploading] = useState(false);
 
@@ -603,7 +610,7 @@ function ProfilePhotoEditor({
         gender={gender}
         seed={uid}
         name={name}
-        size="xl"
+        size={tamanho}
       />
       {/* Sem Storage não há upload, então não há botão. O avatar continua
         * ali: ele é gerado no navegador a partir do id, e ninguém fica sem
@@ -611,10 +618,14 @@ function ProfilePhotoEditor({
       {STORAGE_ENABLED && (
         <label
           htmlFor="profile-photo-input"
-          className="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-marca text-naMarca flex items-center justify-center shadow-lg cursor-pointer tap"
+          // A área de toque tem 48 px; o círculo VISÍVEL é de 36, para não
+          // cobrir metade do rosto, que desde 05/10/2026 tem 64 px.
+          className="absolute -bottom-3 -right-4 flex h-12 w-12 cursor-pointer items-center justify-center tap"
           aria-label="Trocar foto"
         >
-          <Camera size={18} />
+          <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-card bg-marca text-naMarca shadow-lg">
+            <Camera size={16} />
+          </span>
           <input
             id="profile-photo-input"
             type="file"
@@ -652,10 +663,10 @@ function InfoRow({ icon: Icon, label, value, hint }) {
     <div className="flex items-start gap-3 py-1">
       <Icon size={16} className="text-textMuted shrink-0 mt-0.5" />
       <div className="min-w-0 flex-1">
-        <p className="rotulo">
+        <p className="text-sm font-semibold text-textMuted">
           {label}
         </p>
-        <p className="text-sm text-text break-words">{value || '—'}</p>
+        <p className="text-base text-text break-words">{value || '—'}</p>
         {/* A dica fica ABAIXO do valor e menor: ela explica o valor, não
             compete com ele. */}
         {hint && <p className="text-sm text-textMuted mt-0.5">{hint}</p>}

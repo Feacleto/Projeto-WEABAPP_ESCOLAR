@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   QrCode,
-  DollarSign,
+  Wallet,
   Banknote,
   X,
   FileText,
@@ -387,7 +387,7 @@ export default function PaiFinance() {
           </div>
         ) : payments.length === 0 ? (
           <EmptyState
-            icon={DollarSign}
+            icon={Wallet}
             title="Sem pagamentos ainda"
             description="O motorista ainda não gerou os pagamentos."
           />
