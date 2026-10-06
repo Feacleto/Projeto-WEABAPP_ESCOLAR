@@ -26,6 +26,7 @@
  * Login da auxiliar: cida.auxiliar@teste.local / senha-de-teste-123
  */
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 
 const P = 'demo-alobuzinou';
 const RAIZ = 'http://127.0.0.1:8085/v1';
@@ -38,12 +39,9 @@ const LEGAL = /export const LEGAL_VERSION = '([^']+)'/.exec(
   readFileSync(new URL('../src/pages/legal/legalContent.js', import.meta.url), 'utf8')
 )[1];
 // A lista fechada vem do servidor: se ela mudar lá, a cópia daqui acompanha.
-const CAMPOS = JSON.parse(
-  /const CAMPOS_DA_TURMA_DA_AUXILIAR = (\[[\s\S]*?\]);/
-    .exec(readFileSync(new URL('../functions/lib/reguaDoAuxiliar.js', import.meta.url), 'utf8'))[1]
-    .replace(/'/g, '"')
-    .replace(/,\s*\]/, ']')
-);
+// Importada, não lida por regex: a régua é pura (sem SDK) e um comentário
+// novo dentro do array já quebrou a leitura por texto (05/10/2026).
+const CAMPOS = createRequire(import.meta.url)('../functions/lib/reguaDoAuxiliar.js').CAMPOS_DA_TURMA_DA_AUXILIAR;
 
 const S = (v) => ({ stringValue: v });
 const N = (v) => ({ doubleValue: v });

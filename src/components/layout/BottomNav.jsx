@@ -61,9 +61,10 @@ import { indiceDaAba } from '../../compartilhado/abaAtiva';
  * `tour` vira data-tour no link: é a âncora que o tutorial guiado ilumina e
  * escuta pra saber que a pessoa tocou na aba certa.
  *
- * ⚠️ O BADGE CONTINUA SEM USO nas duas abas. Ele existe aqui, mas âmbar e
- * vermelho são sinais de ATENDER: num rodapé permanente eles piscariam todo
- * dia e ensinariam a ignorar.
+ * ⚠️ O BADGE SÓ EXISTE NA ABA NOVIDADES DA FAMÍLIA (05/10/2026, decisão do
+ * dono): é o número de avisos que ela ainda não viu, e some quando ela abre
+ * a aba. Em nenhuma outra aba: vermelho é sinal de ATENDER, e num rodapé
+ * permanente ele piscaria todo dia e ensinaria a ignorar.
  */
 
 export default function BottomNav({ items }) {
@@ -81,8 +82,11 @@ export default function BottomNav({ items }) {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto z-30 bg-card border-t border-border px-3 pt-2 pb-3 print:hidden"
-      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0) + 0.75rem)' }}
+      className="fixed bottom-0 left-0 right-0 max-w-mobile mx-auto z-30 bg-card border-t border-border px-3 print:hidden"
+      style={{
+        height: 'calc(var(--altura-do-menu) + env(safe-area-inset-bottom, 0px))',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
     >
       {/* NADA FICA ATRÁS DO MENU (03/10/2026, pedido do dono). A pílula
         * flutuava sobre o conteúdo, e em volta e embaixo dela o que rolava
@@ -94,13 +98,17 @@ export default function BottomNav({ items }) {
         * correção fez uma faixa cinza com degradê em cima e a pílula branca,
         * com borda e sombra, por cima dela: três camadas marcando a divisa, e
         * o dono achou feio. Agora é UMA barra branca com uma linha fina no
-        * topo — o desenho de app de banco e de WhatsApp. A altura não mudou:
-        * as barras fixas (`5.75rem` acima do fim da tela) continuam no lugar.
+        * topo — o desenho de app de banco e de WhatsApp.
+        *
+        * ⚠️ E A ALTURA É `--altura-do-menu` (64 px, 05/10/2026, densidade
+        * aprovada pelo dono). Eram 95 px. O mesmo valor posiciona as barras de
+        * ação (`.barra-da-acao`) e a reserva no fim dos layouts, então nada
+        * aqui pode ter altura própria.
         *
         * `relative` e `overflow-hidden` existem por causa da pastilha: ela é
         * absoluta aqui dentro e não escapa enquanto desliza. */}
       <div
-        className="relative overflow-hidden grid"
+        className="relative h-full overflow-hidden grid"
         style={{
           gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
         }}
@@ -114,7 +122,7 @@ export default function BottomNav({ items }) {
           * não está. */}
         <span
           aria-hidden
-          className="absolute top-2 h-8 w-14 rounded-full bg-marca transition-[left,opacity] duration-entrada ease-freio motion-reduce:transition-none"
+          className="absolute top-2 h-7 w-14 rounded-full bg-marca transition-[left,opacity] duration-entrada ease-freio motion-reduce:transition-none"
           style={{ left: esquerda, opacity: ativo >= 0 ? 1 : 0 }}
         />
 
@@ -136,7 +144,7 @@ export default function BottomNav({ items }) {
              * celular precisa ter. */
             onPointerLeave={soltar}
             onPointerCancel={soltar}
-            className={`tap relative z-10 flex flex-col items-center justify-center gap-1 pt-2 pb-2.5 text-sm transition-transform duration-toque ease-freio ${
+            className={`tap relative z-10 flex flex-col items-center justify-start gap-0.5 pt-2 text-sm leading-tight transition-transform duration-toque ease-freio ${
               apertada === i ? 'scale-[0.96]' : 'scale-100'
             }`}
           >
@@ -145,9 +153,9 @@ export default function BottomNav({ items }) {
                 {/* A caixa existe sempre e não tem mais fundo próprio: quem
                   * pinta é a pastilha que desliza por trás. O tamanho fica
                   * porque é ele que impede o ícone de pular. */}
-                <span className="relative inline-flex items-center justify-center h-8 w-14">
+                <span className="relative inline-flex items-center justify-center h-7 w-14">
                   <item.icon
-                    size={23}
+                    size={22}
                     strokeWidth={isActive ? 2.4 : 1.8}
                     /* A transição no traço é nova: o engrossar já existia e
                      * acontecia num quadro só, então ninguém via. */

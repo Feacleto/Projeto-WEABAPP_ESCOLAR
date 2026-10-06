@@ -87,28 +87,30 @@ export default function ConfirmeSeuEmail({ className = '' }) {
     }
   };
 
+  /* ⚠️ UMA FAIXA, NÃO UM CARTÃO (05/10/2026, densidade aprovada pelo dono).
+   * O cartão tinha 165 px no topo do Início, e era a primeira coisa que o tio
+   * e a família viam todo dia. Ficou o essencial numa faixa: o pedido, o
+   * endereço (numa linha, cortado se for longo — é ele que denuncia o e-mail
+   * digitado errado, que é o motivo de o lembrete existir) e o "Reenviar". */
   return (
-    <div className={`rounded-2xl border border-border bg-card p-4 ${className}`}>
-      <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primarySoft text-primary">
-          <Mail size={20} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-base font-bold text-text">Confirme seu e-mail</p>
-          <p className="mt-1 text-sm leading-relaxed text-textMuted">
-            Enviamos um link para{' '}
-            <strong className="break-all text-text">{estado.email}</strong>.
-          </p>
-          <button
-            type="button"
-            onClick={reenviar}
-            disabled={!!falta || enviando}
-            className="tap mt-3 inline-flex h-11 items-center rounded-xl border border-border px-4 text-sm font-bold text-primary disabled:opacity-60"
-          >
-            {falta ? `Reenviar em ${Math.ceil(falta / 1000)}s` : 'Reenviar'}
-          </button>
-        </div>
+    <div className={`flex items-center gap-2 rounded-2xl border border-border bg-card py-2 pl-3 pr-1 ${className}`}>
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primarySoft text-primary">
+        <Mail size={18} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate whitespace-nowrap text-base font-bold leading-tight text-text">Confirme seu e-mail</p>
+        <p className="truncate text-base leading-tight text-textMuted" title={estado.email || ''}>
+          {estado.email}
+        </p>
       </div>
+      <button
+        type="button"
+        onClick={reenviar}
+        disabled={!!falta || enviando}
+        className="tap inline-flex h-12 shrink-0 items-center rounded-xl px-2 text-base font-bold text-primary disabled:opacity-60"
+      >
+        {falta ? `${Math.ceil(falta / 1000)}s` : 'Reenviar'}
+      </button>
     </div>
   );
 }

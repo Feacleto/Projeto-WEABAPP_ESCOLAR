@@ -287,10 +287,11 @@ export default function PaiFinance() {
 
   return (
     <>
-      {/* "Financeiro", o nome da ABA: a tela não pode se chamar outra coisa
-        * que o botão que leva a ela. */}
+      {/* "Mensalidade", o nome da ABA (era "Financeiro" até 05/10/2026,
+        * decisão do dono): a tela não pode se chamar outra coisa que o botão
+        * que leva a ela. */}
       <Header
-        title="Financeiro"
+        title="Mensalidade"
         action={
           <button
             onClick={() => navigate('/pai/finance/report')}

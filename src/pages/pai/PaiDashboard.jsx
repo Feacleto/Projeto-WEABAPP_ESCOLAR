@@ -19,6 +19,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
+import BarraDaAcao from '../../components/layout/BarraDaAcao';
 import Header from '../../components/layout/Header';
 import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
@@ -631,19 +632,16 @@ export default function PaiDashboard() {
         * do conteúdo (o `PaiLayout` já reserva o espaço das abas), então o
         * último cartão nunca fica escondido por baixo dela. */}
       {acaoDaBarra && (
-        <div
-          className="sticky z-20 mx-3 mt-2 rounded-2xl bg-card p-2 shadow-float"
-          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.75rem)' }}
-        >
+        <BarraDaAcao>
           <button
             type="button"
             onClick={acaoDaBarra.onClick}
-            className="tap flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-marca px-3 text-lg font-extrabold text-naMarca shadow-focus"
+            className="tap flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-marca px-3 text-lg font-extrabold text-naMarca shadow-focus"
           >
             <acaoDaBarra.Icone size={24} className="shrink-0" />
             <span className="truncate">{acaoDaBarra.rotulo}</span>
           </button>
-        </div>
+        </BarraDaAcao>
       )}
 
       <ChildDetailSheet

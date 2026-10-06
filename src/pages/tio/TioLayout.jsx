@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMarcosDoApp } from '../../hooks/useMarcosDoApp';
-import { Bus, Home, Wallet } from 'lucide-react';
+import { Bus, Home, Users, Wallet } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
 import { indiceDaAba } from '../../compartilhado/abaAtiva';
 import InstallPrompt from '../../components/common/InstallPrompt';
@@ -58,8 +58,17 @@ import {
  * só quando ele está em OUTRA tela. Durante a rota, que é quando um toque a
  * mais dói, ele já está no Início.
  */
+/*
+ * ⚠️ A COMUNIDADE MORA NO MEIO DO MENU (05/10/2026, decisão do dono, junto da
+ * densidade): Início · Comunidade · Carteira. Ela era uma linha no Início, e
+ * é onde o tio fala com os parceiros e posta a foto da turma — uso de todo
+ * dia, sem senha. Na rota ela continua no meio; só a Carteira vira Rota.
+ */
+const ABA_DA_COMUNIDADE = { to: '/tio/comunidade', label: 'Comunidade', icon: Users, tour: 'nav-comunidade' };
+
 const NAV_ITEMS = [
   { to: '/tio', label: 'Início', icon: Home, end: true, tour: 'nav-home' },
+  ABA_DA_COMUNIDADE,
   {
     to: '/tio/finance',
     label: 'Carteira',
@@ -78,7 +87,7 @@ const NAV_ITEMS = [
  * rota); e, enquanto o app não guarda dinheiro, a tela não sugere que guarda
  * (`npm run testar:nome-da-carteira`).
  *
- * O rodapé tem SEMPRE duas abas: Início · Carteira. Fora da rota a Carteira é
+ * O rodapé tem SEMPRE três abas: Início · Comunidade · Carteira. Fora da rota a Carteira é
  * a do motorista (o caixa, atrás da senha). Com a rota rodando, a MESMA posição
  * vira "Rota" e leva à tela da rota, que é o lugar da auxiliar: sem senha, sem
  * valor nenhum. A bolinha verde (`ponto`) avisa que a rota está rodando.
@@ -94,6 +103,7 @@ const NAV_ITEMS = [
  */
 const ITENS_EM_ROTA = [
   NAV_ITEMS[0],
+  ABA_DA_COMUNIDADE,
   { to: '/tio/route/now', label: 'Rota', icon: Bus, tour: 'nav-rota', ponto: true },
 ];
 
@@ -352,7 +362,7 @@ export default function TioLayout() {
     <NotificacoesProvider>
     <div
       className="min-h-screen"
-      style={{ paddingBottom: 'calc(8rem + env(safe-area-inset-bottom, 0px))' }}
+      style={{ paddingBottom: 'calc(var(--altura-do-menu) + env(safe-area-inset-bottom, 0px))' }}
     >
       {/* A SUSPENSÃO é cortina fixa por cima de tudo, e mora AQUI: dentro da
         * tela (que anima com `transform`) o `fixed` deixaria de ser relativo

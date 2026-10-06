@@ -42,6 +42,7 @@ import {
   voltarPasso,
 } from '../../services/routeStatusService';
 import { passoAnterior, barraTravada, TRAVA_DA_PARADA_MS } from '../../dominio/rota/acaoDaParada.js';
+import BarraDaAcao from '../layout/BarraDaAcao';
 import AvisosDaViagem from './AvisosDaViagem';
 import MensalidadeNaPorta from './MensalidadeNaPorta';
 import PixDaPerua from './PixDaPerua';
@@ -1439,10 +1440,7 @@ export default function OperacaoDaRota({
         * pousa no lugar dele e a última linha da viagem nunca fica por baixo
         * — o espaço que ele ocupa já é o respiro da lista. */}
       {foco && (
-        <div
-          className="sticky z-20 mx-3 mt-4 rounded-2xl bg-card p-2 shadow-float"
-          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.75rem)' }}
-        >
+        <BarraDaAcao>
           <BarraDaParada
             foco={foco}
             proxima={proxima}
@@ -1455,7 +1453,7 @@ export default function OperacaoDaRota({
             }
             onDesfazer={() => voltarUmPasso(recemMarcado)}
           />
-        </div>
+        </BarraDaAcao>
       )}
 
       <ConfirmDialog
@@ -1731,7 +1729,7 @@ function BarraDaParada({
       <>
         <div
           role="status"
-          className="flex h-16 w-full items-center gap-2 rounded-xl border-2 border-primaryBorder bg-card px-3"
+          className="flex h-14 w-full items-center gap-2 rounded-xl border-2 border-primaryBorder bg-card px-3"
         >
           <span className="inline-flex min-w-0 flex-1 items-center gap-1.5 text-[17px] font-extrabold text-text">
             <span className="truncate">{marcado}</span>
@@ -1759,7 +1757,7 @@ function BarraDaParada({
         disabled={busy}
         aria-busy={gravando || undefined}
         onClick={onMarcar}
-        className="tap flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-marca px-3 text-[17px] font-extrabold tracking-[0.03em] text-naMarca shadow-focus disabled:cursor-wait"
+        className="tap flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-marca px-3 text-[17px] font-extrabold tracking-[0.03em] text-naMarca shadow-focus disabled:cursor-wait"
       >
         {gravando ? (
           <>

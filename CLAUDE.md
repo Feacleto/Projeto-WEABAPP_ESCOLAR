@@ -1482,8 +1482,9 @@ rota; o app que **recarrega** com a rota aberta religa o GPS sozinho
 (`retomar`, em `ControleDeRota`); e o `closeStaleRoutes` espera **90 minutos**
 (antes 20) e apaga a última posição ao fechar, como o "Encerrar" faz.
 
-**O RODAPÉ É INÍCIO · CARTEIRA, E NA ROTA A SEGUNDA ABA É A ROTA** (04/10/2026,
-simulação "Rota e Central" aprovada pelo dono — `ITENS_EM_ROTA` em
+**O RODAPÉ É INÍCIO · COMUNIDADE · CARTEIRA, E NA ROTA A CARTEIRA VIRA A ROTA**
+(04/10/2026, simulação "Rota e Central"; a Comunidade entrou no meio em
+05/10/2026 — `NAV_ITEMS`/`ITENS_EM_ROTA` em
 [TioLayout](src/pages/tio/TioLayout.jsx)). Fora da rota, a aba Carteira leva a
 `/tio/finance` (o caixa, atrás da senha). Com a rota rodando, a MESMA posição
 vira "Rota" (ícone da perua) e leva a `/tio/route/now`, o lugar da AUXILIAR:
@@ -2747,8 +2748,12 @@ piso de 16px e 48px, um nome por coisa. O que virou regra:
 - ⚠️ **PARA A FAMÍLIA, `claimed` É "Aguardando o motorista confirmar", em
   âmbar, com ou sem comprovante** ([paymentVocabulary.js](src/dominio/cobranca/paymentVocabulary.js)).
   Ela via "Pago" verde ao anexar o comprovante, antes de alguém conferir.
-- **Financeiro** é o nome da aba e da tela; "Já paguei" mora no cartão do
-  PIX, ao lado do "Copiar"; o extrato mostra o nome da criança em cada linha.
+- **Mensalidade** é o nome da aba e da tela (era "Financeiro" até
+  05/10/2026, decisão do dono), com ícone de carteira; "Já paguei" mora no
+  cartão do PIX, ao lado do "Copiar"; o extrato mostra o nome da criança em
+  cada linha. O menu dela é Início · **Novidades** · Mensalidade: Novidades é
+  a página de notificações (`/pai/notifications`), com o número das não lidas
+  na aba e as Fotos da turma numa linha no topo.
 - **As etapas têm um vocabulário só, o mesmo do motorista:** Em casa · Na
   perua · Na escola · Entregue em casa.
 - **O contrato abre com o RESUMO** (`ResumoDoCombinado` em
@@ -3869,6 +3874,19 @@ enviado fica no sino das famílias).
 ("Abrir rota", "Abrir caixa", "Abrir trilha", "Cadastrar criança", "Definir
 horários"); linha de lista sem subtítulo quando o título já basta; confirmação
 em uma frase ("Vai para o fim da viagem."). O tio tem 40+ e lê com pressa.
+
+**A DENSIDADE NO CELULAR (05/10/2026, aprovada pelo dono — artifact
+"Densidade no celular").** Medido a 360×740, o Início dava 69% da tela ao
+conteúdo. Três peças valem para o app inteiro:
+- `--altura-do-menu` (64 px, em [index.css](src/index.css)): o menu tem essa
+  altura, as barras de ação pousam nela e os layouts a reservam no fim.
+- [BarraDaAcao](src/components/layout/BarraDaAcao.jsx): o botão verde do
+  momento (Iniciar a rota, EMBARQUEI, Avisar falta) é uma faixa `fixed` de
+  ponta a ponta, colada no menu, com um espaço MEDIDO no fim da página. Era
+  um cartão flutuando com sombra (o "bloco solto").
+- `overscroll-behavior-y: none` em html e body: puxar não estica nem
+  recarrega a tela (o "parece que quebra"). Perde o puxar-para-atualizar.
+Os ajustes tela a tela estão no artifact, e entram um por vez.
 
 **Navegação: uma tela só.** Cada troca de tela cobra pedágio — resolva em folha
 onde couber, e rotule o "voltar" onde não couber.

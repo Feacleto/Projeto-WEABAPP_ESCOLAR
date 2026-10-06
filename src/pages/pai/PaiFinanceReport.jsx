@@ -78,7 +78,7 @@ export default function PaiFinanceReport() {
   if (loading) {
     return (
       <>
-        <Header title="Histórico de pagamentos" showBack backLabel="Financeiro" backTo="/pai/finance" />
+        <Header title="Histórico de pagamentos" showBack backLabel="Mensalidade" backTo="/pai/finance" />
         <div className="p-5 space-y-3">
           <Skeleton className="h-40" />
           <Skeleton className="h-64" />
@@ -89,7 +89,7 @@ export default function PaiFinanceReport() {
 
   return (
     <>
-      <Header title="Histórico de pagamentos" showBack backLabel="Financeiro" backTo="/pai/finance" />
+      <Header title="Histórico de pagamentos" showBack backLabel="Mensalidade" backTo="/pai/finance" />
 
       <div className="p-5 space-y-5">
         <div className="print:hidden">

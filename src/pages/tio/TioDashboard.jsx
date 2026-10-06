@@ -19,6 +19,7 @@ import {
 import PedidosDeAcesso from '../../components/tio/PedidosDeAcesso';
 import AvaliacaoNoInicio from '../../components/feedback/AvaliacaoNoInicio';
 import { MOMENTO, PAPEL_DA_AVALIACAO, aconteceuHoje } from '../../dominio/suporte/avaliacaoRapida.js';
+import BarraDaAcao from '../../components/layout/BarraDaAcao';
 import Header from '../../components/layout/Header';
 import Skeleton from '../../components/common/Skeleton';
 import Button from '../../components/common/Button';
@@ -658,7 +659,7 @@ export default function TioDashboard() {
           <button
             type="button"
             onClick={() => navigate('/tio/route/now')}
-            className="tap flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-marca px-3 text-lg font-extrabold text-naMarca shadow-focus"
+            className="tap flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-marca px-3 text-lg font-extrabold text-naMarca shadow-focus"
           >
             <Bus size={24} />
             Abrir a rota
@@ -849,15 +850,11 @@ function LinhaMeuTransporte({ onClick, dirigindo = false }) {
  *
  * `sticky` no fim do conteúdo, não `fixed`: rolando até o fim ela pousa no
  * lugar dela, e o último cartão nunca fica escondido por baixo.
+ *
+ * ⚠️ COLADA NO MENU, SEM FLUTUAR (05/10/2026, densidade aprovada pelo dono):
+ * é a `BarraDaAcao`, a mesma da rota e da família.
  */
 function BarraDoInicio({ children }) {
-  return (
-    <div
-      className="sticky z-20 mx-3 mt-2 rounded-2xl bg-card p-2 shadow-float"
-      style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.75rem)' }}
-    >
-      {children}
-    </div>
-  );
+  return <BarraDaAcao>{children}</BarraDaAcao>;
 }
 

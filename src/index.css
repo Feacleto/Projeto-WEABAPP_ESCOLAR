@@ -44,6 +44,14 @@
   --fundo-ponto: rgb(31 95 63 / 0.09);
   --fundo-brilho: rgb(31 95 63 / 0.10);
   --fundo-brilho-fim: rgb(238 241 239 / 0);
+
+  /* A ALTURA DO MENU DE BAIXO (05/10/2026, densidade aprovada pelo dono).
+   * Era 95 px e, com o botão verde flutuando por cima, o Início do motorista
+   * e o da família ficavam com 69% da tela para o conteúdo. Um valor só: o
+   * menu tem essa altura, as barras de ação pousam exatamente em cima dela e
+   * os layouts reservam o mesmo espaço no fim da rolagem. Mudar aqui muda os
+   * três juntos. A área de toque de cada aba continua acima de 48 px. */
+  --altura-do-menu: 4rem;
 }
 
 /* Reset básico mobile-first. As fontes vêm do index.html (Google Fonts). */
@@ -57,6 +65,19 @@
   body {
     @apply bg-bg text-text font-sans antialiased;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* A TELA NÃO ESTICA NEM RECARREGA AO PUXAR (05/10/2026, densidade aprovada
+   * pelo dono). Puxar com força para baixo no Chrome do Android disparava o
+   * "puxar para atualizar" e recarregava o app inteiro; nas pontas, a página
+   * esticava e mostrava o fundo atrás dos cartões. Para quem tem 40+ isso
+   * parece o app quebrando. O custo é perder o gesto de atualizar do
+   * navegador: o app já se atualiza sozinho (escutas ao vivo e o aviso de
+   * versão nova). As folhas já seguravam o puxão por dentro
+   * (`overscroll-contain`). */
+  html,
+  body {
+    overscroll-behavior-y: none;
   }
 
   /* A VOZ DA MARCA NO TÍTULO DE TELA (03/10/2026, D1 do design system).
@@ -150,6 +171,19 @@
 }
 
 @layer components {
+  /* A BARRA DA AÇÃO, COLADA NO MENU (05/10/2026, densidade aprovada pelo
+   * dono). O botão verde do momento (Iniciar a rota, EMBARQUEI, Avisar falta,
+   * Cadastrar criança) morava num cartão branco com sombra que FLUTUAVA acima
+   * do menu, com o fundo cinza aparecendo entre os dois e o conteúdo cortado
+   * por trás — o "bloco solto" que o dono descreveu. Agora é uma faixa branca
+   * de ponta a ponta, com uma linha fina em cima, apoiada no menu.
+   * Presa como o menu (`fixed`); o espaço no fim da página é do componente
+   * `BarraDaAcao`, que mede a altura dela. */
+  .barra-da-acao {
+    @apply fixed left-0 right-0 z-20 mx-auto max-w-mobile border-t border-border bg-card px-4 py-2 print:hidden;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--altura-do-menu));
+  }
+
   /* Tap highlight customizado para botões em mobile.
    * Animação suave + ease-out pra dar sensação tátil de "afundar" no toque. */
   .tap {

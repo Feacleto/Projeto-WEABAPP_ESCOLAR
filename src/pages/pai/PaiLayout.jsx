@@ -2,13 +2,14 @@ import { passosDoResponsavel } from '../../dominio/identidade/cadastroDoResponsa
 import { permissaoDeAvisos } from '../../compartilhado/browserEnv';
 import { useEffect, useState, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Home, DollarSign } from 'lucide-react';
+import { Bell, Home, Wallet } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
 import { indiceDaAba } from '../../compartilhado/abaAtiva';
 import InstallPrompt from '../../components/common/InstallPrompt';
 import InteractiveTour from '../../components/tutorial/InteractiveTour';
 import { useAuth } from '../../hooks/useAuth';
 import { NotificacoesProvider } from '../../context/NotificacoesContext';
+import { useNotificacoesDaSessao } from '../../hooks/useNotifications';
 import { useActiveCallForParent } from '../../hooks/usePendingCall';
 import { useAdminProfile } from '../../hooks/useAdminProfile';
 import { useActiveChild } from '../../hooks/useActiveChild';
@@ -20,19 +21,36 @@ import {
   markBirthdayModalShown,
 } from '../../services/birthdayService';
 
+/*
+ * ⚠️ O MENU DA FAMÍLIA (05/10/2026, decisão do dono, junto da densidade):
+ * Início · Novidades · Mensalidade.
+ * - NOVIDADES são as notificações, no meio, com o número das que ela ainda
+ *   não viu: a família precisa achar os avisos sem procurar um sino. As
+ *   fotos da comunidade moram dentro dela.
+ * - MENSALIDADE é o nome novo de "Financeiro" (a aba e a tela), com o ícone
+ *   de carteira: é a palavra que a família usa para o que paga ao tio.
+ */
 const NAV_ITEMS = [
   { to: '/pai', label: 'Início', icon: Home, end: true, tour: 'nav-home' },
+  { to: '/pai/notifications', label: 'Novidades', icon: Bell, tour: 'nav-novidades' },
   {
     to: '/pai/finance',
-    label: 'Financeiro',
-    icon: DollarSign,
+    label: 'Mensalidade',
+    icon: Wallet,
     tour: 'nav-finance',
   },
 ];
 
+/** O rodapé lê a contagem de dentro do provedor (que mora no próprio layout). */
+function RodapeDaFamilia() {
+  const { unreadCount } = useNotificacoesDaSessao();
+  const itens = NAV_ITEMS.map((i) => (i.to === '/pai/notifications' ? { ...i, badge: unreadCount } : i));
+  return <BottomNav items={itens} />;
+}
+
 /**
  * Layout do painel do Pai: <Outlet /> + BottomNav fixo.
- * Notificações e perfil ficam no Header (sino + ícone à direita).
+ * As notificações são a aba Novidades; o perfil fica no Header.
  */
 export default function PaiLayout() {
   const { user, profile } = useAuth();
@@ -113,7 +131,7 @@ export default function PaiLayout() {
     <NotificacoesProvider>
     <div
       className="min-h-screen"
-      style={{ paddingBottom: 'calc(8rem + env(safe-area-inset-bottom, 0px))' }}
+      style={{ paddingBottom: 'calc(var(--altura-do-menu) + env(safe-area-inset-bottom, 0px))' }}
     >
       {/* ⚠️ A TELA ENTRA PELO LADO DA PRÓPRIA ABA, e a `key` é o ÍNDICE, não
         * o caminho.
@@ -123,13 +141,13 @@ export default function PaiLayout() {
         * dela. Pelo índice, a animação toca exatamente quando o rodapé muda de
         * lugar, que é o movimento que ela existe para explicar.
         *
-        * O lado sai do índice: 0 é o Início (mora à esquerda), 1 é o
-        * Financeiro (à direita). Quem não é aba entra sem direção — inventar
+        * O lado sai do índice: 0 é o Início (mora à esquerda), e Novidades e
+        * Mensalidade entram pela direita. Quem não é aba entra sem direção — inventar
         * um lado ensinaria uma geografia que não existe. */}
       <div key={abaAtiva} className={entradaDaTela} >
         <Outlet context={{ openTutorial }} />
       </div>
-      <BottomNav items={NAV_ITEMS} />
+      <RodapeDaFamilia />
 
       {/* Sem um ícone na tela de início, o link do WhatsApp continua sendo
         * o único caminho do pai pro app — pra sempre. Este convite troca

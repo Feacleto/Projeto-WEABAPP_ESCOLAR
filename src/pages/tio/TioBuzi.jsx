@@ -364,7 +364,7 @@ export default function TioBuzi() {
 
       <div
         className="sticky z-20 mx-3 mt-2 space-y-2"
-        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.75rem)' }}
+        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--altura-do-menu) + 0.5rem)' }}
       >
         {n > 0 && (
           <div className="flex items-center gap-3 rounded-2xl border border-primaryBorder bg-primarySoft py-2 pl-4 pr-2 shadow-rest">

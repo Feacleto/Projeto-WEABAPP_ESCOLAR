@@ -4,7 +4,7 @@
  * Fase 1 da "Rota e Central" (630efb3). O Seu Zé de `semear-financeiro.mjs`
  * inicia a rota e passa o celular: quem segura agora é a auxiliar. Mede, em
  * ordem:
- *   1. o rodapé é Início · Central, com a bolinha verde na Central;
+ *   1. o rodapé é Início · Comunidade · Rota, com a bolinha verde na Rota;
  *   2. na porta do Lucas (em aberto), "Mensalidade de outubro em aberto" e o
  *      "Recebi" de CONTORNO; em dinheiro dá baixa (paid, cash);
  *   3. na porta do Davi (em aberto), "a família disse que mandou PIX" vira
@@ -72,14 +72,16 @@ try {
   if (await visivel(ida)) { await tocar(pagina, ida.first(), 'a viagem das 6h40'); await esperar(1500); }
 
   // ── 1. O rodapé ────────────────────────────────────────────────────────
-  await m('1 · rodapé: Início · Central, com a bolinha verde');
+  await m('1 · rodapé: Início · Comunidade · Rota, com a bolinha verde');
   const nav = pagina.locator('nav').last();
   r.rodape = (await nav.innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
   r.bolinha = await visivel(pagina.locator('[aria-label="Rota rodando"]'));
-  if (!/Início/.test(r.rodape) || !/Central/.test(r.rodape) || /Financeiro|Rota\b/.test(r.rodape)) {
-    achado(estado, { gravidade: 'atrapalha', lente: 'fluxo', tela: 'rodapé', oque: `O rodapé na rota diz "${r.rodape}", e não Início · Central.` });
+  // O menu na rota é Início · Comunidade · Rota (05/10/2026, decisão do dono):
+  // a Carteira dá lugar à Rota enquanto ela roda.
+  if (!/Início/.test(r.rodape) || !/Comunidade/.test(r.rodape) || !/Rota/.test(r.rodape) || /Carteira|Central/.test(r.rodape)) {
+    achado(estado, { gravidade: 'atrapalha', lente: 'fluxo', tela: 'rodapé', oque: `O rodapé na rota diz "${r.rodape}", e não Início · Comunidade · Rota.` });
   }
-  if (!r.bolinha) achado(estado, { gravidade: 'atrapalha', lente: 'fluxo', tela: 'rodapé', oque: 'A bolinha verde da Central não aparece com a rota rodando.' });
+  if (!r.bolinha) achado(estado, { gravidade: 'atrapalha', lente: 'fluxo', tela: 'rodapé', oque: 'A bolinha verde da Rota não aparece com a rota rodando.' });
   await registrar(pagina, estado, '02-rota-aberta', { paginaInteira: true });
   await semValor('rota aberta');
 
@@ -162,8 +164,8 @@ try {
   }
 
   // ── 5. A Central durante a rota ────────────────────────────────────────
-  await m('5 · tocar em Central durante a rota: continua a tela da rota');
-  await tocar(pagina, pagina.getByRole('link', { name: /Central/ }).last(), 'Central');
+  await m('5 · tocar em Rota durante a rota: continua a tela da rota');
+  await tocar(pagina, pagina.getByRole('link', { name: /Rota/ }).last(), 'Rota');
   await esperar(2000);
   r.centralNaRota = new URL(pagina.url()).pathname;
   if (!r.centralNaRota.startsWith('/tio/route/now')) {
