@@ -72,6 +72,7 @@ function retratoDaBase({
   criancasAtivas = null,
   criancasComFamilia = null,
   baixasNoMes = null,
+  contratosAceitos = null,
 } = {}) {
   const lista = Array.isArray(parceiros) ? parceiros : [];
 
@@ -104,6 +105,7 @@ function retratoDaBase({
         ? Math.min(1, criancasComFamilia / criancasAtivas)
         : null,
     baixasNoMes,
+    contratosAceitos,
     pagariaPorMes: lista.length ? centavos(pagaria) : null,
   };
 }
@@ -143,6 +145,7 @@ function fotoDoDia(retrato, agora = new Date()) {
     criancasAtivas: r.criancasAtivas ?? null,
     criancasComFamilia: r.criancasComFamilia ?? null,
     baixasNoMes: r.baixasNoMes ?? null,
+    contratosAceitos: r.contratosAceitos ?? null,
     pagariaPorMes: r.pagariaPorMes ?? null,
   };
 }

@@ -15,11 +15,11 @@
  * tela vazia ensina a não confiar no menu.
  */
 const GRUPOS_DO_PAINEL = [
-  ['Visão', [['hoje', 'Hoje'], ['avaliacao', 'Avaliação do app'], ['calendario', 'Calendário do ano']]],
-  ['Dinheiro', [['mes', 'Financeiro'], ['economia', 'Economia'], ['numeros', 'Números']]],
+  ['Visão', [['hoje', 'Hoje'], ['uso', 'Uso do app'], ['avaliacao', 'Avaliação do app'], ['kanban', 'Kanban'], ['calendario', 'Calendário do ano']]],
+  ['Dinheiro', [['mes', 'Financeiro'], ['economia', 'Economia'], ['esg', 'ESG'], ['numeros', 'Números']]],
   ['Pessoas', [['motoristas', 'Motoristas'], ['familias', 'Famílias'], ['auxiliares', 'Auxiliares'], ['contas', 'Contas']]],
-  ['Crescer', [['vendas', 'Vendas'], ['marketing', 'Marketing'], ['indicacoes', 'Indicações'], ['investidores', 'Investidores']]],
-  ['Cuidar', [['chamados', 'Chamados'], ['selos', 'Selos'], ['juridico', 'Jurídico'], ['registro', 'Registro'], ['politica', 'Política de bloqueio'], ['platina', 'Platina']]],
+  ['Crescer', [['crm', 'CRM'], ['vendas', 'Vendas'], ['marketing', 'Marketing'], ['indicacoes', 'Indicações'], ['investidores', 'Investidores']]],
+  ['Cuidar', [['seguranca', 'Segurança'], ['chamados', 'Chamados'], ['selos', 'Selos'], ['juridico', 'Jurídico'], ['registro', 'Registro'], ['politica', 'Política de bloqueio'], ['platina', 'Platina']]],
 ];
 
 export default function MenuDoPainel({ tab, onEscolher, disponiveis }) {

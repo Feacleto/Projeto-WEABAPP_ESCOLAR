@@ -81,6 +81,9 @@ const { makeSendPushOnNotification } = require('./lib/push');
 const { makeAvisarAproximacao, makeAvisarBuzina } = require('./lib/avisosDaRota');
 const { makeLimparAvisosAntigos } = require('./lib/limpezaDosAvisos');
 const { makeFotografarBase } = require('./lib/fotoDaBase');
+const { makeContarUsoDoApp } = require('./lib/usoDoApp');
+const { makeLimparContatosAntigos } = require('./lib/limpezaDosContatos');
+const { makeVigiarSeguranca } = require('./lib/vigiaDaSeguranca');
 const { makeSuspenderConta } = require('./lib/registroDoDono');
 const { makeAtualizarIndicesEconomicos } = require('./lib/indicesEconomicos');
 const { makeContarCriancasAtivas } = require('./lib/contadorDaTurma');
@@ -170,6 +173,15 @@ exports.atualizarIndicesEconomicos = makeAtualizarIndicesEconomicos(db);
 // A foto diária da base para o painel do dono, às 23h50 de Brasília
 // (fotoDaBase.js): só números, um documento por dia, só o dono lê.
 exports.fotografarBase = makeFotografarBase(db);
+// O uso do app por recurso, às 23h55 de Brasília (usoDoApp.js): só contagem,
+// do que o app já grava; nunca lista de quem usou.
+exports.contarUsoDoApp = makeContarUsoDoApp(db);
+// Os contatos do CRM saem 5 anos depois de a conta encerrar, às 4h15
+// (limpezaDosContatos.js) — é o prazo que a Política promete.
+exports.limparContatosAntigos = makeLimparContatosAntigos(db);
+// A vigia de segurança, de hora em hora (vigiaDaSeguranca.js): bloqueios,
+// fraudes e App Check, e um alerta por escopo por hora para os donos.
+exports.vigiarSeguranca = makeVigiarSeguranca(db);
 // Suspender, avisar ou reativar um motorista, com a linha no registro de
 // ações na mesma transação (registroDoDono.js). Só o dono chama.
 exports.suspenderConta = makeSuspenderConta(db);

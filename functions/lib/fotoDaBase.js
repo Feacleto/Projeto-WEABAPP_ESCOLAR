@@ -29,6 +29,21 @@ const REGION = 'southamerica-east1';
  *
  * As rules: só o dono lê, ninguém escreve pelo cliente.
  */
+/**
+ * CONTRATOS ACEITOS: crianças ativas com `contratoVigente` preenchido (o
+ * ponteiro que só o servidor grava no aceite). Filtra em memória, lendo só
+ * esse campo, para não exigir índice composto. Só a contagem sai daqui.
+ */
+async function contarContratosAceitos(children) {
+  try {
+    const snap = await children.where('active', '==', true).select('contratoVigente').get();
+    return snap.docs.filter((d) => !!d.get('contratoVigente')).length;
+  } catch (err) {
+    logger.error('[foto] contagem de contratos falhou', { err: err?.message });
+    return null;
+  }
+}
+
 async function fotografarBase(db, agora = new Date()) {
   const children = db.collection('children');
   const contar = async (q) => {
@@ -41,7 +56,7 @@ async function fotografarBase(db, agora = new Date()) {
   };
 
   const mes = mesDoDia(agora);
-  const [motoristas, criancasAtivas, criancasComFamilia, baixasNoMes] = await Promise.all([
+  const [motoristas, criancasAtivas, criancasComFamilia, baixasNoMes, contratosAceitos] = await Promise.all([
     db
       .collection('users')
       .where('role', '==', 'admin')
@@ -52,6 +67,7 @@ async function fotografarBase(db, agora = new Date()) {
     contar(
       db.collection('payments').where('status', '==', 'paid').where('month', '==', mes)
     ),
+    contarContratosAceitos(children),
   ]);
 
   const retrato = retratoDaBase({
@@ -61,6 +77,7 @@ async function fotografarBase(db, agora = new Date()) {
     criancasAtivas,
     criancasComFamilia,
     baixasNoMes,
+    contratosAceitos,
   });
   const foto = fotoDoDia(retrato, agora);
   await db

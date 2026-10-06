@@ -30,6 +30,12 @@ import { criarCacheComValidade } from '../compartilhado/cacheComValidade.js';
  * "array não vazio" sem índice de campo —, então o degrau devolve `null`; a
  * coluna "avisos" da lista mostra, para os 300 primeiros, o que há.
  *
+ * ── O QUE CHEGA AO NAVEGADOR DO DONO (05/10/2026)
+ * A leitura de `users` com teto de 300 traz o documento INTEIRO de cada
+ * família, inclusive telefone e tokens; a tela mostra menos, mas o dado
+ * chega. O dono já pode ler isso, então não é furo; se um dia incomodar, a
+ * saída é uma callable que devolva a lista enxuta.
+ *
  * ── CACHE DE 90 s
  * As abas desmontam ao trocar; sem cache cada toque na barra repetiria todas
  * as contagens. `forcar` é para quem acabou de escrever.

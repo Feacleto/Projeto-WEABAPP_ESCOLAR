@@ -81,6 +81,7 @@ const DESTINO_DO_AVISO = {
   recomendacao_recebida: '/aux/perfil',
 
   lead_investidor: '/admin',
+  alerta_de_seguranca: '/admin',
 };
 
 function papelDe(papel) {

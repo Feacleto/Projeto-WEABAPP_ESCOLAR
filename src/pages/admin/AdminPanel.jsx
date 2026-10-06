@@ -37,6 +37,11 @@ import VendasTab from '../../components/admin/VendasTab';
 import MarketingTab from '../../components/admin/MarketingTab';
 import RelatorioParaInvestidor from '../../components/admin/RelatorioParaInvestidor';
 import PoliticaDeBloqueioTab from '../../components/admin/PoliticaDeBloqueioTab';
+import UsoTab from '../../components/admin/UsoTab';
+import KanbanTab from '../../components/admin/KanbanTab';
+import EsgTab from '../../components/admin/EsgTab';
+import CrmTab from '../../components/admin/CrmTab';
+import SegurancaTab from '../../components/admin/SegurancaTab';
 import { listarInteresses } from '../../services/interesseService';
 import { definirDepoimentoNaHome } from '../../services/feedbackService';
 import { functions } from '../../firebase/config';
@@ -154,11 +159,11 @@ import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
  */
 /** As abas que têm tela. O menu só mostra estas. */
 const ABAS_DISPONIVEIS = [
-  'hoje', 'avaliacao', 'calendario',
-  'mes', 'economia', 'numeros',
+  'hoje', 'uso', 'avaliacao', 'kanban', 'calendario',
+  'mes', 'economia', 'esg', 'numeros',
   'motoristas', 'familias', 'auxiliares', 'contas',
-  'vendas', 'marketing', 'indicacoes', 'investidores',
-  'chamados', 'selos', 'juridico', 'registro', 'politica', 'platina',
+  'crm', 'vendas', 'marketing', 'indicacoes', 'investidores',
+  'seguranca', 'chamados', 'selos', 'juridico', 'registro', 'politica', 'platina',
 ];
 
 export default function AdminPanel() {
@@ -309,6 +314,11 @@ export default function AdminPanel() {
           </div>
         )}
         {tab === 'calendario' && <CalendarioTab />}
+        {tab === 'uso' && <UsoTab />}
+        {tab === 'kanban' && <KanbanTab />}
+        {tab === 'esg' && <EsgTab />}
+        {tab === 'crm' && <CrmTab />}
+        {tab === 'seguranca' && <SegurancaTab />}
         {tab === 'economia' && <EconomiaTab />}
         {tab === 'familias' && <FamiliasTab />}
         {tab === 'auxiliares' && <AuxiliaresTab />}

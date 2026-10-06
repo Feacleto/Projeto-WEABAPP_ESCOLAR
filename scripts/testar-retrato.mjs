@@ -213,8 +213,10 @@ bloco('─── 7. o espelho do servidor: a foto diária ───');
 
   const args = { parceiros: matriz, agora: HOJE, mes: MES, criancasAtivas: 900, criancasComFamilia: 610, baixasNoMes: 412 };
   const semFunil = ({ funil: _f, ...resto }) => resto;
-  checar('o retrato inteiro bate (o funil é só da tela)', semFunil(retratoDaBase(args)), servidor.retratoDaBase(args));
-  checar('base vazia bate', semFunil(retratoDaBase()), servidor.retratoDaBase());
+  // `contratosAceitos` só existe no servidor: a foto diária o conta, o Hoje ao vivo não.
+  const semContratos = ({ contratosAceitos: _c, ...resto }) => resto;
+  checar('o retrato inteiro bate (o funil é só da tela)', semFunil(retratoDaBase(args)), semContratos(servidor.retratoDaBase(args)));
+  checar('base vazia bate', semFunil(retratoDaBase()), semContratos(servidor.retratoDaBase()));
   checar('a janela de uso é a mesma', DIAS_DE_USO, servidor.DIAS_DE_USO);
 
   checar('23h50 de Brasília (02:50 UTC) ainda é o dia de Brasília', '2026-10-05', servidor.chaveDoDia(new Date('2026-10-06T02:50:00Z')));
@@ -224,11 +226,12 @@ bloco('─── 7. o espelho do servidor: a foto diária ───');
   const foto = servidor.fotoDoDia(servidor.retratoDaBase(args), new Date('2026-10-06T02:50:00Z'));
   checar(
     'a foto tem SÓ os campos da lista fechada',
-    ['assinantes', 'baixasNoMes', 'criancasAtivas', 'criancasComFamilia', 'dia', 'motoristas', 'pagariaPorMes', 'planos', 'rodaram', 'rodaramNaSemana'],
+    ['assinantes', 'baixasNoMes', 'contratosAceitos', 'criancasAtivas', 'criancasComFamilia', 'dia', 'motoristas', 'pagariaPorMes', 'planos', 'rodaram', 'rodaramNaSemana'],
     Object.keys(foto).sort()
   );
   checar('nenhum uid ou nome escapa para a foto', false, /"uid"|"name"|"marcaNome"|"p\d+"/.test(JSON.stringify(foto)));
   checar('o id da foto é o dia de Brasília', '2026-10-05', foto.dia);
+  checar('contratos aceitos entram na foto e, sem dado, ficam null', [7, null], [servidor.fotoDoDia({ contratosAceitos: 7 }).contratosAceitos, servidor.fotoDoDia({}).contratosAceitos]);
   checar('contagem que não veio fica null na foto', null, servidor.fotoDoDia({ motoristas: 1 }).criancasAtivas);
 }
 

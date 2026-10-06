@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, X } from 'lucide-react';
 import Spinner from '../common/Spinner';
+import ContratoDoc from './ContratoDoc';
+import ContractView from '../contract/ContractView';
+import {
+  modeloDoContratoDaFamilia,
+  modeloDoContratoDeAssinatura,
+  ROTULO_DO_MODELO,
+  tituloDoModelo,
+} from '../../dominio/associacao/modelosDeContrato.js';
 import { carregarConsole, getAceitesDosTermos } from '../../services/adminMetricsService';
 import { formatDate } from '../../compartilhado/formatters.js';
 import { LEGAL_VERSION } from '../../pages/legal/legalContent';
@@ -21,8 +29,54 @@ import { planoValido } from '../../dominio/associacao/planos.js';
  * motivo, o prazo de resposta e quem decidiu moram no `registroDoDono` (aba
  * Registro), gravados pela callable `suspenderConta`.
  */
+/**
+ * A FOLHA DO MODELO: o texto vigente com dados fictícios, só para leitura.
+ * Não gera aceite e não grava nada. Folha própria (e não `Sheet`) porque o
+ * contrato precisa de mais largura que os 480 px da folha de celular.
+ */
+function FolhaDoModelo({ modelo, onClose }) {
+  useEffect(() => {
+    const aoTeclar = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, [onClose]);
+
+  const titulo = tituloDoModelo(modelo.versao);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-night/45 sm:items-center sm:p-6"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={titulo}
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[94svh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-card shadow-float sm:rounded-3xl"
+      >
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-3">
+          <div>
+            <h2 className="text-base font-bold text-text">{titulo}</h2>
+            <p className="text-xs font-bold text-warningText">{ROTULO_DO_MODELO}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar"
+            className="tap inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-xl bg-bg text-text"
+          >
+            <X size={18} />
+          </button>
+        </header>
+        <div className="overflow-y-auto p-5">{modelo.corpo}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function JuridicoTab() {
   const [aceites, setAceites] = useState(null);
+  const [modeloAberto, setModeloAberto] = useState(null);
   const [parceiros, setParceiros] = useState(null);
 
   useEffect(() => {
@@ -70,6 +124,10 @@ export default function JuridicoTab() {
       estado: 'Em vigor · assina quem contrata de novo',
       aceite: assinantes === null ? '—' : `${assinantes} com plano`,
       ler: null,
+      modelo: () => ({
+        versao: VERSAO_CONTRATO,
+        corpo: <ContratoDoc dados={modeloDoContratoDeAssinatura()} aceite={null} />,
+      }),
     },
     {
       nome: 'Contrato com a família',
@@ -78,11 +136,16 @@ export default function JuridicoTab() {
       estado: 'Em vigor · o pendente é reemitido sozinho',
       aceite: 'na ficha de cada criança',
       ler: null,
+      modelo: () => ({
+        versao: VERSAO_DO_TEXTO,
+        corpo: <ContractView data={modeloDoContratoDaFamilia()} />,
+      }),
     },
   ];
 
   return (
     <div className="space-y-6">
+      {modeloAberto && <FolhaDoModelo modelo={modeloAberto} onClose={() => setModeloAberto(null)} />}
       <section aria-labelledby="falta-no-papel" className="rounded-2xl border border-warningBorder bg-warningSoft p-4">
         <h2 id="falta-no-papel" className="text-sm font-bold text-warningText">
           O que falta no papel para bloquear com segurança
@@ -142,6 +205,15 @@ export default function JuridicoTab() {
                       >
                         Ler <ExternalLink size={12} />
                       </a>
+                    )}
+                    {d.modelo && (
+                      <button
+                        type="button"
+                        onClick={() => setModeloAberto(d.modelo())}
+                        className="tap inline-flex min-h-[40px] items-center font-bold text-primary"
+                      >
+                        Ler o modelo
+                      </button>
                     )}
                   </td>
                 </tr>

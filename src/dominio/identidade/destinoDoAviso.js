@@ -101,6 +101,7 @@ export const DESTINO_DO_AVISO = {
 
   // ── PARA O DONO
   lead_investidor: '/admin',
+  alerta_de_seguranca: '/admin',
 };
 
 function papelDe(papel) {

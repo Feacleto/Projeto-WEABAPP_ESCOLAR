@@ -11,7 +11,31 @@ import { formatPhone } from '../../compartilhado/formatters';
  * WhatsApp opcional), e o dono recebe um aviso no sino a cada um. Aqui fica a
  * lista, do mais novo para o mais antigo, com um toque para responder — e-mail
  * ou WhatsApp. Ninguém precisa copiar endereço de um lugar para outro.
+ *
+ * ── MANDAR O DECK (05/10/2026, pedido do dono: "algo simples")
+ * O botão abre o programa de e-mail DO DONO com o endereço, o assunto e o texto
+ * já escritos; ele anexa o PDF do deck e manda. Foi a escolha simples de
+ * propósito: anexar pelo servidor pediria guardar o deck no Storage, uma
+ * função nova e o domínio verificado no Resend (no sandbox, o e-mail só chega
+ * à caixa do próprio dono). O link do deck também não pode morar em
+ * `platformConfig`, que qualquer pessoa lê.
  */
+const ASSUNTO_DO_DECK = 'Alô Buzinou — o deck que você pediu';
+
+function textoDoDeck(nome) {
+  const primeiro = String(nome || '').trim().split(/\s+/)[0];
+  return [
+    `Olá${primeiro ? `, ${primeiro}` : ''}!`,
+    '',
+    'Obrigado pelo interesse no Alô Buzinou. Segue em anexo o nosso deck, com o modelo, ' +
+      'os números da base e o que ainda estamos provando.',
+    '',
+    'Se quiser conversar, é só responder este e-mail.',
+    '',
+    'Abraço,',
+  ].join('\n');
+}
+
 export default function InvestidoresTab() {
   const [leads, setLeads] = useState(null);
   useEffect(() => watchLeadsInvestidor(setLeads), []);
@@ -41,6 +65,10 @@ export default function InvestidoresTab() {
       <p className="text-sm text-textMuted">
         {leads.length} {leads.length === 1 ? 'contato' : 'contatos'} pelo site, do mais novo para o mais antigo.
       </p>
+      <p className="rounded-xl border border-border bg-sunken p-3 text-xs leading-relaxed text-textMuted">
+        "Mandar o deck" abre o seu e-mail com o texto pronto. <strong>Anexe o PDF do deck</strong>{' '}
+        antes de enviar. O relatório acima também vira PDF em "Baixar PDF", se quiser mandar junto.
+      </p>
       {leads.map((l) => {
         const quando = l.criadoEm?.toDate ? l.criadoEm.toDate().toLocaleDateString('pt-BR') : '';
         return (
@@ -54,10 +82,10 @@ export default function InvestidoresTab() {
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <a
-                href={`mailto:${l.email}?subject=${encodeURIComponent('Alô Buzinou — material para investidores')}`}
+                href={`mailto:${l.email}?subject=${encodeURIComponent(ASSUNTO_DO_DECK)}&body=${encodeURIComponent(textoDoDeck(l.nome))}`}
                 className="tap inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-bold text-white"
               >
-                <Mail size={15} /> Responder por e-mail
+                <Mail size={15} /> Mandar o deck por e-mail
               </a>
               {l.whatsapp && (
                 <a

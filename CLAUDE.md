@@ -19,7 +19,7 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 94 scripts. O PRIMEIRO é
+npm run testar                   # 99 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -37,6 +37,8 @@ npm run testar                   # 94 scripts. O PRIMEIRO é
                                  # conta, cobranca, gateway, assinante, carteira, retrato, registro,
                                  # resumo-da-avaliacao, vendas-do-painel,
                                  # retrato-das-pessoas, economia-do-painel,
+                                 # kanban-do-dono, crm-do-dono, uso-do-app,
+                                 # esg-do-painel, seguranca-do-app,
                                  # proposta, chamados, avaliacao, risco, fila, concessao,
                                  # selo, indicacao, irmaos, origem, abas,
                                  # acompanhamento, transacoes, fundo, busca, site,
@@ -492,20 +494,29 @@ src/
 │   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com o
 │   │                  MENU EM CINCO GRUPOS (`MenuDoPainel`, 05/10/2026;
 │   │                  coluna na mesa, fileiras no celular, só aba com tela):
-│   │                  VISÃO — Hoje (o RETRATO DA BASE e a fila), Avaliação
+│   │                  VISÃO — Hoje (o RETRATO DA BASE e a fila), Uso do app
+│   │                  (`usoDoApp`, contado à noite; 1 ou 2 motoristas = "menos
+│   │                  de 3"), Kanban (`kanbanDoDono`, de TODOS os donos), Avaliação
 │   │                  do app (o cartão de cinco rostos; embaixo a pesquisa
 │   │                  antiga, onde se escolhe o depoimento da home),
 │   │                  Calendário do ano (férias, feriados, datas populares e
 │   │                  o que cada mês pede); DINHEIRO — Financeiro (os
 │   │                  assinantes e o fechamento que era "Mês"), Economia (o
-│   │                  simulador do preço por criança), Números; PESSOAS —
+│   │                  simulador do preço por criança), ESG, Números; PESSOAS —
 │   │                  Motoristas (a ficha tem a JORNADA num bloco separado
 │   │                  do plano, decisão 23), Famílias (só contagem e conta de
 │   │                  acesso; nunca endereço, telefone ou nível da família),
 │   │                  Auxiliares, Contas (ativas/inativas/suspensas);
-│   │                  CRESCER — Vendas (prontos para conversa), Marketing,
+│   │                  CRESCER — CRM (`contatosDoDono`: append-only, a correção
+│   │                  aponta a anotação errada, o motorista pode pedir o que foi
+│   │                  anotado, e sai 5 anos depois de a conta encerrar), Vendas
+│   │                  (prontos para conversa), Marketing,
 │   │                  Indicações, Investidores (o relatório em PDF por
-│   │                  impressão); CUIDAR — Chamados, Selos, Jurídico,
+│   │                  impressão; e "Mandar o deck" abre o e-mail do dono com o
+│   │                  texto pronto, e ele anexa o PDF); CUIDAR — Segurança
+│   │                  (`segurancaDoApp`, de hora em hora; diz o que o app NÃO
+│   │                  enxerga), Chamados, Selos, Jurídico (com o MODELO dos dois
+│   │                  contratos, com dados fictícios),
 │   │                  Registro (`registroDoDono`, só leitura), Política de
 │   │                  bloqueio, Platina. As réguas puras: retratoDaBase,
 │   │                  economiaDoPainel, calendarioDoAno, vendasDoPainel
@@ -514,8 +525,8 @@ src/
 │   │                  POTENCIAL, nunca receita. ⚠️ Família e auxiliar ainda
 │   │                  não gravam o último acesso: "ativa" delas é "—". O
 │   │                  redesenho inteiro (26 telas) está no canvas "Painel do
-│   │                  dono"; Kanban, Uso do app, ESG, CRM, Mapa, Alertas e
-│   │                  Saídas ainda pedem dado ou regra nova.
+│   │                  dono"; Mapa, Alertas no sino e Saídas ainda pedem dado
+│   │                  ou regra nova.
 │   └── legal/         termos e privacidade — `LEGAL_VERSION` está em 1.4
 │                       (04/10/2026: a leitura única da posição no
 │                       posto de combustível entrou na cláusula 8, na
@@ -776,6 +787,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `fotosDaTurma` (a foto da turma; só o servidor escreve, a família lê até vencer) ·
 `fotosDaBase` (a foto diária da base, um doc por dia de Brasília, só números; só o servidor escreve, só o dono lê) ·
 `registroDoDono` (quem suspendeu, avisou ou reativou quem, quando e por quê; APPEND-ONLY, só a callable `suspenderConta` escreve, só o dono lê) ·
+`kanbanDoDono` (o quadro de trabalho dos donos; só o dono lê e escreve) · `contatosDoDono` (o CRM; APPEND-ONLY com `corrige`, só o dono lê e cria) · `usoDoApp` e `segurancaDoApp` (agregados do servidor, só números; só o dono lê, ninguém escreve) ·
 `autoriaDaFotoDaTurma` (quem postou, quando foi a auxiliar; só o servidor) ·
 `avaliacoesDoTio` (a nota da família ao tio; só ela lê a dela, o tio não lê nenhuma) ·
 `transferenciasDeFamilia` (passar a família a um tio parceiro; os dois tios leem, a família só com `familiaVe`, só o servidor escreve) ·
@@ -2222,6 +2234,12 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   `retratoDaBase.js` comparado caso a caso em `testar:retrato`). Lê os
   motoristas e faz três `count()`; idempotente. É o histórico do gráfico de
   evolução do Hoje.
+- **Painel do dono (agendadas, 05/10/2026):** `contarUsoDoApp` (23h55,
+  [usoDoApp.js](functions/lib/usoDoApp.js), régua [reguaDoUso.js](functions/lib/reguaDoUso.js)),
+  `vigiarSeguranca` (de hora em hora, [vigiaDaSeguranca.js](functions/lib/vigiaDaSeguranca.js),
+  um alerta `alerta_de_seguranca` por escopo por hora, id determinístico) e
+  `limparContatosAntigos` (4h15, [limpezaDosContatos.js](functions/lib/limpezaDosContatos.js)).
+  A foto diária passou a contar também os contratos aceitos.
 - **Registro de ações do dono:** `suspenderConta`
   ([registroDoDono.js](functions/lib/registroDoDono.js), régua em
   [reguaDoRegistro.js](functions/lib/reguaDoRegistro.js), espelho em

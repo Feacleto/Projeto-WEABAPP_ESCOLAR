@@ -228,6 +228,12 @@ service cloud.firestore {
         && userDoc().role == 'owner';
     }
 
+    function kanbanValido(d) {
+      return d.nome is string && d.nome.size() > 0 && d.nome.size() <= 120
+        && d.estado in ['a_fazer', 'fazendo', 'concluido']
+        && d.atividades is list && d.atividades.size() <= 50;
+    }
+
     // DONO DO DOCUMENTO OPERACIONAL. O campo `adminUid` no corpo é o que dá
     // escopo às coleções que antes eram `isAdmin()` puro — e `isAdmin()`,
     // neste projeto, quer dizer QUALQUER MOTORISTA.
@@ -3359,6 +3365,59 @@ service cloud.firestore {
     match /fotosDaBase/{dia} {
       allow read: if isOwner();
       allow write: if false;
+    }
+
+    // O USO DO APP (painel do dono, 05/10/2026): números agregados por recurso,
+    // contados à noite pela agendada `contarUsoDoApp` a partir do que o app já
+    // grava. Só contagem, nunca lista de quem usou. Só o dono lê; ninguém
+    // escreve pelo cliente.
+    match /usoDoApp/{dia} {
+      allow read: if isOwner();
+      allow write: if false;
+    }
+
+    // A SEGURANÇA DO APP (05/10/2026): bloqueios por excesso de tentativas,
+    // fraudes registradas e o estado do App Check, somados de hora em hora pela
+    // agendada `vigiarSeguranca`. Só números, nunca IP nem hash. Só o dono lê.
+    match /segurancaDoApp/{dia} {
+      allow read: if isOwner();
+      allow write: if false;
+    }
+
+    // O KANBAN DO DONO (05/10/2026): o quadro de trabalho, COMPARTILHADO entre
+    // os donos (isOwner, não só quem criou). Lista fechada de campos; o estado
+    // é uma das três colunas; quem cria é quem está logado.
+    match /kanbanDoDono/{id} {
+      allow read, delete: if isOwner();
+      allow create: if isOwner()
+        && request.resource.data.keys().hasOnly(['nome', 'estado', 'abertoEm', 'concluidoEm', 'atividades', 'criadoPor', 'atualizadoEm'])
+        && request.resource.data.criadoPor == request.auth.uid
+        && kanbanValido(request.resource.data);
+      allow update: if isOwner()
+        && request.resource.data.keys().hasOnly(['nome', 'estado', 'abertoEm', 'concluidoEm', 'atividades', 'criadoPor', 'atualizadoEm'])
+        && request.resource.data.criadoPor == resource.data.criadoPor
+        && kanbanValido(request.resource.data);
+    }
+
+    // OS CONTATOS DO CRM (05/10/2026): o que o dono anotou de cada conversa com
+    // um motorista. APPEND-ONLY: errou, anota uma CORREÇÃO (`corrige` aponta a
+    // anotação errada), nunca edita nem apaga pelo cliente. O motorista é
+    // titular e pode pedir o que foi anotado (LGPD art. 18). A agendada
+    // `limparContatosAntigos` apaga 5 anos depois de a conta encerrar.
+    match /contatosDoDono/{id} {
+      allow read: if isOwner();
+      allow create: if isOwner()
+        && request.resource.data.keys().hasOnly(['motoristaUid', 'canal', 'texto', 'retomarEm', 'corrige', 'em', 'donoUid'])
+        && request.resource.data.donoUid == request.auth.uid
+        && request.resource.data.em == request.time
+        && request.resource.data.canal in ['whatsapp', 'ligacao', 'email', 'presencial']
+        && request.resource.data.texto is string
+        && request.resource.data.texto.size() > 0
+        && request.resource.data.texto.size() <= 1000
+        && (request.resource.data.get('corrige', null) == null
+            || (request.resource.data.corrige is string
+                && exists(/databases/$(database)/documents/contatosDoDono/$(request.resource.data.corrige))));
+      allow update, delete: if false;
     }
 
     // As atividades de Platina: só o dono lança; todo usuário do app lê.
