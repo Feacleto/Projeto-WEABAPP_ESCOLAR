@@ -80,7 +80,7 @@ export default function Conheca() {
             </span>
           )}
           <h1 className="font-display text-4xl font-extrabold leading-tight">{cartao.marca}</h1>
-          <p className="text-lg font-semibold">{subtituloDoTio({ regiao: cartao.bairro, city: cartao.cidade })}</p>
+          <p className="text-lg font-semibold">{subtituloDoTio({ city: cartao.cidade })}</p>
         </section>
 
         <section className="flex flex-1 flex-col gap-6 px-4 py-8">

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { useAuth } from '../../hooks/useAuth';
+import { setCartaoPublico } from '../../services/userService';
 import { Eye } from 'lucide-react';
 import AppSheet from '../common/AppSheet';
 import { LogoMark } from '../common/Logo';
@@ -194,13 +197,33 @@ function MetadeDoTio({ nome, marca, cor, perfil, uid, onFechar }) {
   const [previa, setPrevia] = useState(false);
   const [cartao, previaAcao, trocar] = acoesDaFolha('tio');
   const mensagem = mensagemDoCartao({ marca: perfil?.marcaNome, uid });
+  const { refreshProfile } = useAuth();
+  // OPT-IN (05/10/2026, QA): a página /conheca só existe com o cartão
+  // LIGADO. Mandar pela primeira vez liga (a gravação sai antes do WhatsApp
+  // abrir; o SDK a sobe mesmo com a aba trocada), e "Desligar" esconde.
+  const aberto = perfil?.cartaoPublico === true;
+  const gravar = (ligado) =>
+    setCartaoPublico(uid, ligado)
+      .then(() => refreshProfile?.())
+      .catch(() => toast.error('Não deu para gravar agora. Tente de novo.'));
 
   return (
     <div className="flex flex-1 flex-col items-center gap-3.5 overflow-y-auto px-5 pb-6 pt-1">
       <Identidade nome={nome} marca={marca} cor={cor} subtitulo={subtituloDoTio({ regiao: perfil?.regiao, city: perfil?.city })} />
       <div className="flex w-full flex-col gap-2.5">
+        {!aberto && (
+          <p className="text-center text-base text-textBody">Quem tiver o link vê o seu logo, a cidade e o seu WhatsApp.</p>
+        )}
         {/* Sem número: o WhatsApp abre para ELE escolher a família. */}
-        <a href={linkDoZap('', mensagem)} target="_blank" rel="noreferrer" className={CHEIO}>
+        <a
+          href={linkDoZap('', mensagem)}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() => {
+            if (!aberto) gravar(true);
+          }}
+          className={CHEIO}
+        >
           {cartao.rotulo}
         </a>
         <button type="button" onClick={() => setPrevia(true)} className={CONTORNO}>
@@ -217,6 +240,15 @@ function MetadeDoTio({ nome, marca, cor, perfil, uid, onFechar }) {
           {trocar.rotulo}
         </button>
       </div>
+
+      {aberto && (
+        <div className="flex w-full items-center gap-3 rounded-2xl bg-surface p-3">
+          <p className="flex-1 text-base text-text">Seu cartão está aberto a quem tem o link</p>
+          <button type="button" onClick={() => gravar(false)} className="tap min-h-12 shrink-0 rounded-xl border-2 border-border bg-card px-4 text-base font-bold text-text">
+            Desligar
+          </button>
+        </div>
+      )}
 
       <AppSheet open={previa} onClose={() => setPrevia(false)} title="Como as famílias veem" icon={Eye}>
         <PreviaDaFamilia nome={nome} logoURL={marca?.logoURL} cor={cor} genero={perfil?.gender} />

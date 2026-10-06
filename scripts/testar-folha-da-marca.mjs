@@ -116,6 +116,14 @@ checar('noindex no hosting também', true,
 checar('a recusa é a frase do servidor (uma só)', true, pagina.includes('{cartao.frase}') && ler('src/services/cartaoDoTioService.js').includes("'Este cartão não vale mais.'"));
 checar('nenhuma letra abaixo de 16px', false, /\btext-(?:sm|xs)\b/.test(pagina));
 
+console.log('\n2c. o cartão público é opt-in, e sem bairro (QA)');
+const folhaOpt = semComentarios(ler('src/components/marca/FolhaDaMarca.jsx'));
+checar('a explicação de uma linha antes de ligar', true, folhaOpt.includes('Quem tiver o link vê o seu logo, a cidade e o seu WhatsApp.'));
+checar('mandar pela primeira vez grava cartaoPublico: true', true, /if \(!aberto\) gravar\(true\)/.test(folhaOpt) && ler('src/services/userService.js').includes('cartaoPublico: ligado === true'));
+checar('ligado, a linha e o "Desligar" (contorno), que grava false', true,
+  folhaOpt.includes('Seu cartão está aberto a quem tem o link') && folhaOpt.includes('onClick={() => gravar(false)}') && !/gravar\(false\)\} className="[^"]*bg-marca/.test(folhaOpt));
+checar('a página pública não mostra o bairro', false, /bairro|regiao/.test(semComentarios(ler('src/pages/Conheca.jsx'))));
+
 console.log('\n3. a alça');
 checar('toque na metade: tela cheia', 'cheia', aoSoltarAAlca(2, false));
 checar('toque na cheia: volta à metade', 'metade', aoSoltarAAlca(-3, true));

@@ -2049,9 +2049,9 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   As MENSAGENS que vão junto (texto "Direto", quem fala é a marca dele) estão
   em [mensagensDoLink.js](src/marca/mensagensDoLink.js), `testar:mensagens-do-link`.
 - **Cartão para conhecer o tio:** `verCartaoDoTio` (pública,
-  [cartaoDoTio.js](functions/lib/cartaoDoTio.js)) — seis campos (marca,
-  logo, cor, cidade, bairro, WhatsApp), só motorista não suspenso e com
-  marca, uma frase só para toda recusa, e nenhuma escrita além do contador
+  [cartaoDoTio.js](functions/lib/cartaoDoTio.js)) — cinco campos (marca,
+  logo, cor, cidade, WhatsApp; nunca o bairro), só motorista não suspenso,
+  com marca e com `cartaoPublico === true`, uma frase só para toda recusa, e nenhuma escrita além do contador
   do limite por IP.
 - **Convite:** `lookupInvite`, `redeemInvite`, `getInvitePreview` — único
   caminho para criar conta de pai. ⚠️ **Desde 03/10/2026 (segurança):** o
@@ -2388,7 +2388,10 @@ marca), o nome e o subtítulo. O TIO vê "Transporte escolar · {bairro},
 aprovado `mensagemDoCartaoDoTio`, para CONHECER o tio — nunca "entrar" —,
 com o link `/conheca/<uid>`: prévia "Conheça {marca}" e a página pública
 [Conheca](src/pages/Conheca.jsx), que apresenta o tio e tem um só botão, o
-WhatsApp dele; sem criança, preço nem lista de outros tios), "Ver como as
+WhatsApp dele; sem criança, preço nem lista de outros tios). ⚠️ O cartão
+público é OPT-IN (`users.cartaoPublico`, gravado pelo tio ao mandar a 1ª
+vez, com "Desligar" na folha; sem `true`, frase única e cartão padrão) e
+NUNCA mostra o bairro (`regiao` costuma ser onde ele mora): só a cidade, "Ver como as
 famílias me veem" (o topo do app delas e o cartão "Entrando" da cortina,
 nada inventado) e "Trocar logo ou cor" (`/tio/profile#sua-marca`). A
 AUXILIAR vê a marca do tio da perua escolhida, "Você trabalha nesta perua

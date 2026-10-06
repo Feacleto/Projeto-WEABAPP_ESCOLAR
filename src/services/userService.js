@@ -230,6 +230,19 @@ export async function setMarca(uid, { nome, logoURL, cor, cores } = {}) {
   await updateDoc(doc(db, 'users', uid), dados);
 }
 
+/**
+ * O CARTÃO PÚBLICO DO TIO (`/conheca/<uid>`) SÓ EXISTE SE ELE QUISER
+ * (05/10/2026, QA). `users.cartaoPublico` é gravado pelo PRÓPRIO tio: `true`
+ * na primeira vez que ele manda o cartão pela folha da marca, `false` no
+ * "Desligar". Sem rule nova — o `update` do próprio doc é lista de
+ * PROIBIDOS, e mentir aqui só mostra ou esconde a marca dele mesmo. Quem
+ * decide o que aparece é o servidor (`verCartaoDoTio`), que exige `true`.
+ */
+export async function setCartaoPublico(uid, ligado) {
+  if (!uid) throw new Error('Sem uid.');
+  await updateDoc(doc(db, 'users', uid), { cartaoPublico: ligado === true });
+}
+
 export async function setAdminPixKey(adminUid, { pixKey, pixKeyType }) {
   await updateDoc(doc(db, 'users', adminUid), {
     pixKey: pixKey?.trim() || null,
