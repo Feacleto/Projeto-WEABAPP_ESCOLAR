@@ -26,7 +26,7 @@ const NAV_ITEMS = [
 
 export default function AuxLayout() {
   return (
-    <div className="min-h-screen" style={{ paddingBottom: 'calc(8rem + env(safe-area-inset-bottom, 0px))' }}>
+    <div className="min-h-screen" style={{ paddingBottom: 'calc(var(--altura-do-menu, 4rem) + env(safe-area-inset-bottom, 0px))' }}>
       <FolhaDaMarcaDaAuxiliar>
         <Outlet />
       </FolhaDaMarcaDaAuxiliar>
