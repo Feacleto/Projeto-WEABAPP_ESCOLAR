@@ -528,7 +528,14 @@ src/
 │   │                  redesenho inteiro (26 telas) está no canvas "Painel do
 │   │                  dono"; Mapa, Alertas no sino e Saídas ainda pedem dado
 │   │                  ou regra nova.
-│   └── legal/         termos e privacidade — `LEGAL_VERSION` está em 1.4
+│   └── legal/         termos e privacidade — `LEGAL_VERSION` está em 1.5
+│                       (05/10/2026: a cláusula 11b, "Suspensão e Bloqueio").
+│                       ⚠️ A 1.4 FOI AO AR NA v1.3 SEM REVISÃO DO ADVOGADO
+│                       (decisão do dono, 05/10/2026), e a 1.5 também vai
+│                       assim. A revisão continua PENDENTE para todo o
+│                       texto: saúde, família suspensa (ECA), contratos.
+│                       Mudança de texto publicado SOBE a versão.
+│                       Na 1.4
 │                       (04/10/2026: a leitura única da posição no
 │                       posto de combustível entrou na cláusula 8, na
 │                       base legal 5.c e na retenção). Na 1.3
@@ -536,8 +543,8 @@ src/
 │                       própria (consentimento específico da responsável,
 │                       art. 11 I) e saiu das "observações" do motorista.
 │                       ⚠️ TEXTO DO RASCUNHO de docs/consentimento-saude.md,
-│                       NÃO PUBLICAR antes da revisão jurídica (decisão do
-│                       dono). Na 1.2 (11/09/2026) a cláusula 8 passou a dizer que o
+│                       publicado sem a revisão jurídica (decisão do dono,
+│                       05/10/2026); a revisão continua pendente. Na 1.2 (11/09/2026) a cláusula 8 passou a dizer que o
 │                       compartilhamento da posição é ESCOLHA DO MOTORISTA e
 │                       revogável (art. 8º §5º — antes a base declarada era
 │                       consentimento e não havia como revogar), que a posição
@@ -2552,8 +2559,8 @@ tem prazo de validade: quando a redação for ratificada, ela vai para o código
 dia" da ficha: opcional, caixa de consentimento própria e desmarcada, editar é
 consentir de novo, apagar leva os dois campos (`salvarSaudeDaCrianca` /
 `apagarSaudeDaCrianca` em childrenService). O motorista só lê, e só quando
-existe. ⚠️ **Os textos ainda são o rascunho**: o código foi construído, e a
-publicação espera a revisão jurídica.
+existe. ⚠️ **Os textos são o rascunho, e foram ao ar sem revisão jurídica**
+(decisão do dono, 05/10/2026). A revisão continua pendente.
 
 **Falta não gera desconto**, e a cláusula 7ª já dizia: o valor é pela VAGA,
 inclusive nas férias, `independentemente da quantidade de dias letivos`. A tela

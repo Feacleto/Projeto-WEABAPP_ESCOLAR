@@ -10,7 +10,8 @@
 > Decisão do dono: a camada 2 (seção 5) está em
 > `src/components/children/SaudeDaCrianca.jsx` e o parágrafo da seção 6 está
 > na Política (`LEGAL_VERSION` 1.3, que também corrigiu a frase do aceite no
-> primeiro acesso). **O deploy espera a revisão jurídica destes textos.** Se a
+> primeiro acesso). ⚠️ **Os textos foram ao ar na v1.3 (05/10/2026) SEM a
+> revisão jurídica, por decisão do dono. A revisão continua pendente.** Se a
 > revisão mudar alguma frase, muda nos dois lugares e no rascunho abaixo.
 >
 > Este arquivo tem prazo de validade: quando a redação for ratificada, ela vai

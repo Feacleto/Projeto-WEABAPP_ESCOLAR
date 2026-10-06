@@ -30,8 +30,8 @@ import { formatDate } from '../../compartilhado/formatters';
  *   - APAGAR EXISTE DE VERDADE (art. 18, VI): um botão, e os dois campos saem
  *     juntos.
  *
- * ⚠️ OS TEXTOS SÃO O RASCUNHO DO DOCUMENTO, que pede revisão jurídica antes
- * de ir ao ar. Decisão do dono: construir agora, publicar depois da revisão.
+ * ⚠️ OS TEXTOS SÃO O RASCUNHO DO DOCUMENTO, e foram ao ar SEM a revisão
+ * jurídica (decisão do dono, 05/10/2026). A revisão continua pendente.
  * Revisados em 05/10/2026: a caixa diz que quem AUTORIZA é o responsável e o
  * que ele autoriza (guardar no app e mostrar só ao motorista) — "autorizo o
  * Alô Buzinou" punha a plataforma como quem decide, e para a turma quem

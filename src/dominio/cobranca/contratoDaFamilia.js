@@ -207,6 +207,8 @@ export function estadoDoContrato(child) {
  * pendente no texto novo. O aceito fica como está: ninguém é chamado a
  * assinar de novo por causa de uma redação.
  */
+// ⚠️ Esta redação foi ao ar na v1.3 (05/10/2026) SEM revisão do advogado,
+// por decisão do dono. A revisão continua pendente; mudar o texto é subir a versão.
 export const VERSAO_DO_TEXTO = 2;
 
 export const TEXTOS_DO_CONTRATO = {

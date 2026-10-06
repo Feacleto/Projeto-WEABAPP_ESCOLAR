@@ -143,6 +143,8 @@ import {
  * congelado. O hash prova o JSON, e o texto é desenhado por componente —
  * sem esse desvio, a cláusula nova apareceria por cima de um aceite antigo.
  */
+// ⚠️ Esta redação foi ao ar na v1.3 (05/10/2026) SEM revisão do advogado,
+// por decisão do dono. A revisão continua pendente; mudar o texto é subir a versão.
 export const VERSAO_CONTRATO = 8;
 
 /**
