@@ -489,9 +489,6 @@ export const PRIVACY_SECTIONS = [
     paragraphs: [
       'Tratamos os seguintes dados pessoais:',
       '(a) Do motorista: nome, e-mail, telefone/WhatsApp, senha (guardada de forma cifrada pelo serviço de login), gênero (para o desenho do avatar), cidade e bairro, foto, nome e logotipo da marca dele, chave PIX, CPF ou CNPJ e endereço (para o contrato com as famílias e a cobrança da assinatura), alvará (somente quando ele o envia para receber o selo), despesas, quilômetros rodados nas rotas (só o total, sem trajeto) e a lista de postos de combustível dele, e a localização do veículo durante as rotas e nas leituras únicas descritas na cláusula 8 dos Termos;',
-      // ⚠️ EM CONSTRUÇÃO (painel do dono, 05/10/2026): o registro de contatos
-      // da equipe com o motorista e o "Uso do app" agregado. Conferir contra o
-      // código antes do advogado; se não entrar, a frase sai.
       '(a.1) O que a equipe do Alô Buzinou anota sobre o motorista: o registro das conversas com ele (por qual canal, quando, o que foi conversado e quando retomar) e as observações internas da equipe. Esse registro não é mostrado às famílias nem a outros motoristas, e o motorista pode pedir para ver o que foi anotado sobre ele, ou corrigir o que estiver errado, pelo canal da seção 9;',
       '(b) Da auxiliar do motorista: nome, e-mail, telefone e as marcações que ela faz na rota; com cada motorista com quem trabalha (até dois ao mesmo tempo), o vínculo de trabalho: quando começou, quando terminou cada período (quem sai e volta tem mais de um) e o valor mensal que o motorista informou no convite, se informou; o recibo de cada pagamento (o mês, o valor que o motorista anotou ter pago, a data da anotação e a data em que ela confirmou o recebimento); as faltas dela que o motorista registra (o dia e quem a substituiu); a recomendação que um motorista escreve para ela; e a nota que ela dá ao motorista;',
       '(b.1) Do registro do dia da auxiliar: quando ela marca a rota, guardamos, para cada marcação, a hora, o primeiro nome dela e o identificador interno da conta dela, o primeiro nome da criança, o passo (entrou na perua, chegou na escola, entregue em casa ou faltou), se era a ida, a volta ou o dia inteiro (na falta) e o nome da escola, junto do dia e do motorista, para o motorista ver o que ela marcou;',
@@ -503,9 +500,6 @@ export const PRIVACY_SECTIONS = [
       '(e.1) Do link de um dia da substituta: quando o motorista manda a uma substituta o link que mostra a rota do dia, guardamos o nome dela, o dia, quando o link foi criado, quando e por que deixou de valer e um resumo cifrado do segredo do link — não o próprio link. Quem tenta abrir um link que não existe ou com o segredo errado tem o endereço IP contado no limite de tentativas, como no convite;',
       '(f) Avaliações: a nota e o comentário que o usuário dá ao Aplicativo; a nota que o responsável dá ao motorista; a recomendação que o motorista escreve para a auxiliar (até 3 pontos fortes de uma lista fixa e uma frase curta, assinada por ele); e a nota de 1 a 5 estrelas que a auxiliar dá ao motorista (seção 6);',
       '(g) Dados técnicos: identificadores do aparelho para as notificações, versão do navegador, registros de acesso (logs) e, no limite de tentativas contra abuso (por exemplo, na abertura de convites), um resumo cifrado do endereço IP — não o próprio número;',
-      // ⚠️ EM CONSTRUÇÃO (painel do dono, 05/10/2026): o registro de contatos
-      // da equipe com o motorista e o "Uso do app" agregado. Conferir contra o
-      // código antes do advogado; se não entrar, a frase sai.
       '(h) Dados de uso: interações com o Aplicativo; contagens, feitas no servidor a partir dos dados que o Aplicativo já guarda para funcionar, de quantos motoristas usaram cada recurso e quantas vezes, guardadas só como números agregados, sem identificar ninguém (um recurso usado por menos de três motoristas aparece como "menos de 3"); e, somente com o seu aceite, as métricas do Google Analytics (seção 10).',
     ],
   },
@@ -566,9 +560,6 @@ export const PRIVACY_SECTIONS = [
       '(e) Dados da criança usados no transporte (seção 4) — base: execução do contrato de transporte de que o responsável é parte (art. 7º, V) e legítimo interesse do motorista em organizar e prestar o serviço com segurança (art. 7º, IX), sempre no melhor interesse da criança (art. 14, caput; Enunciado CD/ANPD nº 1/2023);',
       '(f) Informações de saúde da criança — base: consentimento específico e destacado do responsável (art. 11, I, e art. 14, §1º), revogável a qualquer momento, sem custo, apagando a informação no Aplicativo (art. 8º, §5º);',
       '(g) Imagem da criança na foto da turma e na comunidade — base: consentimento específico do responsável (art. 14, §1º), dado pela resposta "Sim" no Aplicativo a uma pergunta que diz quem vê a foto, e revogável a qualquer momento, sem custo, na ficha da criança (art. 8º, §5º);',
-      // ⚠️ EM CONSTRUÇÃO (painel do dono, 05/10/2026): o registro de contatos
-      // da equipe com o motorista e o "Uso do app" agregado. Conferir contra o
-      // código antes do advogado; se não entrar, a frase sai.
       '(h) Segurança, prevenção de fraude e limite de tentativas, comunidade, níveis, avaliações do Aplicativo, comunicação da plataforma, o registro das conversas da equipe com o motorista e as contagens agregadas de uso de cada recurso — base: legítimo interesse (art. 7º, IX), sem uso de dados de criança;',
       '(i) Métricas de uso pelo Google Analytics — base: consentimento (art. 7º, I), dado no aviso de cookies e revogável a qualquer momento.',
       // AS LETRAS NOVAS VÊM DEPOIS DA (i), em vez de renumerar: o comentário
@@ -651,9 +642,6 @@ export const PRIVACY_SECTIONS = [
       'O link de um dia da substituta para de funcionar à meia-noite daquele dia, quando a rota é encerrada, quando o motorista o encerra ou quando a conta dele deixa de operar. Do link, guardamos só o nome dela, o dia, quando ele deixou de valer e o resumo cifrado do segredo, enquanto a conta do motorista existir.',
       'O registro do dia das marcações da auxiliar é apagado automaticamente depois de 7 (sete) dias.',
       'O recado do dia é apagado automaticamente depois de 7 (sete) dias.',
-      // ⚠️ EM CONSTRUÇÃO (painel do dono, 05/10/2026): o registro de contatos
-      // da equipe com o motorista e o "Uso do app" agregado. Conferir contra o
-      // código antes do advogado; se não entrar, a frase sai.
       'O registro das conversas da equipe com o motorista fica enquanto a conta dele existir e por 5 (cinco) anos depois de ela ser encerrada, o prazo em que uma cobrança ou uma reclamação ainda pode ser feita. As contagens de uso guardam só números, sem dado pessoal.',
       'Após esses prazos, os dados são apagados ou anonimizados.',
     ],
