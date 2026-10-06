@@ -4643,10 +4643,20 @@ async function osContatosDoDono({ novato, dono, anon }) {
     canal: S('whatsapp'),
     texto: S('Conversei sobre o plano'),
     retomarEm: S('2026-10-20'),
+    corrige: { nullValue: null },
     donoUid: S(dono.uid),
     ...extra,
   });
   await semear('contatosDoDono/semente', { ...contato(), em: T(0) });
+
+  checar(BL, 'o dono cria com corrige nulo [HOJE VERMELHO]', 'PASSA',
+    await criarComHoraDoServidor('contatosDoDono/corrige-nulo', dono, contato({ corrige: { nullValue: null } }), 'em'));
+  checar(BL, 'o dono corrige um contato que existe [HOJE VERMELHO]', 'PASSA',
+    await criarComHoraDoServidor('contatosDoDono/corrige-ok', dono, contato({ corrige: S('semente') }), 'em'));
+  checar(BL, 'corrige aponta para id que não existe', 'NEGA',
+    await criarComHoraDoServidor('contatosDoDono/corrige-fantasma', dono, contato({ corrige: S('nao-existe') }), 'em'));
+  checar(BL, 'corrige numérico', 'NEGA',
+    await criarComHoraDoServidor('contatosDoDono/corrige-num', dono, contato({ corrige: N(5) }), 'em'));
 
   checar(BL, 'o dono cria com a hora do servidor [HOJE VERMELHO]', 'PASSA',
     await criarComHoraDoServidor('contatosDoDono/novo', dono, contato(), 'em'));
