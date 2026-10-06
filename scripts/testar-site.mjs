@@ -97,13 +97,21 @@ checar('o detector pega emoji (sonda positiva)', true, EMOJI.test('Chamar no Wha
 checar('e pega a entidade HTML de emoji (sonda positiva)', true, EMOJI.test('&#128172; Chamar'));
 
 bloco('6 · O CONTATO DO INVESTIDOR');
-checar('contato válido passa', { ok: true, lead: { nome: 'Ana Souza', email: 'ana@exemplo.com', whatsapp: '11987654321' } },
-  lerLead({ nome: '  Ana   Souza ', email: 'ANA@exemplo.com', whatsapp: '(11) 98765-4321' }));
-checar('WhatsApp é opcional', true, lerLead({ nome: 'Ana', email: 'a@b.co' }).ok);
-checar('sem nome, não grava', { ok: false, erro: 'nome' }, lerLead({ nome: 'A', email: 'a@b.co' }));
-checar('e-mail errado, não grava', { ok: false, erro: 'email' }, lerLead({ nome: 'Ana', email: 'ana@' }));
+const LI = 'https://www.linkedin.com/in/ana-souza';
+checar('contato válido passa', { ok: true, lead: { nome: 'Ana Souza', email: 'ana@exemplo.com', whatsapp: '11987654321', linkedin: LI } },
+  lerLead({ nome: '  Ana   Souza ', email: 'ANA@exemplo.com', whatsapp: '(11) 98765-4321', linkedin: LI }));
+checar('WhatsApp é opcional', true, lerLead({ nome: 'Ana', email: 'a@b.co', linkedin: LI }).ok);
+checar('LinkedIn sem protocolo é normalizado', 'https://linkedin.com/in/ana', lerLead({ nome: 'Ana', email: 'a@b.co', linkedin: 'linkedin.com/in/ana' }).lead.linkedin);
+checar('subdomínio do LinkedIn passa', true, lerLead({ nome: 'Ana', email: 'a@b.co', linkedin: 'http://br.linkedin.com/in/ana' }).ok);
+checar('outro domínio, não grava', { ok: false, erro: 'linkedin' }, lerLead({ nome: 'Ana', email: 'a@b.co', linkedin: 'https://facebook.com/ana' }));
+checar('domínio que só termina parecido, não grava', false, lerLead({ nome: 'Ana', email: 'a@b.co', linkedin: 'https://falsolinkedin.com/in/ana' }).ok);
+checar('texto solto, não grava', false, lerLead({ nome: 'Ana', email: 'a@b.co', linkedin: 'sou investidor' }).ok);
+checar('LinkedIn vazio, não grava', { ok: false, erro: 'linkedin' }, lerLead({ nome: 'Ana', email: 'a@b.co', linkedin: '' }));
+checar('LinkedIn longo demais, não grava', false, lerLead({ nome: 'Ana', email: 'a@b.co', linkedin: 'https://linkedin.com/in/' + 'a'.repeat(200) }).ok);
+checar('sem nome, não grava', { ok: false, erro: 'nome' }, lerLead({ nome: 'A', email: 'a@b.co', linkedin: LI }));
+checar('e-mail errado, não grava', { ok: false, erro: 'email' }, lerLead({ nome: 'Ana', email: 'ana@', linkedin: LI }));
 checar('robô preencheu a isca: responde ok e NÃO grava', { ok: true, isca: true }, lerLead({ nome: 'Ana', email: 'a@b.co', site: 'http://spam' }));
-checar('texto gigante é cortado', 80, lerLead({ nome: 'x'.repeat(500), email: 'a@b.co' }).lead.nome.length);
+checar('texto gigante é cortado', 80, lerLead({ nome: 'x'.repeat(500), email: 'a@b.co', linkedin: LI }).lead.nome.length);
 checar('corpo vazio não quebra', false, lerLead(undefined).ok);
 
 console.log(`\n${'═'.repeat(64)}`);

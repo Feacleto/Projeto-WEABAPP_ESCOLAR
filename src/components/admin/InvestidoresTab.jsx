@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Mail, MessageCircle, TrendingUp } from 'lucide-react';
+import { ExternalLink, Mail, MessageCircle, TrendingUp } from 'lucide-react';
 import Spinner from '../common/Spinner';
 import { watchLeadsInvestidor } from '../../services/leadsInvestidorService';
 import { formatPhone } from '../../compartilhado/formatters';
@@ -87,6 +87,16 @@ export default function InvestidoresTab() {
               >
                 <Mail size={15} /> Mandar o deck por e-mail
               </a>
+              {l.linkedin && (
+                <a
+                  href={l.linkedin}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="tap inline-flex h-10 items-center gap-1.5 rounded-xl border border-border px-4 text-sm font-semibold text-text"
+                >
+                  <ExternalLink size={15} /> LinkedIn
+                </a>
+              )}
               {l.whatsapp && (
                 <a
                   href={`https://wa.me/55${l.whatsapp.replace(/^55/, '')}`}

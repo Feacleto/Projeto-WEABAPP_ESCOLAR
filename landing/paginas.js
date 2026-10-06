@@ -115,11 +115,12 @@
   if (lead) {
     lead.addEventListener('submit', function (e) {
       e.preventDefault();
-      var nome = lead.nome.value.trim(), email = lead.email.value.trim();
+      var nome = lead.nome.value.trim(), email = lead.email.value.trim(), linkedin = lead.linkedin.value.trim();
       var erro = lead.querySelector('.erro');
       var ok = nome.length >= 2 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
-      if (!ok) {
-        erro.textContent = 'Escreva seu nome e um e-mail válido.';
+      var okLinkedin = linkedin.length <= 200 && /^(https?:\/\/)?([a-z0-9-]+\.)*linkedin\.com([\/?#]\S*)?$/i.test(linkedin);
+      if (!ok || !okLinkedin) {
+        erro.textContent = ok ? 'Confira o link do seu LinkedIn.' : 'Escreva seu nome e um e-mail válido.';
         erro.hidden = false;
         lead.classList.remove('errou'); void lead.offsetWidth; lead.classList.add('errou');
         return;
@@ -130,17 +131,17 @@
       fetch('/api/interesse-investidor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome: nome, email: email, whatsapp: lead.whatsapp.value.trim(), site: lead.site.value })
+        body: JSON.stringify({ nome: nome, email: email, whatsapp: lead.whatsapp.value.trim(), linkedin: linkedin, site: lead.site.value })
       }).then(function (r) {
         if (!r.ok) throw new Error('falhou');
         var primeiro = nome.split(/\s+/)[0];
-        lead.innerHTML = '<div class="lead-ok"><div class="bola"><svg viewBox="0 0 24 24" fill="none" stroke="#0B1210" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></div><h2></h2><p>A gente manda o material no seu e-mail.</p></div>';
+        lead.innerHTML = '<div class="lead-ok"><div class="bola"><svg viewBox="0 0 24 24" fill="none" stroke="#0B1210" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></div><h2></h2><p>A gente responde por e-mail.</p></div>';
         lead.querySelector('h2').textContent = 'Recebemos, ' + primeiro + '.';
       }).catch(function () {
         erro.textContent = 'Não deu pra enviar agora. Tente de novo, ou fale com a gente pelo WhatsApp.';
         erro.hidden = false;
         botao.disabled = false;
-        botao.querySelector('.txt').textContent = 'Quero receber o material';
+        botao.querySelector('.txt').textContent = 'Quero conversar';
       });
     });
   }

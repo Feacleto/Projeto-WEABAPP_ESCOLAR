@@ -174,25 +174,24 @@ PAGINAS = {
   # NÚMERO SÓ COM FONTE, conferida na página da fonte. Não invente número.
   '<h2>O mercado</h2><div class="cards rv">'
   '<div><b>Cerca de 140 mil crianças</b><p>no Transporte Escolar Gratuito (TEG) da Prefeitura de São Paulo (144 mil atendimentos em 2025).</p><p class="fonte"><a href="https://www.saopaulo.sp.leg.br/blog/reformulacao-do-transporte-escolar-gratuito-e-tema-de-audiencia-publica/" target="_blank" rel="noopener">Fonte: Câmara Municipal de São Paulo</a></p></div>'
-  '<div><b>Cerca de 12,7 mil veículos</b><p>de transporte escolar cadastrados e regularizados no DTP da cidade de São Paulo.</p><p class="fonte"><a href="https://prefeitura.sp.gov.br/web/mobilidade/w/transporte-escolar-oferece-seguran%C3%A7a-a-pais-de-alunos-veja-o-que-checar-para-contratar-o-servi%C3%A7o" target="_blank" rel="noopener">Fonte: Prefeitura de São Paulo</a></p></div>'
-  '<div><b>Cerca de 4 mil vans</b><p>no programa TEG [a confirmar].</p><p class="fonte"><a href="https://www.instagram.com/p/DPkANI_Edjf/" target="_blank" rel="noopener">Fonte: Prefeitura/SPTrans, em rede social</a></p></div></div>'
+  '<div><b>Cerca de 12,7 mil veículos</b><p>de transporte escolar cadastrados e regularizados no DTP da cidade de São Paulo.</p><p class="fonte"><a href="https://prefeitura.sp.gov.br/web/mobilidade/w/transporte-escolar-oferece-seguran%C3%A7a-a-pais-de-alunos-veja-o-que-checar-para-contratar-o-servi%C3%A7o" target="_blank" rel="noopener">Fonte: Prefeitura de São Paulo</a></p></div></div>'
   '<p>Só na cidade de São Paulo, são milhares de motoristas autônomos — e quase toda operação ainda roda em caderno e WhatsApp.</p>'
-  '<h2>Onde estamos</h2><p>Em teste com motoristas convidados desde outubro de 2026.</p>'
-  '<h2>Como ganhamos dinheiro</h2><p>R$ 5,90 por criança por mês no plano mensal, R$ 2,90 no anual. Uma perua de 20 crianças rende R$ 118 por mês. A mensalidade da família vai direto ao motorista, pelo PIX: a plataforma não toca nesse dinheiro.</p>'
+  '<h2>Próximo passo</h2><p>Mais ferramentas para o negócio do motorista.</p>'
+  '<h2>Como ganhamos dinheiro</h2><p>Assinatura do motorista, cobrada por criança atendida. A família não paga. A mensalidade da família vai direto ao motorista, pelo PIX: a plataforma não toca nesse dinheiro.</p>'
   '<h2>Por que ganhamos</h2><div class="cards rv">'
   '<div><b>O app é do motorista</b><p>A família vê o logo, a cor e o nome dele.</p></div>'
   '<div><b>Preço por criança, sem plano capado</b><p>O app inteiro em qualquer tamanho de perua.</p></div>'
   '<div><b>Família grátis, auxiliar com conta própria</b><p>Três usuários, só um paga.</p></div>'
-  '<div><b>Cresce por indicação</b><p>Motorista indica motorista pelo próprio cartão.</p></div>'
   '<div><b>Feito para o celular de quem dirige</b><p>Abre no navegador, sem loja, letra grande.</p></div></div>'
   + RELATORIO +
-  '<form class="lead rv" novalidate><h2>Quer receber o material completo?</h2><p>Os números da operação, o modelo de cobrança e o roadmap. Deixa seu contato que a gente manda.</p>'
+  '<form class="lead rv" novalidate><h2>Quer conversar?</h2><p>Deixe seu contato e o link do seu LinkedIn. A gente responde.</p>'
   '<label class="campo">Seu nome<input name="nome" autocomplete="name" maxlength="80" required></label>'
   '<label class="campo">Seu e-mail<input name="email" type="email" autocomplete="email" maxlength="120" required></label>'
+  '<label class="campo">Seu LinkedIn <small>(link do perfil)</small><input name="linkedin" type="text" inputmode="url" autocomplete="url" maxlength="200" placeholder="linkedin.com/in/seu-nome" required></label>'
   '<label class="campo">WhatsApp <small>(opcional)</small><input name="whatsapp" inputmode="tel" autocomplete="tel" maxlength="20"></label>'
   '<label class="isca" aria-hidden="true">Site<input name="site" tabindex="-1" autocomplete="off"></label>'
   '<p class="erro" role="alert" hidden></p>'
-  '<button type="submit" class="btn esc"><span class="txt">Quero receber o material</span></button>'
+  '<button type="submit" class="btn esc"><span class="txt">Quero conversar</span></button>'
   '<p style="font-size:14px;color:#55606E">Usamos seu contato só para falar sobre investimento no Alô Buzinou.</p></form>'),
 }
 

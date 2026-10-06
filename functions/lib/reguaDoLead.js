@@ -14,8 +14,24 @@
  *  - o WhatsApp guarda só os dígitos.
  */
 
-const LIMITE = { nome: 80, email: 120, whatsapp: 20 };
+const LIMITE = { nome: 80, email: 120, whatsapp: 20, linkedin: 200 };
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+/* O LinkedIn é como o dono confere que quem escreveu é investidor: link do
+ * perfil, host linkedin.com ou *.linkedin.com. Sem protocolo, vira https://.
+ * Devolve o link normalizado ou null. */
+function linkDoLinkedin(v) {
+  const bruto = String(v == null ? '' : v).trim();
+  if (!bruto || bruto.length > LIMITE.linkedin || /\s/.test(bruto)) return null;
+  const comProtocolo = /^[a-z][a-z0-9+.-]*:\/\//i.test(bruto) ? bruto : `https://${bruto}`;
+  let u;
+  try { u = new URL(comProtocolo); } catch { return null; }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+  const h = u.hostname.toLowerCase();
+  if (h !== 'linkedin.com' && !h.endsWith('.linkedin.com')) return null;
+  const href = u.href;
+  return href.length <= LIMITE.linkedin ? href : null;
+}
 
 function texto(v, max) {
   return String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, max);
@@ -33,7 +49,9 @@ function lerLead(corpo) {
   const whatsapp = String(c.whatsapp == null ? '' : c.whatsapp).replace(/\D/g, '').slice(0, LIMITE.whatsapp);
   if (nome.length < 2) return { ok: false, erro: 'nome' };
   if (!EMAIL.test(email)) return { ok: false, erro: 'email' };
-  return { ok: true, lead: { nome, email, whatsapp } };
+  const linkedin = linkDoLinkedin(c.linkedin);
+  if (!linkedin) return { ok: false, erro: 'linkedin' };
+  return { ok: true, lead: { nome, email, whatsapp, linkedin } };
 }
 
 module.exports = { lerLead, LIMITE };
