@@ -390,7 +390,34 @@ export const TERMS_SECTIONS = [
     paragraphs: [
       'O motorista pode encerrar a assinatura do aplicativo a qualquer momento, pelo próprio Aplicativo, nas condições do contrato de assinatura. Encerrar a assinatura não apaga a conta nem os dados.',
       `A exclusão da conta é feita a pedido, pelo e-mail ${COMPANY_INFO.email}. O exercício desse direito, e o que precisa ser guardado por obrigação legal, está descrito na Política de Privacidade.`,
-      `O ${COMPANY_INFO.name} pode suspender ou encerrar contas em caso de violação destes Termos, fraude ou inatividade prolongada, mediante notificação prévia quando aplicável.`,
+      `O ${COMPANY_INFO.name} só suspende ou encerra uma conta pelos motivos e do jeito descritos na cláusula 11b.`,
+    ],
+  },
+  // ⚠️ EM CONSTRUÇÃO (painel do dono, 05/10/2026): a cláusula 11b descreve
+  // o registro do dono (`registroDoDono`, `suspenderConta`) — hoje só para
+  // MOTORISTA — e o desenho já decidido para família e auxiliar, ainda não
+  // construído. Conferir contra o código antes do advogado.
+  //
+  // ⚠️ PONTO ESPECÍFICO PARA O ADVOGADO (ECA art. 4º e 17; LGPD art. 14):
+  // por decisão do dono, a FAMÍLIA suspensa deixa de receber TODOS os avisos
+  // do app, inclusive "a perua está chegando" e "chegou". A criança continua
+  // no transporte. A defesa escrita é: o motivo ser grave e da lista
+  // fechada, o aviso ao motorista para combinar os avisos do dia por outro
+  // meio, e a família manter o contato direto com ele. O dono foi avisado e
+  // decidiu; o advogado deve olhar este ponto em separado.
+  {
+    id: 'bloqueio',
+    title: '11b. Suspensão e Bloqueio',
+    paragraphs: [
+      'Esta cláusula vale para todas as contas: motorista, auxiliar e responsável. Ela existe para que ninguém seja bloqueado sem motivo dito, sem chance de responder e sem registro.',
+      'OS MOTIVOS são só estes: (a) fraude, inclusive comprovante de pagamento falso repetido; (b) identidade ou documento falso, ou a conta usada por outra pessoa; (c) acesso ou tentativa de acesso a dados de outra turma ou de outra família; (d) ameaça, assédio ou ofensa a qualquer pessoa — motorista, auxiliar, família ou equipe —, inclusive em recado ou comentário no Aplicativo; (e) uso ilegal do Aplicativo; (f) risco à criança; (g) ordem de autoridade competente; e (h) só para o motorista, o atraso no pagamento da assinatura, nos termos do contrato de assinatura. O atraso da mensalidade de uma família ao motorista NUNCA é motivo de bloqueio pelo Aplicativo.',
+      'OS GRAUS: (1) aviso, em que nada é travado; (2) suspensão com prazo, de até 365 (trezentos e sessenta e cinco) dias; e (3) encerramento da conta. O grau acompanha a gravidade e a repetição.',
+      `O AVISO E A RESPOSTA: antes de suspender ou encerrar, mandamos ao titular da conta, pelo Aplicativo, uma mensagem com o motivo e o grau, e ele tem 10 (dez) dias para responder pelo e-mail ${COMPANY_INFO.email}; uma pessoa da equipe lê a resposta antes de qualquer decisão. Nos casos urgentes — risco à criança, fraude em andamento, ameaça ou ordem de autoridade —, a suspensão pode vir antes da mensagem, que é enviada logo em seguida, e os 10 dias para responder contam a partir dela.`,
+      'O QUE ACONTECE COM O MOTORISTA SUSPENSO: ele deixa de operar pelo Aplicativo, e as famílias atendidas por ele continuam vendo os próprios dados. Nada é apagado por causa da suspensão.',
+      'O QUE ACONTECE COM A FAMÍLIA SUSPENSA: o responsável deixa de entrar no Aplicativo e de receber os avisos dele, inclusive os da rota ("a perua está chegando", "chegou"). A suspensão NÃO interrompe o transporte: a criança continua com o motorista, e o contrato entre a família e o motorista continua valendo. O motorista é avisado de que aquela família está sem os avisos do Aplicativo, para combinar com ela, por outro meio, os avisos do dia. A família continua podendo falar com o motorista diretamente, e continua podendo pedir os próprios dados pelo canal da Política de Privacidade. Nada é apagado por causa da suspensão.',
+      'O QUE ACONTECE COM A AUXILIAR SUSPENSA: ela deixa de entrar no Aplicativo, e o motorista com quem ela trabalha é avisado. O motorista também pode desativá-la a qualquer momento, sem depender desta cláusula.',
+      'A VOLTA: a conta volta quando a resposta é aceita, quando o prazo da suspensão acaba, quando a situação é regularizada ou quando se verifica que foi engano.',
+      `O REGISTRO: cada aviso, suspensão, encerramento, resposta e volta fica registrado, com o motivo, a data e quem da equipe decidiu, e nenhum registro é apagado ou alterado depois de feito — uma correção é um registro novo. O titular pode pedir o registro da decisão sobre a conta dele pelo e-mail ${COMPANY_INFO.email}; o que nele citar outras pessoas é entregue sem os dados delas.`,
     ],
   },
   {
@@ -492,6 +519,10 @@ export const PRIVACY_SECTIONS = [
       'Tratamos os seguintes dados pessoais:',
       '(a) Do motorista: nome, e-mail, telefone/WhatsApp, senha (guardada de forma cifrada pelo serviço de login), gênero (para o desenho do avatar), cidade e bairro, foto, nome e logotipo da marca dele, chave PIX, CPF ou CNPJ e endereço (para o contrato com as famílias e a cobrança da assinatura), alvará (somente quando ele o envia para receber o selo), despesas, quilômetros rodados nas rotas (só o total, sem trajeto) e a lista de postos de combustível dele, e a localização do veículo durante as rotas e nas leituras únicas descritas na cláusula 8 dos Termos;',
       '(a.1) O que a equipe do Alô Buzinou anota sobre o motorista: o registro das conversas com ele (por qual canal, quando, o que foi conversado e quando retomar) e as observações internas da equipe. Esse registro não é mostrado às famílias nem a outros motoristas, e o motorista pode pedir para ver o que foi anotado sobre ele, ou corrigir o que estiver errado, pelo canal da seção 9;',
+      // ⚠️ EM CONSTRUÇÃO (painel do dono): o registro das decisões da cláusula
+      // 11b dos Termos (`registroDoDono`). Hoje só motorista; família e auxiliar
+      // entram quando forem construídos. O prazo de 5 anos pede limpeza no código.
+      '(a.2) Das decisões sobre uma conta (cláusula 11b dos Termos): cada aviso, suspensão, encerramento, resposta e volta, com o motivo, a data, quem da equipe decidiu e o que foi considerado. Vale para motoristas, auxiliares e responsáveis. O titular pode pedir o registro sobre a conta dele pelo canal da seção 9;',
       '(b) Da auxiliar do motorista: nome, e-mail, telefone e as marcações que ela faz na rota; com cada motorista com quem trabalha (até dois ao mesmo tempo), o vínculo de trabalho: quando começou, quando terminou cada período (quem sai e volta tem mais de um) e o valor mensal que o motorista informou no convite, se informou; o recibo de cada pagamento (o mês, o valor que o motorista anotou ter pago, a data da anotação e a data em que ela confirmou o recebimento); as faltas dela que o motorista registra (o dia e quem a substituiu); a recomendação que um motorista escreve para ela; e a nota que ela dá ao motorista;',
       '(b.1) Do registro do dia da auxiliar: quando ela marca a rota, guardamos, para cada marcação, a hora, o primeiro nome dela e o identificador interno da conta dela, o primeiro nome da criança, o passo (entrou na perua, chegou na escola, entregue em casa ou faltou), se era a ida, a volta ou o dia inteiro (na falta) e o nome da escola, junto do dia e do motorista, para o motorista ver o que ela marcou;',
       '(c) Do responsável: nome, e-mail, telefone/WhatsApp, senha (guardada de forma cifrada pelo serviço de login), gênero (para o desenho do avatar), foto (se ele enviar), o vínculo com a criança, o aceite do contrato com o motorista e os avisos de pagamento e comprovantes que ele envia;',
@@ -562,7 +593,7 @@ export const PRIVACY_SECTIONS = [
       '(e) Dados da criança usados no transporte (seção 4) — base: execução do contrato de transporte de que o responsável é parte (art. 7º, V) e legítimo interesse do motorista em organizar e prestar o serviço com segurança (art. 7º, IX), sempre no melhor interesse da criança (art. 14, caput; Enunciado CD/ANPD nº 1/2023);',
       '(f) Informações de saúde da criança — base: consentimento específico e destacado do responsável (art. 11, I, e art. 14, §1º), revogável a qualquer momento, sem custo, apagando a informação no Aplicativo (art. 8º, §5º);',
       '(g) Imagem da criança na foto da turma e na comunidade — base: consentimento específico do responsável (art. 14, §1º), dado pela resposta "Sim" no Aplicativo a uma pergunta que diz quem vê a foto, e revogável a qualquer momento, sem custo, na ficha da criança (art. 8º, §5º);',
-      '(h) Segurança, prevenção de fraude e limite de tentativas, comunidade, níveis, avaliações do Aplicativo, comunicação da plataforma, o registro das conversas da equipe com o motorista e as contagens agregadas de uso de cada recurso — base: legítimo interesse (art. 7º, IX), sem uso de dados de criança;',
+      '(h) Segurança, prevenção de fraude e limite de tentativas, comunidade, níveis, avaliações do Aplicativo, comunicação da plataforma, o registro das conversas da equipe com o motorista, o registro das decisões de suspensão e bloqueio (cláusula 11b dos Termos, também para o exercício regular de direitos, art. 7º, VI) e as contagens agregadas de uso de cada recurso — base: legítimo interesse (art. 7º, IX), sem uso de dados de criança;',
       '(i) Métricas de uso pelo Google Analytics — base: consentimento (art. 7º, I), dado no aviso de cookies e revogável a qualquer momento.',
       // AS LETRAS NOVAS VÊM DEPOIS DA (i), em vez de renumerar: o comentário
       // de cada versão cita a letra (5.c, 5.g), e renumerar faria as citações
@@ -645,6 +676,10 @@ export const PRIVACY_SECTIONS = [
       'O registro do dia das marcações da auxiliar é apagado automaticamente depois de 7 (sete) dias.',
       'O recado do dia é apagado automaticamente depois de 7 (sete) dias.',
       'O registro das conversas da equipe com o motorista fica enquanto a conta dele existir e por 5 (cinco) anos depois de ela ser encerrada, o prazo em que uma cobrança ou uma reclamação ainda pode ser feita. As contagens de uso guardam só números, sem dado pessoal.',
+      // ⚠️ EM CONSTRUÇÃO (painel do dono): o registro das decisões da cláusula
+      // 11b dos Termos (`registroDoDono`). Hoje só motorista; família e auxiliar
+      // entram quando forem construídos. O prazo de 5 anos pede limpeza no código.
+      'O registro das decisões sobre uma conta (cláusula 11b dos Termos) fica enquanto a conta existir e por 5 (cinco) anos depois de ela ser encerrada.',
       'Após esses prazos, os dados são apagados ou anonimizados.',
     ],
   },
