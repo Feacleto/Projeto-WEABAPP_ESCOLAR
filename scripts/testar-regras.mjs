@@ -569,6 +569,7 @@ async function main() {
   await osContatosDoDono({ novato, dono, anon });
   await oUsoDoApp({ novato, dono, anon });
   await aSegurancaDoApp({ novato, dono, anon });
+  await oBloqueioDaFamilia({ novato, dono, anon });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -4242,6 +4243,49 @@ async function oRegistroDoDono({ novato, dono, anon }) {
   checar(BL, 'a família F não lê taxaParceiros/{M}', 'NEGA', await ler(`taxaParceiros/${M.uid}`, F));
   checar(BL, 'o motorista não lê o próprio taxaParceiros (a nota interna mora lá)', 'NEGA',
     await ler(`taxaParceiros/${M.uid}`, M));
+}
+
+/**
+ * O BLOQUEIO DA FAMÍLIA (05/10/2026) — `users/{familia}.bloqueio`, mapa
+ * { grau, ate, desde }, escrito SÓ pelo servidor. Casos escritos ANTES da
+ * regra: ninguém o escreve pelo cliente, nem o dono, nem o motorista, nem a
+ * própria família.
+ */
+async function oBloqueioDaFamilia({ novato, dono, anon }) {
+  console.log('\n=== O BLOQUEIO DA FAMÍLIA (05/10/2026) ===');
+  const BL = 'bloqueioDaFamilia';
+  const agora = Date.now();
+  const L = (values) => ({ arrayValue: { values } });
+  const bloq = (grau, ate) => ({
+    mapValue: { fields: { grau: S(grau), ate: ate === null ? { nullValue: null } : T(ate), desde: T(0) } },
+  });
+  const M = await criarLogin(`bf.m.${agora}@teste.local`);
+  const F = await criarLogin(`bf.f.${agora}@teste.local`);
+  const G = await criarLogin(`bf.g.${agora}@teste.local`);
+  await semear(`users/${M.uid}`, { role: S('admin'), name: S('Tio M') });
+  const familia = (nome) => ({
+    role: S('parent'), name: S(nome), adminUid: S(M.uid), adminUids: L([S(M.uid)]), childIds: L([S('K')]),
+  });
+  await semear(`users/${F.uid}`, familia('Familia F'));
+  await semear(`users/${G.uid}`, familia('Familia G'));
+  const DF = `users/${F.uid}`;
+
+  checar(BL, 'o dono não escreve users/{F}.bloqueio pelo cliente', 'NEGA',
+    await escrever(DF, dono, { bloqueio: bloq('suspensao', 10) }, ['bloqueio']));
+  checar(BL, 'M não escreve users/{F}.bloqueio', 'NEGA',
+    await escrever(DF, M, { bloqueio: bloq('suspensao', 10) }, ['bloqueio']));
+  await semear(DF, { ...familia('Familia F'), bloqueio: bloq('suspensao', 10) });
+  checar(BL, 'F não apaga o próprio bloqueio', 'NEGA',
+    await escrever(DF, F, {}, ['bloqueio']));
+  await semear(DF, familia('Familia F'));
+  checar(BL, 'F não escreve o próprio bloqueio com grau aviso', 'NEGA',
+    await escrever(DF, F, { bloqueio: bloq('aviso', null) }, ['bloqueio']));
+  checar(BL, 'G não escreve users/{F}.bloqueio', 'NEGA',
+    await escrever(DF, G, { bloqueio: bloq('suspensao', 10) }, ['bloqueio']));
+  checar(BL, 'SONDA: F atualiza o próprio name', 'PASSA',
+    await escrever(DF, F, { name: S('Familia F nova') }, ['name']));
+  checar(BL, 'SONDA: o dono escreve notaInterna em users/{M}', 'PASSA',
+    await escrever(`users/${M.uid}`, dono, { notaInterna: S('conversou') }, ['notaInterna']));
 }
 
 /**
