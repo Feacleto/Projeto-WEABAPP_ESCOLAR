@@ -545,6 +545,11 @@ export const PRIVACY_SECTIONS = [
       '(f) Avaliações: a nota e o comentário que o usuário dá ao Aplicativo; a nota que o responsável dá ao motorista; a recomendação que o motorista escreve para a auxiliar (até 3 pontos fortes de uma lista fixa e uma frase curta, assinada por ele); e a nota de 1 a 5 estrelas que a auxiliar dá ao motorista (seção 6);',
       '(g) Dados técnicos: identificadores do aparelho para as notificações, versão do navegador, registros de acesso (logs) e, no limite de tentativas contra abuso (por exemplo, na abertura de convites), um resumo cifrado do endereço IP — não o próprio número;',
       '(h) Dados de uso: interações com o Aplicativo; contagens, feitas no servidor a partir dos dados que o Aplicativo já guarda para funcionar, de quantos motoristas usaram cada recurso e quantas vezes, guardadas só como números agregados, sem identificar ninguém (um recurso usado por menos de três motoristas aparece como "menos de 3"); e, somente com o seu aceite, as métricas do Google Analytics (seção 10).',
+      // QUEM NOS PROCURA COMO INVESTIDOR (06/10/2026): o formulário de
+      // alobuzinou.com.br/investidores (`registrarInteresseInvestidor`,
+      // `reguaDoLead.js`, coleção `leadsInvestidor`). Entra na 1.5 ainda não
+      // publicada, sem subir a versão. O prazo de 2 anos pede limpeza no código.
+      '(h.1) De quem nos procura pelo site como investidor (alobuzinou.com.br/investidores): o nome, o e-mail, o WhatsApp (se a pessoa informar), o endereço do perfil no LinkedIn e a data do contato;',
     ],
   },
   {
@@ -625,7 +630,12 @@ export const PRIVACY_SECTIONS = [
       // V). A prévia ao parceiro (primeiro nome e escola) acontece ANTES do
       // aceite, e por isso tem base própria, declarada.
       '(m) A passagem da família para outro motorista — base: execução de contrato a pedido do titular (art. 7º, V): os dados só vão ao novo motorista quando a família toca em "Aceito", para que ele possa atendê-la e fazer o contrato novo com ela, sempre no melhor interesse da criança (art. 14). Antes do aceite, mostrar ao parceiro só o primeiro nome e a escola, para ele dizer se pode atender — base: legítimo interesse do motorista (art. 7º, IX), com o mínimo que permite essa resposta;',
-      '(n) O link de um dia da substituta — base: legítimo interesse do motorista em fazer a rota acontecer no dia em que a auxiliar falta (art. 7º, IX), no melhor interesse da criança (art. 14), com o mínimo de dados descrito na seção 4.',
+      '(n) O link de um dia da substituta — base: legítimo interesse do motorista em fazer a rota acontecer no dia em que a auxiliar falta (art. 7º, IX), no melhor interesse da criança (art. 14), com o mínimo de dados descrito na seção 4;',
+      // QUEM NOS PROCURA COMO INVESTIDOR (06/10/2026): o formulário de
+      // alobuzinou.com.br/investidores (`registrarInteresseInvestidor`,
+      // `reguaDoLead.js`, coleção `leadsInvestidor`). Entra na 1.5 ainda não
+      // publicada, sem subir a versão. O prazo de 2 anos pede limpeza no código.
+      '(o) Contato de quem nos procura como investidor — base: procedimentos preliminares a um contrato, a pedido do próprio titular (art. 7º, V), e o nosso legítimo interesse em conhecer quem pede o material antes de enviá-lo (art. 7º, IX).',
     ],
   },
   {
@@ -643,6 +653,11 @@ export const PRIVACY_SECTIONS = [
       '(d) Em "Indicar para uma família", o motorista passa a uma família dele o nome e o WhatsApp de um motorista parceiro. São dados do próprio parceiro, que aceitou a parceria; a família decide se entra em contato. O parceiro recebe um aviso de que foi indicado, com o nome da marca de quem indicou e nada mais: nenhum dado da família é passado a ele. Entre parceiros, cada um vê também o nome das escolas atendidas pelo outro;',
       '(e) Na passagem da família para outro motorista (cláusula 7b dos Termos), o motorista de agora comunica ao novo motorista os dados da criança e do responsável listados na seção 4 — e só depois do "Aceito" da família. Antes disso, o parceiro vê só o primeiro nome da criança e a escola, e a família só vê o pedido depois que o parceiro aceita. Dali em diante, o novo motorista passa a ser o controlador desses dados para o serviço dele, e o anterior continua com os registros do período em que atendeu a família (mensalidades, contrato e histórico), que o novo nunca vê;',
       '(f) Serviços de terceiros, como operadores, na medida descrita na seção 2b;',
+      // QUEM NOS PROCURA COMO INVESTIDOR (06/10/2026): o formulário de
+      // alobuzinou.com.br/investidores (`registrarInteresseInvestidor`,
+      // `reguaDoLead.js`, coleção `leadsInvestidor`). Entra na 1.5 ainda não
+      // publicada, sem subir a versão. O prazo de 2 anos pede limpeza no código.
+      '(f.1) O contato de quem nos procura pelo site como investidor é lido só pela equipe do Alô Buzinou, que recebe um aviso com o primeiro nome e o e-mail da pessoa. Ele não é passado a motoristas, a famílias nem a terceiros;',
       '(g) Autoridades competentes — quando exigido por ordem judicial ou obrigação legal.',
       'A NOTA QUE O RESPONSÁVEL DÁ AO MOTORISTA (de 1 a 5 estrelas, uma por semestre) é guardada com o identificador de quem a deu, só para permitir que ele a mude dentro do semestre. O motorista nunca vê nota individual nem quem a deu: vê apenas a média de um semestre já encerrado, e só quando pelo menos cinco famílias responderam. O motorista não avalia as famílias.',
       'A RECOMENDAÇÃO QUE O MOTORISTA ESCREVE PARA A AUXILIAR só pode ser feita depois de 30 (trinta) dias de trabalho juntos, somando os períodos. Ela tem até 3 pontos fortes de uma lista fixa e uma frase curta, assinada por ele. A frase não aceita telefone, e-mail, link, nome de criança ou de família da turma dele, nem promessa de segurança. A auxiliar lê antes e escolhe mostrar, não mostrar ou apagar, e pode mudar de ideia a qualquer momento; se o motorista editar o texto, ela precisa aprovar de novo. Hoje a recomendação é vista só pelos dois e pela equipe do Alô Buzinou, que pode retirar uma recomendação abusiva e guarda o motivo.',
@@ -688,6 +703,11 @@ export const PRIVACY_SECTIONS = [
       'O recado do dia é apagado automaticamente depois de 7 (sete) dias.',
       'O registro das conversas da equipe com o motorista fica enquanto a conta dele existir e por 5 (cinco) anos depois de ela ser encerrada, o prazo em que uma cobrança ou uma reclamação ainda pode ser feita. As contagens de uso guardam só números, sem dado pessoal.',
       'O registro das decisões sobre uma conta (cláusula 11b dos Termos) fica enquanto a conta existir e por 5 (cinco) anos depois de ela ser encerrada.',
+      // QUEM NOS PROCURA COMO INVESTIDOR (06/10/2026): o formulário de
+      // alobuzinou.com.br/investidores (`registrarInteresseInvestidor`,
+      // `reguaDoLead.js`, coleção `leadsInvestidor`). Entra na 1.5 ainda não
+      // publicada, sem subir a versão. O prazo de 2 anos pede limpeza no código.
+      'O contato de quem nos procura pelo site como investidor fica por 2 (dois) anos depois do último contato, e é apagado antes disso se a pessoa pedir pelo canal da seção 9.',
       'Após esses prazos, os dados são apagados ou anonimizados.',
     ],
   },
