@@ -19,7 +19,7 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 90 scripts. O PRIMEIRO é
+npm run testar                   # 94 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -35,6 +35,8 @@ npm run testar                   # 90 scripts. O PRIMEIRO é
                                  # status, auth, trial, planos, vitrine, autoatendimento, para-voce, avisos,
                                  # preferencias, multa, encerramento,
                                  # conta, cobranca, gateway, assinante, carteira, retrato, registro,
+                                 # resumo-da-avaliacao, vendas-do-painel,
+                                 # retrato-das-pessoas, economia-do-painel,
                                  # proposta, chamados, avaliacao, risco, fila, concessao,
                                  # selo, indicacao, irmaos, origem, abas,
                                  # acompanhamento, transacoes, fundo, busca, site,
@@ -487,21 +489,33 @@ src/
 │   ├── pai/           8 telas do responsável + `PrimeiroAcessoDoPai`, o card
 │   │                 por cima do `/pai` (dados, número da casa se faltar,
 │   │                 aniversário do filho, avisos) — mesmo desenho do motorista
-│   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com DOZE
-│   │                  abas: Hoje (o RETRATO DA BASE — o app está sendo
-│   │                  usado? — e a fila), Motoristas (lista + FICHA),
-│   │                  Chamados, Financeiro (os assinantes e o plano de cada
-│   │                  um, e a régua e o fechamento que eram a aba "Mês"),
-│   │                  Números, Selos, Indicações, Jurídico (documentos,
-│   │                  aceites, suspensos, o que falta no papel),
-│   │                  Registro (quem suspendeu/avisou/reativou quem e por
-│   │                  quê — `registroDoDono`, só leitura), Platina,
-│   │                  Pesquisa, Investidores. As abas moram em
-│   │                  components/admin/; o retrato é a régua pura
-│   │                  `dominio/associacao/retratoDaBase.js`
-│   │                  (`testar:retrato`). ⚠️ "Pagaria por mês" é POTENCIAL,
-│   │                  nunca receita. O redesenho inteiro (26 telas) está no
-│   │                  canvas "Painel do dono"; este foi o lote só de leitura.
+│   ├── admin/         AdminPanel + TaxaTab. O dono tem UMA tela, com o
+│   │                  MENU EM CINCO GRUPOS (`MenuDoPainel`, 05/10/2026;
+│   │                  coluna na mesa, fileiras no celular, só aba com tela):
+│   │                  VISÃO — Hoje (o RETRATO DA BASE e a fila), Avaliação
+│   │                  do app (o cartão de cinco rostos; embaixo a pesquisa
+│   │                  antiga, onde se escolhe o depoimento da home),
+│   │                  Calendário do ano (férias, feriados, datas populares e
+│   │                  o que cada mês pede); DINHEIRO — Financeiro (os
+│   │                  assinantes e o fechamento que era "Mês"), Economia (o
+│   │                  simulador do preço por criança), Números; PESSOAS —
+│   │                  Motoristas (a ficha tem a JORNADA num bloco separado
+│   │                  do plano, decisão 23), Famílias (só contagem e conta de
+│   │                  acesso; nunca endereço, telefone ou nível da família),
+│   │                  Auxiliares, Contas (ativas/inativas/suspensas);
+│   │                  CRESCER — Vendas (prontos para conversa), Marketing,
+│   │                  Indicações, Investidores (o relatório em PDF por
+│   │                  impressão); CUIDAR — Chamados, Selos, Jurídico,
+│   │                  Registro (`registroDoDono`, só leitura), Política de
+│   │                  bloqueio, Platina. As réguas puras: retratoDaBase,
+│   │                  economiaDoPainel, calendarioDoAno, vendasDoPainel
+│   │                  (associacao), retratoDasPessoas (identidade) e
+│   │                  resumoDaAvaliacao (suporte). ⚠️ "Pagaria por mês" é
+│   │                  POTENCIAL, nunca receita. ⚠️ Família e auxiliar ainda
+│   │                  não gravam o último acesso: "ativa" delas é "—". O
+│   │                  redesenho inteiro (26 telas) está no canvas "Painel do
+│   │                  dono"; Kanban, Uso do app, ESG, CRM, Mapa, Alertas e
+│   │                  Saídas ainda pedem dado ou regra nova.
 │   └── legal/         termos e privacidade — `LEGAL_VERSION` está em 1.4
 │                       (04/10/2026: a leitura única da posição no
 │                       posto de combustível entrou na cláusula 8, na

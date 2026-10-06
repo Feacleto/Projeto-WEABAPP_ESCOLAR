@@ -26,6 +26,17 @@ import RetratoDaBase from '../../components/admin/RetratoDaBase';
 import AssinantesDaBase from '../../components/admin/AssinantesDaBase';
 import JuridicoTab from '../../components/admin/JuridicoTab';
 import RegistroTab from '../../components/admin/RegistroTab';
+import MenuDoPainel from '../../components/admin/MenuDoPainel';
+import AvaliacaoTab from '../../components/admin/AvaliacaoTab';
+import CalendarioTab from '../../components/admin/CalendarioTab';
+import EconomiaTab from '../../components/admin/EconomiaTab';
+import FamiliasTab from '../../components/admin/FamiliasTab';
+import AuxiliaresTab from '../../components/admin/AuxiliaresTab';
+import ContasTab from '../../components/admin/ContasTab';
+import VendasTab from '../../components/admin/VendasTab';
+import MarketingTab from '../../components/admin/MarketingTab';
+import RelatorioParaInvestidor from '../../components/admin/RelatorioParaInvestidor';
+import PoliticaDeBloqueioTab from '../../components/admin/PoliticaDeBloqueioTab';
 import { listarInteresses } from '../../services/interesseService';
 import { definirDepoimentoNaHome } from '../../services/feedbackService';
 import { functions } from '../../firebase/config';
@@ -141,6 +152,15 @@ import { CLOUD_FUNCTIONS_ENABLED } from '../../config/capabilities';
  * `users`, `faturasParceiro`, `feedbacks` e `supportTickets` são de dono. A
  * tela esconde por UX; quem impede são as rules.
  */
+/** As abas que têm tela. O menu só mostra estas. */
+const ABAS_DISPONIVEIS = [
+  'hoje', 'avaliacao', 'calendario',
+  'mes', 'economia', 'numeros',
+  'motoristas', 'familias', 'auxiliares', 'contas',
+  'vendas', 'marketing', 'indicacoes', 'investidores',
+  'chamados', 'selos', 'juridico', 'registro', 'politica', 'platina',
+];
+
 export default function AdminPanel() {
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -228,64 +248,28 @@ export default function AdminPanel() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-5 sm:px-6">
-        {/* Abas — UMA FILEIRA NA WEB, DUAS NO CELULAR.
-          *
-          * Esta tela é de mesa: é onde se negocia, se fecha mês e se abre
-          * número numa reunião.
-          *
-          * SÃO OITO ABAS, E ELAS QUEBRAM EM VÁRIAS FILEIRAS NO CELULAR.
-          *
-          * `flex-wrap` em vez da tira que rola: tira esconde o fim, e quem não
-          * arrasta nunca descobre que existe mais — foi assim que a Taxa ficou
-          * invisível por tanto tempo. Fileiras ocupam mais espaço e não
-          * escondem nada.
-          *
-          * ⚠️ AQUI HAVIA DOIS COMENTÁRIOS EMPILHADOS, com o MESMO argumento e
-          * contagens diferentes: um dizia "eram cinco e viraram três, com três
-          * cabem", o outro "cinco abas, quebram em duas linhas". São oito
-          * (`ABAS`, abaixo), e a linha 56 deste arquivo já dizia oito.
-          *
-          * O número é o que alguém usa para conferir se a lista está completa,
-          * então ele não fica escrito à mão aqui: quem conta é o array. */}
-        <div className="mb-5 flex flex-wrap gap-1 rounded-2xl bg-neutro p-1">
-          {[
-            ['hoje', 'Hoje'],
-            ['motoristas', 'Motoristas'],
-            ['chamados', 'Chamados'],
-            ['mes', 'Financeiro'],
-            ['numeros', 'Números'],
-            ['selos', 'Selos'],
-            ['indicacoes', 'Indicações'],
-            ['juridico', 'Jurídico'],
-            ['registro', 'Registro'],
-            ['platina', 'Platina'],
-            ['pesquisa', 'Pesquisa'],
-            ['investidores', 'Investidores'],
-          ].map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => {
-                // ⚠️ O ALVO DA FILA MORRE AO TROCAR DE ABA À MÃO.
-                //
-                // Ele fica no `AdminPanel` porque a linha da fila está em
-                // OUTRA aba. Sem esta linha ele nunca era limpo: quem abrisse
-                // um motorista pela fila e depois tocasse em "Motoristas" na
-                // barra reabria a ficha daquele mesmo motorista, em vez da
-                // lista — e sem nada na tela explicando por quê.
-                setMotoristaAlvo(null);
-                setTab(id);
-              }}
-              className={`tap min-w-[5.5rem] flex-1 rounded-xl py-2.5 text-xs font-bold transition-colors ${
-                tab === id ? 'bg-card text-primary shadow-rest' : 'text-textMuted'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
+      <main className="mx-auto w-full max-w-7xl flex-1 px-5 py-5 sm:px-6">
+        {/* O MENU VIROU CINCO GRUPOS (05/10/2026): ver `MenuDoPainel`. Na mesa
+          * ele é uma coluna à esquerda; no celular, fileiras por grupo. A
+          * lista do que existe é `ABAS_DISPONIVEIS`, e é ela que o menu lê —
+          * aba sem tela não aparece. */}
+        <div className="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:gap-6">
+        <MenuDoPainel
+          tab={tab}
+          disponiveis={ABAS_DISPONIVEIS}
+          onEscolher={(id) => {
+            // ⚠️ O ALVO DA FILA MORRE AO TROCAR DE ABA À MÃO.
+            //
+            // Ele fica no `AdminPanel` porque a linha da fila está em OUTRA
+            // aba. Sem esta linha ele nunca era limpo: quem abrisse um
+            // motorista pela fila e depois tocasse em "Motoristas" no menu
+            // reabria a ficha daquele mesmo motorista, em vez da lista — e
+            // sem nada na tela explicando por quê.
+            setMotoristaAlvo(null);
+            setTab(id);
+          }}
+        />
+        <div className="min-w-0">
         {tab === 'hoje' && (
           <div className="space-y-8">
             <RetratoDaBase />
@@ -316,8 +300,30 @@ export default function AdminPanel() {
         {tab === 'juridico' && <JuridicoTab />}
         {tab === 'registro' && <RegistroTab />}
         {tab === 'platina' && <AtividadesDaPlatinaTab />}
-        {tab === 'pesquisa' && <Pesquisa s={survey} />}
-        {tab === 'investidores' && <InvestidoresTab />}
+        {tab === 'avaliacao' && (
+          // A aba nova lê o cartão de cinco rostos; embaixo continua a pesquisa
+          // antiga, porque é lá que se escolhe o depoimento da home.
+          <div className="space-y-8">
+            <AvaliacaoTab />
+            <Pesquisa s={survey} />
+          </div>
+        )}
+        {tab === 'calendario' && <CalendarioTab />}
+        {tab === 'economia' && <EconomiaTab />}
+        {tab === 'familias' && <FamiliasTab />}
+        {tab === 'auxiliares' && <AuxiliaresTab />}
+        {tab === 'contas' && <ContasTab />}
+        {tab === 'vendas' && <VendasTab />}
+        {tab === 'marketing' && <MarketingTab />}
+        {tab === 'politica' && <PoliticaDeBloqueioTab />}
+        {tab === 'investidores' && (
+          <div className="space-y-8">
+            <RelatorioParaInvestidor />
+            <InvestidoresTab />
+          </div>
+        )}
+        </div>
+        </div>
       </main>
     </div>
   );

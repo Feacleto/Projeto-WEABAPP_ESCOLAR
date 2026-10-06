@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ContratoDoc from './ContratoDoc';
+import JornadaNaFicha from './JornadaNaFicha';
 import ConcederSheet from './ConcederSheet';
 import Spinner from '../common/Spinner';
 import { formatCurrency, formatMonthLabel } from '../../compartilhado/formatters';
@@ -404,6 +405,11 @@ export default function FichaDoMotorista({
 
         <NotaInterna uid={uid} parceiro={parceiro} />
       </div>
+
+      {/* ⚠️ A JORNADA FICA FORA DA GRADE, E ISSO É A DECISÃO 23: nível é uso
+        * do app, nunca plano nem pagamento. Ao lado do plano, os dois passariam
+        * a ser lidos como uma coisa só. */}
+      <JornadaNaFicha uid={motorista.uid} />
 
       {concedendo && (
         <ConcederSheet
