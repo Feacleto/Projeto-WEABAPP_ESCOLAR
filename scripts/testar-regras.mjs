@@ -4483,8 +4483,15 @@ async function osRecadosDoDia({ novato, dono, anon }) {
   checar(BL, '11. o tio da criança lê', 'PASSA', await ler(R, M));
   checar(BL, '12. o tio consulta adminUid == ele e dateKey == dia', 'PASSA',
     await consultarCom(COL, [['adminUid', S(M.uid)], ['dateKey', S(D)]], M));
-  checar(BL, '13. o tio lê o doc do dia ainda inexistente (resource == null)', 'PASSA',
-    await ler(`${COL}/${D}_${K2}`, M));
+  // Documento AUSENTE: a regra que deixa ler responde 404 (não existe), a que
+  // nega responde 403. É o 404 que prova que a escuta do dia não morre.
+  const ausente = (st) => (st === 404 ? 200 : st);
+  checar(BL, '13. o tio lê o doc do dia ainda inexistente (resource == null, 404 = liberado)', 'PASSA',
+    ausente(await ler(`${COL}/${D}_${K2}`, M)));
+  // Só 403 conta como negado aqui: um 404 diria que a regra liberou.
+  const st13b = await ler(`${COL}/${D}_${K2}`, O);
+  checar(BL, '13b. SONDA: outro tio lê o mesmo doc inexistente (403, não 404)', 'NEGA',
+    st13b === 403 ? 403 : 200);
   checar(BL, '14a. o tio cria um recado', 'NEGA',
     await criar(COL, `2026-10-18_${K}`, M, recado(K, F.uid, '2026-10-18')));
   checar(BL, '14b. o tio edita um recado', 'NEGA',
