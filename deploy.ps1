@@ -126,7 +126,12 @@ $FuncoesNucleoLista = @(
   'functions:limparAvaliacoesDaContaApagada',
   'functions:gerarAcessoDeSubstituta',
   'functions:encerrarAcessoDeSubstituta',
-  'functions:verRotaDaSubstituta'
+  'functions:verRotaDaSubstituta',
+  'functions:contarUsoDoApp',
+  'functions:limparContatosAntigos',
+  'functions:vigiarSeguranca',
+  'functions:marcarFaltaPelaAuxiliar',
+  'functions:espelharQuemBuscaParaAuxiliar'
 )
 $FuncoesNucleo = $FuncoesNucleoLista -join ','
 
