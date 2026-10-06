@@ -259,5 +259,16 @@ igual('completar leva ao formulário em modo edição', caminhoDeCompletar('abc'
   igual('completar atualiza e zera cadastroRapido', true, form.includes('cadastroRapido: false') && form.includes('updateChild(idParaCompletar'));
 }
 
+// A criança do cadastro rápido fica FORA da viagem até completar (06/10/2026).
+{
+  const { blocosDaDirecao } = await import('../src/dominio/rota/horarios.js');
+  const base = { active: true, horaPega: '06:40', horaEntrega: '12:30' };
+  const nomes = (lista) => blocosDaDirecao(lista, 'ida').flatMap((b) => b.paradas.map((p) => p.child.id));
+  igual('cadastro rápido fica fora da viagem', ['completa'],
+    nomes([{ id: 'completa', ...base }, { id: 'rapida', ...base, cadastroRapido: true }]));
+  igual('completada (cadastroRapido false) volta à viagem', ['rapida'],
+    nomes([{ id: 'rapida', ...base, cadastroRapido: false }]));
+}
+
 console.log(`\n${ok} ok, ${bad} falharam`);
 if (bad) process.exit(1);

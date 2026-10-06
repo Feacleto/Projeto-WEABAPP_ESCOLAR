@@ -369,7 +369,11 @@ export function blocosDaDirecao(children, direcao, opcoes = {}) {
   const { declaracoes = {}, escolasPorId = {} } = opcoes;
 
   const comHora = (children || [])
-    .filter((c) => c?.active !== false)
+    // A criança do CADASTRO RÁPIDO (só o nome, 06/10/2026) não entra na
+    // viagem: sem casa, escola e hora de verdade, ela viraria uma parada com
+    // horário presumido e nenhum lugar para a perua ir. Entra quando o tio
+    // completa o cadastro (`cadastroRapido` vira false).
+    .filter((c) => c?.active !== false && c?.cadastroRapido !== true)
     .map((c) => {
       const hora = horaNaDirecao(c, direcao);
       const estado = estadoNoDia(c, declaracoes[c.id], direcao);
