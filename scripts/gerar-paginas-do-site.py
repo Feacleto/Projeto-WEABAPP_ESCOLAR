@@ -98,6 +98,8 @@ def icones(itens):
     """Três ícones grandes com uma frase cada (família, sobre)."""
     return '<div class="icones">' + ''.join('<div class="rv">%s<b>%s</b><p>%s</p></div>' % (ic(i), t, l) for i, t, l in itens) + '</div>'
 
+RELATORIO = """<section class="rel" data-relatorio><span class="rel-chapeu">transparência</span><h2>Relatório de sustentabilidade</h2><p class="rel-linha">Um relatório por ano.</p><div class="rel-abas" role="tablist" aria-label="Ano do relatório"></div><div class="rel-painel"><p class="rel-breve">Em breve lançamos nosso relatório de sustentabilidade 2026.</p></div></section>"""
+
 PAGINAS = {
  'como-funciona': dict(cena='como', titulo='Como funciona', desc='Como o Alô Buzinou funciona: o tio cadastra a turma, a família entra pelo link, a rota roda e a mensalidade se organiza sozinha.', corpo=
   # ⚠️ POUCO TEXTO (04/10/2026, aprovado pelo dono): cada passo é UMA tela
@@ -167,9 +169,23 @@ PAGINAS = {
   '<a class="btn" data-zap href="'+html.escape(ZAP_CONTATO)+'" target="_blank" rel="noopener">'+ZAP+'<span class="txt">Chamar no WhatsApp</span></a>'
   '<a class="btn esc" href="mailto:contato@alobuzinou.com">'+MAIL+'Mandar e-mail</a>'
   '<p style="font-size:16px">O WhatsApp abre com a conversa já começada. Você escreve e envia.</p>'),
- 'investidores': dict(cena='investidores', titulo='Investidores', desc='A tese do Alô Buzinou em três linhas, e o contato para receber o material completo.', corpo=
-  '<span class="chapeu">para quem investe</span><h1>A tese, em três linhas.</h1><p class="sub">Alô Buzinou · transporte escolar · São Paulo/SP · CNPJ 65.000.217/0001-47</p>'
-  '<div class="cards rv"><div><b>O mercado</b><p>O transporte escolar move crianças todo dia no Brasil inteiro, e quase toda a operação roda sem sistema de gestão — em caderno, planilha e conversa de WhatsApp.</p></div><div><b>Por que agora</b><p>PIX, smartphone barato e app que instala pelo navegador tornaram viável digitalizar um autônomo que nunca instalaria um software de gestão.</p></div><div><b>Por que nós</b><p>Produto rodando com operação real, dinheiro do motorista separado do da plataforma, e um canal de aquisição que é a própria comunidade de motoristas.</p></div></div>'
+ 'investidores': dict(cena='investidores', titulo='Investidores', desc='O mercado do transporte escolar em São Paulo, como o Alô Buzinou ganha dinheiro e o contato para receber o material completo.', corpo=
+  '<span class="chapeu">para quem investe</span><h1>O app do transporte escolar que é do motorista.</h1><p class="sub">Alô Buzinou · São Paulo/SP · CNPJ 65.000.217/0001-47</p>'
+  # NÚMERO SÓ COM FONTE, conferida na página da fonte. Não invente número.
+  '<h2>O mercado</h2><div class="cards rv">'
+  '<div><b>Cerca de 140 mil crianças</b><p>no Transporte Escolar Gratuito (TEG) da Prefeitura de São Paulo (144 mil atendimentos em 2025).</p><p class="fonte"><a href="https://www.saopaulo.sp.leg.br/blog/reformulacao-do-transporte-escolar-gratuito-e-tema-de-audiencia-publica/" target="_blank" rel="noopener">Fonte: Câmara Municipal de São Paulo</a></p></div>'
+  '<div><b>Cerca de 12,7 mil veículos</b><p>de transporte escolar cadastrados e regularizados no DTP da cidade de São Paulo.</p><p class="fonte"><a href="https://prefeitura.sp.gov.br/web/mobilidade/w/transporte-escolar-oferece-seguran%C3%A7a-a-pais-de-alunos-veja-o-que-checar-para-contratar-o-servi%C3%A7o" target="_blank" rel="noopener">Fonte: Prefeitura de São Paulo</a></p></div>'
+  '<div><b>Cerca de 4 mil vans</b><p>no programa TEG [a confirmar].</p><p class="fonte"><a href="https://www.instagram.com/p/DPkANI_Edjf/" target="_blank" rel="noopener">Fonte: Prefeitura/SPTrans, em rede social</a></p></div></div>'
+  '<p>Só na cidade de São Paulo, são milhares de motoristas autônomos — e quase toda operação ainda roda em caderno e WhatsApp.</p>'
+  '<h2>Onde estamos</h2><p>Em teste com motoristas convidados desde outubro de 2026.</p>'
+  '<h2>Como ganhamos dinheiro</h2><p>R$ 5,90 por criança por mês no plano mensal, R$ 2,90 no anual. Uma perua de 20 crianças rende R$ 118 por mês. A mensalidade da família vai direto ao motorista, pelo PIX: a plataforma não toca nesse dinheiro.</p>'
+  '<h2>Por que ganhamos</h2><div class="cards rv">'
+  '<div><b>O app é do motorista</b><p>A família vê o logo, a cor e o nome dele.</p></div>'
+  '<div><b>Preço por criança, sem plano capado</b><p>O app inteiro em qualquer tamanho de perua.</p></div>'
+  '<div><b>Família grátis, auxiliar com conta própria</b><p>Três usuários, só um paga.</p></div>'
+  '<div><b>Cresce por indicação</b><p>Motorista indica motorista pelo próprio cartão.</p></div>'
+  '<div><b>Feito para o celular de quem dirige</b><p>Abre no navegador, sem loja, letra grande.</p></div></div>'
+  + RELATORIO +
   '<form class="lead rv" novalidate><h2>Quer receber o material completo?</h2><p>Os números da operação, o modelo de cobrança e o roadmap. Deixa seu contato que a gente manda.</p>'
   '<label class="campo">Seu nome<input name="nome" autocomplete="name" maxlength="80" required></label>'
   '<label class="campo">Seu e-mail<input name="email" type="email" autocomplete="email" maxlength="120" required></label>'
@@ -233,6 +249,7 @@ def pagina(slug, d):
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/tokens.css">
 <link rel="stylesheet" href="/paginas.css">
+<link rel="stylesheet" href="/relatorio.css">
 <script>
 /* A página nasce completa. Só ganha permissão de esconder coisa pra revelar
    se houver IntersectionObserver e a pessoa não pediu movimento reduzido. */
@@ -254,6 +271,7 @@ if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: re
 </div></main>
 {RODAPE}
 <script src="/paginas.js" defer></script>
+<script src="/relatorio.js" defer></script>
 </body>
 </html>
 '''

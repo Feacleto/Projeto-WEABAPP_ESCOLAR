@@ -658,6 +658,15 @@ landing/               O SITE INSTITUCIONAL — HTML estático, sem build.
                        uma coluna, um botão por bloco. `/saiba-mais` é 301
                        para a home (firebase.json) e o arquivo antigo está em
                        `docs/arquivo/`. `npm run testar:site` trava tudo isso.
+                       ⚠️ `/investidores` (06/10/2026): mercado só com
+                       número que tem fonte linkada e conferida na página
+                       dela (o "4 mil vans" do TEG ainda é [a confirmar]);
+                       usuários não têm número até a base existir. O bloco
+                       "Relatório de sustentabilidade" (investidores e fim da
+                       home) sai da lista `RELATORIOS` em `landing/relatorio.js`
+                       — hoje só 2026, `pdf: null` ("Em breve"); PDF vai em
+                       `landing/relatorios/` e abre num iframe (a CSP de
+                       `/relatorios/**` libera `frame-ancestors 'self'`).
                        As páginas próprias seguem a MESMA régua do pouco
                        texto (04/10/2026): Como funciona virou telas que
                        passam com o dedo, Motorista "o seu dia com o app"

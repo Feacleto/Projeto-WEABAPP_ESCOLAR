@@ -115,6 +115,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/tokens.css">
+<link rel="stylesheet" href="/relatorio.css">
 
 <script>
 /* A página nasce COMPLETA e legível. Só depois de confirmar que há
@@ -577,6 +578,8 @@ h2 em{font-style:normal; color:var(--verde)}
       <p class="familia">Tem filho na perua? <a href="/familia">Veja a parte da família</a></p>
     </div>
   </section>
+  <!-- RELATÓRIO DE SUSTENTABILIDADE (lista RELATORIOS em relatorio.js; só 2026 por enquanto) -->
+  <div class="wrap"><section class="rel" data-relatorio><span class="rel-chapeu">transparência</span><h2>Relatório de sustentabilidade</h2><p class="rel-linha">Um relatório por ano.</p><div class="rel-abas" role="tablist" aria-label="Ano do relatório"></div><div class="rel-painel"><p class="rel-breve">Em breve lançamos nosso relatório de sustentabilidade 2026.</p></div></section></div>
 </main>
 
 <footer><div class="wrap">
@@ -684,5 +687,6 @@ h2 em{font-style:normal; color:var(--verde)}
     document.querySelectorAll('.surge, #mapa, #cena').forEach(function(el){ obs.observe(el); });
   })();
 </script>
+<script src="/relatorio.js" defer></script>
 </body>
 </html>
