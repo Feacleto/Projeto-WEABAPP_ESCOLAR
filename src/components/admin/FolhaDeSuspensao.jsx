@@ -4,46 +4,62 @@ import toast from 'react-hot-toast';
 import { suspenderConta } from '../../services/registroDoDonoService';
 import {
   ACAO,
+  PAPEL,
+  bloqueioVigente,
   DIAS_PARA_RESPONDER,
   GRAU,
   LIMITE_DA_EVIDENCIA,
   LIMITE_DA_MENSAGEM,
-  MARCADOR_DA_CLAUSULA,
   mensagemPadrao,
   motivosPara,
   validarPedido,
 } from '../../dominio/identidade/registroDoDono.js';
 
 /**
- * A FOLHA DE SUSPENDER, AVISAR OU REATIVAR um motorista (painel do dono,
- * 05/10/2026 — o desenho "Bloquear Tio Gil" do canvas, aprovado).
+ * A FOLHA DE SUSPENDER, AVISAR OU REATIVAR um motorista OU UMA FAMÍLIA
+ * (painel do dono, 05/10/2026 — o desenho "Bloquear Tio Gil" do canvas,
+ * aprovado; a família entrou na alternativa A do dono).
+ *
+ * `papel` escolhe a lista de motivos (uma não serve para a outra). Para a
+ * família, a conta é desativada e ela não entra mais no app: depois de
+ * suspender, a folha oferece "Mandar a mensagem por e-mail", que abre o
+ * e-mail do DONO com o texto pronto.
  *
  * Tudo o que ela oferece sai da régua espelhada (`registroDoDono.js`): os
  * motivos são lista fechada, a mensagem já vem escrita e o prazo de resposta
  * é calculado. A tela valida com a MESMA função que o servidor usa, então o
  * botão não deixa mandar o que a callable recusaria.
  *
- * ⚠️ O texto padrão leva o marcador da cláusula dos Termos, que a sessão
- * jurídica ainda está escrevendo. A régua recusa mandar com ele dentro: o dono
- * troca pelo texto da cláusula antes.
+ * O texto padrão cita a cláusula 11b dos Termos de Uso ("Suspensão e
+ * bloqueio"), escrita pela revisão jurídica.
  */
-export default function FolhaDeSuspensao({ motorista, cobrancaLigada = false, onFechar, onFeito }) {
-  const suspenso = motorista?.suspenso === true;
+export default function FolhaDeSuspensao({
+  motorista,
+  papel = PAPEL.MOTORISTA,
+  cobrancaLigada = false,
+  onFechar,
+  onFeito,
+}) {
+  const daFamilia = papel === PAPEL.FAMILIA;
+  const suspenso = daFamilia ? bloqueioVigente(motorista?.bloqueio) : motorista?.suspenso === true;
   const [acao, setAcao] = useState(suspenso ? ACAO.REATIVAR : ACAO.SUSPENDER);
   const [motivo, setMotivo] = useState('');
   const [grau, setGrau] = useState(GRAU.SUSPENSAO);
   const [ate, setAte] = useState('');
   const [urgente, setUrgente] = useState(false);
   const [mensagem, setMensagem] = useState(() =>
-    mensagemPadrao({ acao: suspenso ? ACAO.REATIVAR : ACAO.SUSPENDER, grau: GRAU.SUSPENSAO })
+    mensagemPadrao({ acao: suspenso ? ACAO.REATIVAR : ACAO.SUSPENDER, grau: GRAU.SUSPENSAO, papel })
   );
+  // Depois de suspender a família: o endereço dela, para abrir o e-mail.
+  const [paraOEmail, setParaOEmail] = useState(null);
   const [evidencia, setEvidencia] = useState('');
   const [enviando, setEnviando] = useState(false);
 
-  const motivos = motivosPara(acao, { cobrancaLigada });
+  const motivos = motivosPara(acao, { cobrancaLigada, papel });
   const pedido = {
     acao,
     alvoUid: motorista?.uid,
+    alvoPapel: papel,
     motivo,
     grau: acao === ACAO.SUSPENDER ? grau : null,
     ate: acao === ACAO.SUSPENDER && grau === GRAU.SUSPENSAO ? ate || null : null,
@@ -52,7 +68,7 @@ export default function FolhaDeSuspensao({ motorista, cobrancaLigada = false, on
     evidencia,
   };
   const validacao = useMemo(
-    () => validarPedido(pedido, { cobrancaLigada, alvo: { role: 'admin' } }),
+    () => validarPedido(pedido, { cobrancaLigada, alvo: { role: daFamilia ? 'parent' : 'admin' } }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [acao, motivo, grau, ate, urgente, mensagem, evidencia, cobrancaLigada]
   );
@@ -60,17 +76,22 @@ export default function FolhaDeSuspensao({ motorista, cobrancaLigada = false, on
   const trocarAcao = (nova) => {
     setAcao(nova);
     setMotivo('');
-    setMensagem(mensagemPadrao({ acao: nova, grau, ate: ate || null }));
+    setMensagem(mensagemPadrao({ acao: nova, grau, ate: ate || null, papel }));
   };
 
   const enviar = async () => {
     if (!validacao.ok || enviando) return;
     setEnviando(true);
     try {
-      await suspenderConta(pedido);
+      const r = await suspenderConta(pedido);
       toast.success(
-        acao === ACAO.REATIVAR ? 'Reativado e registrado.' : acao === ACAO.AVISO ? 'Aviso mandado e registrado.' : 'Suspenso e registrado.'
+        acao === ACAO.REATIVAR ? 'Reativado e registrado.' : acao === ACAO.AVISO ? 'Aviso registrado.' : 'Suspenso e registrado.'
       );
+      // A família não entra mais no app: a mensagem vai por e-mail.
+      if (daFamilia && acao !== ACAO.REATIVAR && r?.email) {
+        setParaOEmail(r.email);
+        return;
+      }
       onFeito?.();
     } catch (err) {
       toast.error(err?.message || 'Não deu pra registrar. Nada foi mudado.');
@@ -191,11 +212,6 @@ export default function FolhaDeSuspensao({ motorista, cobrancaLigada = false, on
             className="mt-1.5 w-full rounded-xl border border-borderStrong p-3 text-xs leading-relaxed"
           />
         </label>
-        {mensagem.includes(MARCADOR_DA_CLAUSULA) && (
-          <p className="mt-1 text-xs text-warningText">
-            Troque {MARCADOR_DA_CLAUSULA} pela cláusula dos Termos antes de mandar.
-          </p>
-        )}
 
         {acao !== ACAO.REATIVAR && (
           <label className="mt-4 block">
@@ -213,11 +229,29 @@ export default function FolhaDeSuspensao({ motorista, cobrancaLigada = false, on
         <p className="mt-3 text-xs leading-relaxed text-textMuted">
           {acao === ACAO.REATIVAR
             ? 'A conta volta a funcionar na hora, e fica registrado quem reativou e por quê.'
-            : `Ele recebe a mensagem e tem ${DIAS_PARA_RESPONDER} dias para responder por contato@alobuzinou.com. O motivo e a evidência ficam só no registro. As famílias dele continuam vendo os próprios dados.`}
+            : daFamilia
+              ? `A conta dela é desativada: ela não entra e não recebe os avisos. A criança continua na perua, e o tio de cada criança é avisado para combinar por telefone. Ela tem ${DIAS_PARA_RESPONDER} dias para responder por contato@alobuzinou.com. O motivo e a evidência ficam só no registro.`
+              : `Ele recebe a mensagem e tem ${DIAS_PARA_RESPONDER} dias para responder por contato@alobuzinou.com. O motivo e a evidência ficam só no registro. As famílias dele continuam vendo os próprios dados.`}
         </p>
 
         {!validacao.ok && motivo && (
           <p className="mt-2 text-xs font-semibold text-dangerText">{validacao.erro}</p>
+        )}
+
+        {paraOEmail && (
+          <div className="mt-4 rounded-xl border border-primaryBorder bg-primarySoft p-3">
+            <p className="text-xs leading-relaxed text-text">
+              Registrado. A família não entra mais no app: mande a mensagem por e-mail para{' '}
+              <strong>{paraOEmail}</strong>.
+            </p>
+            <a
+              href={`mailto:${paraOEmail}?subject=${encodeURIComponent('Alô Buzinou — sua conta')}&body=${encodeURIComponent(mensagem)}`}
+              onClick={() => onFeito?.()}
+              className="tap mt-2 inline-flex min-h-[44px] items-center rounded-xl bg-primary px-4 text-xs font-bold text-white"
+            >
+              Mandar a mensagem por e-mail
+            </a>
+          </div>
         )}
 
         <div className="mt-4 flex gap-2">

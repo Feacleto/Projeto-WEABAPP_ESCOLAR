@@ -80,7 +80,7 @@ for (const ctx of ['entrar', 'criar', 'link']) {
 checar('e-mail inválido', 'Email inválido.', mensagemDeAuth(erro('auth/invalid-email'), 'entrar'));
 checar('muitas tentativas', 'Muitas tentativas. Aguarde alguns minutos.',
   mensagemDeAuth(erro('auth/too-many-requests'), 'entrar'));
-checar('conta desativada', 'Esta conta foi desativada. Entre em contato com o motorista.',
+checar('conta desativada (a família suspensa)', 'Esta conta está suspensa. Você recebeu a mensagem por e-mail e pode responder por contato@alobuzinou.com.',
   mensagemDeAuth(erro('auth/user-disabled'), 'link'));
 
 bloco('2. Criar conta — os casos que só existiam numa das quatro cópias');

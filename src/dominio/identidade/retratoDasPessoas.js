@@ -123,6 +123,9 @@ export function linhasDeResponsaveis(usuarios, motoristas) {
       filhos: Array.isArray(u.childIds) ? u.childIds.length : 0,
       entrouMs: paraMs(u.createdAt),
       avisos: Array.isArray(u.fcmTokens) && u.fcmTokens.length > 0,
+      // Só o grau e o prazo (o motivo nunca mora em users). Quem decide se
+      // ainda vale é `bloqueioVigente`, na tela.
+      bloqueio: u.bloqueio && u.bloqueio.grau ? { grau: u.bloqueio.grau, ate: u.bloqueio.ate || null } : null,
     }));
   return lista.sort((a, b) => (b.entrouMs || 0) - (a.entrouMs || 0));
 }

@@ -22,6 +22,7 @@ import * as app from '../src/dominio/identidade/registroDoDono.js';
 
 // O lado do servidor é CommonJS e régua pura: nenhum SDK no caminho.
 const servidor = createRequire(import.meta.url)('../functions/lib/reguaDoRegistro.js');
+const { deveSairDoRegistro } = createRequire(import.meta.url)('../functions/lib/reguaDosContatos.js');
 
 let ok = 0;
 let bad = 0;
@@ -98,11 +99,12 @@ checar('reativar sem mensagem passa', true, v({ acao: 'reativar', alvoUid: 'gil1
 checar('mensagem acima de 1000 é recusada', false, v({ ...base, mensagem: 'a'.repeat(1001) }).ok);
 checar('evidência acima de 500 é recusada', false, v({ ...base, evidencia: 'a'.repeat(501) }).ok);
 checar(
-  'o texto padrão com o MARCADOR não pode ser mandado',
-  false,
+  'o texto padrão pode ser mandado como está',
+  true,
   v({ ...base, mensagem: app.mensagemPadrao({ acao: 'suspender', grau: 'suspensao', ate: '2026-10-15', agora: AGORA }) }).ok
 );
-checar('o texto padrão cita o marcador', true, app.mensagemPadrao({ acao: 'aviso', agora: AGORA }).includes(app.MARCADOR_DA_CLAUSULA));
+checar('o texto padrão cita a cláusula 11b dos Termos', true, app.mensagemPadrao({ acao: 'aviso', agora: AGORA }).includes('cláusula 11b dos Termos de Uso'));
+checar('o texto padrão não tem colchete de marcador', false, /\[/.test(app.mensagemPadrao({ acao: 'suspender', agora: AGORA })));
 checar('o texto padrão traz o prazo de resposta', true, app.mensagemPadrao({ acao: 'suspender', agora: AGORA }).includes('15/10/2026'));
 
 // ───────────────────────── 5. o aviso ao alvo ──────────────────────────────
@@ -140,7 +142,7 @@ bloco('─── 7. app e servidor respondem igual ───');
   const graus = ['suspensao', 'encerramento', 'aviso', undefined];
   const ates = [null, '2026-10-05', '2026-10-06', '2027-10-07', 'torta'];
   const alvos = [MOTORISTA, { role: 'owner' }, { role: 'parent' }, null];
-  const mensagens = ['', 'ok', `vai contra ${app.MARCADOR_DA_CLAUSULA}`];
+  const mensagens = ['', 'ok', `vai contra a ${app.CLAUSULA_DOS_TERMOS}`];
   let casos = 0;
   const divergem = [];
   for (const acao of acoes)
@@ -172,6 +174,96 @@ bloco('─── 7. app e servidor respondem igual ───');
     ['suspender', 'reativar', 'aviso'].map((acao) => app.mensagemPadrao({ acao, agora: AGORA })),
     ['suspender', 'reativar', 'aviso'].map((acao) => servidor.mensagemPadrao({ acao, agora: AGORA }))
   );
+}
+
+// ───────────────────────── 8. a família (05/10/2026) ───────────────────────
+bloco('─── 8. a família suspensa: lista própria, sem atraso, um aviso por tio ───');
+{
+  const FAMILIA = { role: 'parent', name: 'Carla Mendes' };
+  const fam = {
+    acao: 'suspender',
+    alvoUid: 'carla1',
+    alvoPapel: 'familia',
+    motivo: 'ameaca_ofensa',
+    grau: 'suspensao',
+    ate: '2026-10-15',
+    mensagem: 'Sua conta foi suspensa até 15/10. Responda até 15/10 por contato@alobuzinou.com.',
+  };
+  const vf = (dados, extra = {}) =>
+    app.validarPedido(dados, { agora: AGORA, alvo: FAMILIA, donoUid: 'dono1', ...extra });
+
+  checar('família com motivo da lista dela passa', true, vf(fam).ok);
+  checar('família com motivo de motorista é recusada', false, vf({ ...fam, motivo: 'fraude' }).ok);
+  checar('motorista com motivo de família é recusado', false, v({ ...base, motivo: 'ameaca_ofensa' }).ok);
+  checar('papel família contra conta de motorista é recusado', false, vf(fam, { alvo: MOTORISTA }).ok);
+  checar('papel motorista contra conta de família é recusado', false, vf({ ...fam, alvoPapel: 'motorista', motivo: 'fraude' }).ok);
+  checar('atraso NUNCA vale para família, nem com a cobrança ligada', false, vf({ ...fam, motivo: 'atraso' }, { cobrancaLigada: true }).ok);
+  checar(
+    'a lista da família não fala de atraso, mensalidade nem pagamento',
+    false,
+    /atraso|mensalidade|pagamento|pagar/i.test(JSON.stringify(app.MOTIVOS_DA_FAMILIA))
+  );
+  checar('cinco motivos na lista da família', 5, app.MOTIVOS_DA_FAMILIA.length);
+  checar('a folha oferece a lista da família', app.MOTIVOS_DA_FAMILIA, app.motivosPara('suspender', { papel: 'familia', cobrancaLigada: true }));
+
+  const pf = vf(fam).pedido;
+  checar('o pedido guarda o papel', 'familia', pf.alvoPapel);
+  checar('suspender a família grava bloqueio, não suspenso', { bloqueio: { grau: 'suspensao', ate: '2026-10-15' } }, app.efeitoNaConta(pf));
+  checar('encerrar a família grava encerramento sem data', { bloqueio: { grau: 'encerramento', ate: null } }, app.efeitoNaConta(vf({ ...fam, grau: 'encerramento' }).pedido));
+  checar('reativar a família limpa o bloqueio', { bloqueio: null }, app.efeitoNaConta({ ...pf, acao: 'reativar' }));
+  checar('aviso à família não trava nada', null, app.efeitoNaConta({ ...pf, acao: 'aviso' }));
+  checar('o bloqueio NÃO tem o motivo', false, JSON.stringify(app.efeitoNaConta(pf)).includes('ameaca'));
+  checar('o registro diz que o alvo é família', 'familia', app.linhaDoRegistro(pf, { donoUid: 'dono1', alvo: FAMILIA }).alvoPapel);
+  checar('o texto padrão da família diz que o transporte continua', true, app.mensagemPadrao({ acao: 'suspender', papel: 'familia', agora: AGORA }).includes('transporte do seu filho continua'));
+
+  // O dia de Brasília em AGORA é 05/10/2026.
+  checar('encerramento vale sempre', true, app.bloqueioVigente({ grau: 'encerramento' }, AGORA));
+  checar('suspensão sem data vale', true, app.bloqueioVigente({ grau: 'suspensao', ate: null }, AGORA));
+  checar('suspensão até hoje ainda vale', true, app.bloqueioVigente({ grau: 'suspensao', ate: '2026-10-05' }, AGORA));
+  checar('suspensão até ontem já não vale', false, app.bloqueioVigente({ grau: 'suspensao', ate: '2026-10-04' }, AGORA));
+  checar('sem bloqueio não vale', false, app.bloqueioVigente(null, AGORA));
+  checar('ENCERRAMENTO nunca se reativa sozinho', false, app.bloqueioVencido({ grau: 'encerramento', ate: '2020-01-01' }, AGORA));
+  checar('suspensão sem data não se reativa sozinha', false, app.bloqueioVencido({ grau: 'suspensao', ate: null }, AGORA));
+  checar('suspensão vencida ontem se reativa', true, app.bloqueioVencido({ grau: 'suspensao', ate: '2026-10-04' }, AGORA));
+  checar('suspensão até hoje ainda não se reativa', false, app.bloqueioVencido({ grau: 'suspensao', ate: '2026-10-05' }, AGORA));
+
+  const tios = app.tiosParaAvisar([
+    { adminUid: 'tioA', name: 'Ana Lima' },
+    { adminUid: 'tioA', name: 'Bia Lima' },
+    { adminUid: 'tioB', name: 'Caio' },
+    { adminUid: 'tioC', name: 'Duda', active: false },
+    { name: 'Sem tio' },
+  ]);
+  checar('dois irmãos no mesmo tio = UM aviso, com os dois nomes', { tioUid: 'tioA', nomes: ['Ana', 'Bia'] }, tios[0]);
+  checar('um aviso por tio, e só de criança ativa com tio', ['tioA', 'tioB'], tios.map((t) => t.tioUid));
+  const avTio = app.avisoAoTio({ acao: 'suspender', nomes: ['Ana', 'Bia'] });
+  checar('o aviso ao tio', ['familia_sem_avisos', 'A família de Ana e Bia está sem os avisos do app', 'Combine por telefone o que for preciso.'], [avTio.type, avTio.title, avTio.body]);
+  checar('o aviso ao tio não tem o motivo', false, JSON.stringify(avTio).includes('ameaça'));
+  checar('reativar avisa o tio que voltou', 'familia_com_avisos', app.avisoAoTio({ acao: 'reativar', nomes: ['Ana'] }).type);
+
+  // O espelho também nas peças da família.
+  const iguais = [
+    [app.MOTIVOS_DA_FAMILIA, servidor.MOTIVOS_DA_FAMILIA],
+    [app.efeitoNaConta(pf), servidor.efeitoNaConta(servidor.validarPedido(fam, { agora: AGORA, alvo: FAMILIA, donoUid: 'dono1' }).pedido)],
+    [app.tiosParaAvisar([{ adminUid: 'x', name: 'Ana' }]), servidor.tiosParaAvisar([{ adminUid: 'x', name: 'Ana' }])],
+    [app.bloqueioVencido({ grau: 'suspensao', ate: '2026-10-04' }, AGORA), servidor.bloqueioVencido({ grau: 'suspensao', ate: '2026-10-04' }, AGORA)],
+  ];
+  checar('o espelho responde igual nas peças da família', true, iguais.every(([a, b]) => JSON.stringify(a) === JSON.stringify(b)));
+}
+
+// ───────────────────────── 9. o prazo do registro ──────────────────────────
+bloco('─── 9. o registro sai 5 anos depois de a conta encerrar ───');
+{
+  const HOJE9 = new Date('2026-10-05T12:00:00Z');
+  const ha = (anos) => new Date(Date.UTC(2026 - anos, 9, 1));
+  checar('conta apagada: sai 5 anos depois da linha', true, deveSairDoRegistro({ linha: { em: ha(6) }, conta: null, agora: HOJE9 }));
+  checar('conta apagada: linha recente fica', false, deveSairDoRegistro({ linha: { em: ha(2) }, conta: null, agora: HOJE9 }));
+  checar('família ativa: fica', false, deveSairDoRegistro({ linha: { em: ha(9) }, conta: { role: 'parent' }, agora: HOJE9 }));
+  checar('família só suspensa: fica', false, deveSairDoRegistro({ linha: { em: ha(9) }, conta: { role: 'parent', bloqueio: { grau: 'suspensao', desde: ha(9) } }, agora: HOJE9 }));
+  checar('família encerrada há 6 anos: sai', true, deveSairDoRegistro({ linha: { em: ha(7) }, conta: { role: 'parent', bloqueio: { grau: 'encerramento', desde: ha(6) } }, agora: HOJE9 }));
+  checar('família encerrada há 2 anos: fica', false, deveSairDoRegistro({ linha: { em: ha(7) }, conta: { role: 'parent', bloqueio: { grau: 'encerramento', desde: ha(2) } }, agora: HOJE9 }));
+  checar('motorista com renovação ligada: fica', false, deveSairDoRegistro({ linha: { em: ha(9) }, conta: { role: 'admin' }, agora: HOJE9 }));
+  checar('motorista encerrado há 6 anos: sai', true, deveSairDoRegistro({ linha: { em: ha(9) }, conta: { role: 'admin', renovacaoAutomatica: false, assinaturaAte: ha(6) }, agora: HOJE9 }));
 }
 
 // ──────────────────────────────── resumo ───────────────────────────────────

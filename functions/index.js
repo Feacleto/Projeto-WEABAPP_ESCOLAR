@@ -84,6 +84,7 @@ const { makeFotografarBase } = require('./lib/fotoDaBase');
 const { makeContarUsoDoApp } = require('./lib/usoDoApp');
 const { makeLimparContatosAntigos } = require('./lib/limpezaDosContatos');
 const { makeVigiarSeguranca } = require('./lib/vigiaDaSeguranca');
+const { makeReabrirSuspensoesVencidas } = require('./lib/reaberturaDaFamilia');
 const { makeSuspenderConta } = require('./lib/registroDoDono');
 const { makeAtualizarIndicesEconomicos } = require('./lib/indicesEconomicos');
 const { makeContarCriancasAtivas } = require('./lib/contadorDaTurma');
@@ -183,6 +184,9 @@ exports.limparContatosAntigos = makeLimparContatosAntigos(db);
 // A vigia de segurança, de hora em hora (vigiaDaSeguranca.js): bloqueios,
 // fraudes e App Check, e um alerta por escopo por hora para os donos.
 exports.vigiarSeguranca = makeVigiarSeguranca(db);
+// A família suspensa até uma data volta sozinha no dia seguinte, às 0h20
+// (reaberturaDaFamilia.js). Encerramento nunca volta sozinho.
+exports.reabrirSuspensoesVencidas = makeReabrirSuspensoesVencidas(db);
 // Suspender, avisar ou reativar um motorista, com a linha no registro de
 // ações na mesma transação (registroDoDono.js). Só o dono chama.
 exports.suspenderConta = makeSuspenderConta(db);

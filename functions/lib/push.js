@@ -26,6 +26,12 @@
  *
  *   4. O ACESSO DE 24 HORAS do segundo responsável recebe os avisos da ROTA
  *      do filho (`acessosTemporarios`), sem conta e só enquanto vale.
+ *
+ *   5. ⚠️ A FAMÍLIA SUSPENSA NÃO RECEBE NADA (05/10/2026, alternativa A do
+ *      dono), nem nos celulares do acesso de 24 horas: o "não recebe avisos"
+ *      não pode vazar pela porta do lado. O documento em `notifications`
+ *      continua sendo gravado; só o toque no aparelho para. O tio dela foi
+ *      avisado para combinar por telefone (`suspenderConta`).
  */
 
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
@@ -37,6 +43,7 @@ const { tocaNoAparelho } = require('./avisos');
 const { urlDoAviso, ORIGEM_DO_APP } = require('./destinoDoAviso');
 const { TIPOS_DO_ACESSO_TEMPORARIO, acessoTemporarioValendo } = require('./reguaDoAcessoTemporario');
 const { enviarEmailSeFor } = require('./enviarEmailDoAviso');
+const { bloqueioVigente } = require('./reguaDoRegistro');
 
 const REGION = 'southamerica-east1';
 
@@ -124,6 +131,11 @@ function makeSendPushOnNotification(db, email) {
       const userSnap = await db.doc(`users/${notif.userId}`).get();
       if (!userSnap.exists) return;
       const usuario = userSnap.data();
+
+      if (usuario.role === 'parent' && bloqueioVigente(usuario.bloqueio)) {
+        logger.info('[push] família suspensa: nada toca', { tipo: notif.type, notifId });
+        return;
+      }
 
       // A cobrança da plataforma também por e-mail — antes da preferência,
       // que só cala o PUSH (ver enviarEmailDoAviso.js).

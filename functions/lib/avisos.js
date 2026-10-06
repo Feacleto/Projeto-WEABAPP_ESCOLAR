@@ -110,6 +110,10 @@ const ESPECIE_DO_AVISO = {
   // de resposta: desligar isto seria a pessoa não saber por que o app parou.
   conta_suspensa: ESPECIE.ESTADO,
   conta_reativada: ESPECIE.ESTADO,
+  // O tio precisa saber que a família está sem os avisos (e quando volta):
+  // é o que faz ele combinar por telefone. Não se desliga.
+  familia_sem_avisos: ESPECIE.ESTADO,
+  familia_com_avisos: ESPECIE.ESTADO,
   aviso_da_plataforma: ESPECIE.ESTADO,
 
   payment_due_5d: ESPECIE.PRAZO,

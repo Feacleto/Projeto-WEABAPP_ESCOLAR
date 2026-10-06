@@ -54,8 +54,10 @@ const COMUNS = {
   'auth/popup-closed-by-user': 'Login cancelado.',
   'auth/account-exists-with-different-credential':
     'Já existe conta com outro método de login pra este email.',
+  // A conta é desativada quando a plataforma SUSPENDE a família (05/10/2026):
+  // a mensagem com o prazo foi por e-mail, e a resposta vai ao contato.
   'auth/user-disabled':
-    'Esta conta foi desativada. Entre em contato com o motorista.',
+    'Esta conta está suspensa. Você recebeu a mensagem por e-mail e pode responder por contato@alobuzinou.com.',
   'auth/weak-password': `Senha muito curta. Use ao menos ${SENHA_MINIMA} caracteres.`,
   'auth/email-already-in-use':
     'Este email já tem conta. Use "Já tenho conta".',

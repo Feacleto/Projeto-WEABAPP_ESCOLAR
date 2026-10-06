@@ -2260,9 +2260,23 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   `aviso_da_plataforma`, espécie `estado`). ⚠️ O aviso leva a MENSAGEM e o
   prazo de resposta (10 dias), nunca o motivo da lista nem a evidência. As
   rules recusam ao dono escrever `suspenso`, `suspensoEm` e `suspensaoAte`
-  pelo cliente. O texto padrão traz o marcador `[CLÁUSULA DOS TERMOS]` até a
-  jurídica entregar a seção "Suspensão e bloqueio", e a régua não deixa
-  mandar com ele dentro. Reativar na data é à mão, por ora.
+  pelo cliente. O texto padrão cita a cláusula 11b dos Termos de Uso
+  ("Suspensão e bloqueio"). Reativar o MOTORISTA na data é à mão, por ora.
+  ⚠️ **A FAMÍLIA TAMBÉM (05/10/2026, alternativa A do dono):** lista fechada
+  própria (ameaça ou ofensa, comprovante falso repetido, conta de outra
+  pessoa, ordem de autoridade, conteúdo ofensivo — ⚠️ NUNCA atraso de
+  mensalidade, o teste procura). Suspender grava `users.bloqueio` = {grau,
+  ate, desde} SEM motivo, DESATIVA a conta no Firebase Auth (e revoga a
+  renovação; o token já emitido vale até 1 h, escrito na Política), encerra os
+  links de 24 h e o de quem busca hoje, e avisa UMA vez cada tio das crianças
+  dela (`familia_sem_avisos`: "combine por telefone"). O `push.js` cala a
+  família suspensa, e `gerarAcessoTemporario`/`gerarAcessoDoDia` recusam. A
+  criança continua na turma e o tio continua marcando. A mensagem vai por
+  e-mail (a folha abre o e-mail do dono). `reabrirSuspensoesVencidas` (0h20)
+  reabre só SUSPENSÃO com data vencida — encerramento nunca volta sozinho. O
+  login com a conta desativada diz que ela está suspensa e por onde responder.
+  O `registroDoDono` sai 5 anos depois de a conta encerrar, na mesma
+  `limparContatosAntigos` (`deveSairDoRegistro`).
 - **Auxiliar:** `convidarAuxiliar`, `cancelarConviteDeAuxiliar`,
   `verConviteDeAuxiliar` (pública, devolve só a marca e o primeiro nome),
   `aceitarConviteDeAuxiliar`, `desativarAuxiliar`, `marcarParadaPelaAuxiliar` e

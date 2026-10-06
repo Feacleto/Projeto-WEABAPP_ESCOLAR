@@ -9,6 +9,8 @@ import {
   linhasDeResponsaveis,
 } from '../../dominio/identidade/retratoDasPessoas.js';
 import { formatDate } from '../../compartilhado/formatters.js';
+import FolhaDeSuspensao from './FolhaDeSuspensao';
+import { PAPEL, bloqueioVigente } from '../../dominio/identidade/registroDoDono.js';
 
 /**
  * AS FAMÍLIAS, DO LADO DO DONO.
@@ -30,6 +32,8 @@ const traco = (v) => (v === null || v === undefined ? '—' : v);
 export default function FamiliasTab() {
   const [dados, setDados] = useState(undefined);
   const [motoristas, setMotoristas] = useState([]);
+  // A família que o dono vai suspender ou reativar (decisão do dono, 05/10/2026).
+  const [suspendendo, setSuspendendo] = useState(null);
 
   useEffect(() => {
     carregarFamiliasDoPainel().then(setDados);
@@ -127,6 +131,7 @@ export default function FamiliasTab() {
                   <th className="p-2 font-bold">Filhos</th>
                   <th className="p-2 font-bold">Entrou em</th>
                   <th className="p-2 font-bold">Avisos</th>
+                  <th className="p-2 font-bold">Conta</th>
                 </tr>
               </thead>
               <tbody>
@@ -137,6 +142,19 @@ export default function FamiliasTab() {
                     <td className="p-2 text-text">{l.filhos}</td>
                     <td className="p-2 text-text">{l.entrouMs ? formatDate(l.entrouMs) : '—'}</td>
                     <td className="p-2 text-text">{l.avisos ? 'Ligados' : 'Desligados'}</td>
+                    <td className="p-2">
+                      <button
+                        type="button"
+                        onClick={() => setSuspendendo(l)}
+                        className={`tap min-h-[40px] rounded-lg border px-3 text-xs font-bold ${
+                          bloqueioVigente(l.bloqueio)
+                            ? 'border-dangerBorder bg-dangerSoft text-dangerText'
+                            : 'border-border text-textMuted'
+                        }`}
+                      >
+                        {bloqueioVigente(l.bloqueio) ? 'Suspensa · reativar' : 'Suspender'}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -145,6 +163,18 @@ export default function FamiliasTab() {
         )}
         <p className="mt-2 text-xs text-textMuted">Os 300 primeiros cadastros, do mais novo ao mais antigo.</p>
       </section>
+
+      {suspendendo && (
+        <FolhaDeSuspensao
+          motorista={{ uid: suspendendo.uid, name: suspendendo.nome, bloqueio: suspendendo.bloqueio }}
+          papel={PAPEL.FAMILIA}
+          onFechar={() => setSuspendendo(null)}
+          onFeito={() => {
+            setSuspendendo(null);
+            carregarFamiliasDoPainel({ forcar: true }).then(setDados);
+          }}
+        />
+      )}
     </div>
   );
 }

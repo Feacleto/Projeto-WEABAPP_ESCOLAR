@@ -38,6 +38,27 @@ const MOTIVOS_DE_BLOQUEIO = [
   { id: 'atraso', rotulo: 'Atraso no pagamento', soComCobranca: true },
 ];
 
+/**
+ * Motivos para suspender ou avisar uma FAMÍLIA — lista fechada (decisão do
+ * dono, 05/10/2026). Sem atraso, sem mensalidade, de propósito.
+ */
+const MOTIVOS_DA_FAMILIA = [
+  { id: 'ameaca_ofensa', rotulo: 'Ameaça ou ofensa ao tio ou à auxiliar' },
+  { id: 'fraude_comprovante', rotulo: 'Fraude: comprovante falso repetido' },
+  { id: 'conta_de_outra_pessoa', rotulo: 'Conta usada por outra pessoa' },
+  { id: 'ordem_autoridade', rotulo: 'Ordem de autoridade (guarda, medida protetiva)' },
+  { id: 'conteudo_ofensivo', rotulo: 'Conteúdo ofensivo em recado ou comentário' },
+];
+
+const PAPEL = { MOTORISTA: 'motorista', FAMILIA: 'familia' };
+
+/** O papel do alvo pelo `role` do documento. Outro papel não é alvo. */
+function papelDoAlvo(role) {
+  if (role === 'admin') return PAPEL.MOTORISTA;
+  if (role === 'parent') return PAPEL.FAMILIA;
+  return null;
+}
+
 const MOTIVOS_DE_REATIVAR = [
   { id: 'resposta_aceita', rotulo: 'A resposta foi aceita' },
   { id: 'prazo_cumprido', rotulo: 'O prazo da suspensão acabou' },
@@ -55,12 +76,11 @@ const FUSO = 'America/Sao_Paulo';
 const DIA_MS = 24 * 60 * 60 * 1000;
 
 /**
- * ⚠️ O MARCADOR DA CLÁUSULA. O texto padrão cita a regra que permite a
- * suspensão, e essa cláusula ainda está sendo escrita pela sessão jurídica
- * (seção "Suspensão e bloqueio" dos Termos). Até lá, o texto leva este
- * marcador, e a folha do painel avisa que ele precisa ser trocado.
+ * A CLÁUSULA QUE PERMITE SUSPENDER (05/10/2026): a 11b dos Termos de Uso,
+ * escrita pela revisão jurídica ("Suspensão e bloqueio"). Era um marcador até
+ * a seção existir, e a régua recusava mandar com ele dentro.
  */
-const MARCADOR_DA_CLAUSULA = '[CLÁUSULA DOS TERMOS]';
+const CLAUSULA_DOS_TERMOS = 'cláusula 11b dos Termos de Uso';
 
 const FORMATO_DO_ID = /^[A-Za-z0-9_-]{1,128}$/;
 const FORMATO_DO_DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -80,13 +100,14 @@ function dataPorExtenso(dia) {
 }
 
 function rotuloDoMotivo(id) {
-  const m = [...MOTIVOS_DE_BLOQUEIO, ...MOTIVOS_DE_REATIVAR].find((x) => x.id === id);
+  const m = [...MOTIVOS_DE_BLOQUEIO, ...MOTIVOS_DA_FAMILIA, ...MOTIVOS_DE_REATIVAR].find((x) => x.id === id);
   return m ? m.rotulo : null;
 }
 
 /** Os motivos que a folha oferece agora. */
-function motivosPara(acao, { cobrancaLigada = false } = {}) {
+function motivosPara(acao, { cobrancaLigada = false, papel = PAPEL.MOTORISTA } = {}) {
   if (acao === ACAO.REATIVAR) return MOTIVOS_DE_REATIVAR;
+  if (papel === PAPEL.FAMILIA) return MOTIVOS_DA_FAMILIA;
   return MOTIVOS_DE_BLOQUEIO.filter((m) => !m.soComCobranca || cobrancaLigada);
 }
 
@@ -105,12 +126,15 @@ function validarPedido(dados, { agora = new Date(), cobrancaLigada = false, alvo
     return { ok: false, erro: 'Conta inválida.' };
   }
   if (donoUid && d.alvoUid === donoUid) return { ok: false, erro: 'Você não pode fazer isto com a sua própria conta.' };
+  const papel = d.alvoPapel === PAPEL.FAMILIA ? PAPEL.FAMILIA : PAPEL.MOTORISTA;
   if (alvo) {
     if (alvo.role === 'owner') return { ok: false, erro: 'Um dono não suspende outro dono pelo painel.' };
-    if (alvo.role !== 'admin') return { ok: false, erro: 'Por enquanto, só a conta de motorista.' };
+    const doAlvo = papelDoAlvo(alvo.role);
+    if (!doAlvo) return { ok: false, erro: 'Só conta de motorista ou de família.' };
+    if (doAlvo !== papel) return { ok: false, erro: 'Esta conta não é do papel escolhido.' };
   }
 
-  const motivos = motivosPara(acao, { cobrancaLigada });
+  const motivos = motivosPara(acao, { cobrancaLigada, papel });
   if (!motivos.some((m) => m.id === d.motivo)) return { ok: false, erro: 'Escolha um motivo da lista.' };
 
   const hoje = diaDeBrasilia(agora);
@@ -133,9 +157,6 @@ function validarPedido(dados, { agora = new Date(), cobrancaLigada = false, alvo
   const mensagem = typeof d.mensagem === 'string' ? d.mensagem.trim() : '';
   if (acao !== ACAO.REATIVAR && !mensagem) return { ok: false, erro: 'Escreva a mensagem para a pessoa.' };
   if (mensagem.length > LIMITE_DA_MENSAGEM) return { ok: false, erro: `A mensagem vai até ${LIMITE_DA_MENSAGEM} letras.` };
-  if (mensagem.includes(MARCADOR_DA_CLAUSULA)) {
-    return { ok: false, erro: `Troque ${MARCADOR_DA_CLAUSULA} pela cláusula antes de mandar.` };
-  }
 
   const evidencia = typeof d.evidencia === 'string' ? d.evidencia.trim() : '';
   if (evidencia.length > LIMITE_DA_EVIDENCIA) return { ok: false, erro: `A evidência vai até ${LIMITE_DA_EVIDENCIA} letras.` };
@@ -145,6 +166,7 @@ function validarPedido(dados, { agora = new Date(), cobrancaLigada = false, alvo
     pedido: {
       acao,
       alvoUid: d.alvoUid,
+      alvoPapel: papel,
       motivo: d.motivo,
       grau,
       ate,
@@ -157,11 +179,11 @@ function validarPedido(dados, { agora = new Date(), cobrancaLigada = false, alvo
 }
 
 /** O texto que a folha já traz escrito, para o dono editar. */
-function mensagemPadrao({ acao, grau = null, ate = null, agora = new Date() } = {}) {
+function mensagemPadrao({ acao, grau = null, ate = null, agora = new Date(), papel = PAPEL.MOTORISTA } = {}) {
   const prazo = dataPorExtenso(somarDias(diaDeBrasilia(agora), DIAS_PARA_RESPONDER));
   if (acao === ACAO.REATIVAR) return 'Sua conta foi reativada. Tudo volta a funcionar como antes.';
   if (acao === ACAO.AVISO) {
-    return `Recebemos uma situação na sua conta que vai contra ${MARCADOR_DA_CLAUSULA}. Por enquanto é só um aviso: nada foi travado. Se quiser explicar, responda até ${prazo} por contato@alobuzinou.com.`;
+    return `Recebemos uma situação na sua conta que vai contra a ${CLAUSULA_DOS_TERMOS}. Por enquanto é só um aviso: nada foi travado. Se quiser explicar, responda até ${prazo} por contato@alobuzinou.com.`;
   }
   const quanto =
     grau === GRAU.ENCERRAMENTO
@@ -169,12 +191,22 @@ function mensagemPadrao({ acao, grau = null, ate = null, agora = new Date() } = 
       : ate
         ? `Sua conta foi suspensa até ${dataPorExtenso(ate)}`
         : 'Sua conta foi suspensa';
-  return `${quanto}, com base em ${MARCADOR_DA_CLAUSULA}. As famílias continuam vendo os próprios dados. Você pode responder até ${prazo} por contato@alobuzinou.com, e uma pessoa vai ler.`;
+  if (papel === PAPEL.FAMILIA) {
+    return `${quanto}, com base na ${CLAUSULA_DOS_TERMOS}. O transporte do seu filho continua: combine com o motorista por telefone o que for preciso. Você pode responder até ${prazo} por contato@alobuzinou.com, e uma pessoa vai ler.`;
+  }
+  return `${quanto}, com base na ${CLAUSULA_DOS_TERMOS}. As famílias continuam vendo os próprios dados. Você pode responder até ${prazo} por contato@alobuzinou.com, e uma pessoa vai ler.`;
 }
 
 /** O que muda em `users` do alvo. `null` no aviso: nada é travado. */
 function efeitoNaConta(pedido) {
   if (!pedido) return null;
+  // A FAMÍLIA tem `bloqueio` (grau e prazo, SEM motivo), e não `suspenso`, que
+  // é a tranca do motorista nas rules (`isAdmin()`).
+  if (pedido.alvoPapel === PAPEL.FAMILIA) {
+    if (pedido.acao === ACAO.SUSPENDER) return { bloqueio: { grau: pedido.grau, ate: pedido.ate } };
+    if (pedido.acao === ACAO.REATIVAR) return { bloqueio: null };
+    return null;
+  }
   if (pedido.acao === ACAO.SUSPENDER) return { suspenso: true };
   if (pedido.acao === ACAO.REATIVAR) return { suspenso: false };
   return null;
@@ -215,7 +247,7 @@ function linhaDoRegistro(pedido, { donoUid, donoNome = null, alvo = {} } = {}) {
     donoUid,
     donoNome: donoNome || null,
     alvoUid: pedido.alvoUid,
-    alvoPapel: 'motorista',
+    alvoPapel: pedido.alvoPapel || PAPEL.MOTORISTA,
     alvoNome: alvo.marcaNome || alvo.name || null,
     motivo: pedido.motivo,
     motivoRotulo: rotuloDoMotivo(pedido.motivo),
@@ -228,17 +260,83 @@ function linhaDoRegistro(pedido, { donoUid, donoNome = null, alvo = {} } = {}) {
   };
 }
 
+/**
+ * O bloqueio da família está valendo? Encerramento vale sempre; suspensão vale
+ * até o dia `ate` INCLUSIVE (sem `ate`, até alguém reativar).
+ */
+function bloqueioVigente(bloqueio, agora = new Date()) {
+  if (!bloqueio || typeof bloqueio !== 'object') return false;
+  if (bloqueio.grau === GRAU.ENCERRAMENTO) return true;
+  if (bloqueio.grau !== GRAU.SUSPENSAO) return false;
+  if (!bloqueio.ate) return true;
+  return String(bloqueio.ate) >= diaDeBrasilia(agora);
+}
+
+/**
+ * A suspensão já passou do prazo e a agendada deve reabrir a conta?
+ * ⚠️ ENCERRAMENTO NUNCA SE REATIVA SOZINHO, nem suspensão sem data.
+ */
+function bloqueioVencido(bloqueio, agora = new Date()) {
+  if (!bloqueio || bloqueio.grau !== GRAU.SUSPENSAO || !bloqueio.ate) return false;
+  return String(bloqueio.ate) < diaDeBrasilia(agora);
+}
+
+/**
+ * QUEM AVISAR: cada tio de cada criança ativa da família, UMA vez por tio,
+ * com o primeiro nome das crianças dele (dois irmãos no mesmo tio = um aviso).
+ */
+function tiosParaAvisar(criancas = []) {
+  const porTio = new Map();
+  (Array.isArray(criancas) ? criancas : []).forEach((c) => {
+    if (!c || c.active === false || !c.adminUid) return;
+    const nome = String(c.name || '').trim().split(/\s+/)[0] || 'a criança';
+    const lista = porTio.get(c.adminUid) || [];
+    if (!lista.includes(nome)) lista.push(nome);
+    porTio.set(c.adminUid, lista);
+  });
+  return [...porTio.entries()].map(([tioUid, nomes]) => ({ tioUid, nomes }));
+}
+
+function juntarNomes(nomes) {
+  if (nomes.length <= 1) return nomes[0] || 'a criança';
+  return `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`;
+}
+
+/** O aviso ao tio quando a família fica sem os avisos, e quando volta. */
+function avisoAoTio({ acao, nomes = [] } = {}) {
+  const quem = juntarNomes(nomes);
+  if (acao === ACAO.REATIVAR) {
+    return {
+      type: 'familia_com_avisos',
+      title: `A família de ${quem} voltou a receber os avisos`,
+      body: 'Os avisos do app voltaram a chegar no celular dela.',
+    };
+  }
+  return {
+    type: 'familia_sem_avisos',
+    title: `A família de ${quem} está sem os avisos do app`,
+    body: 'Combine por telefone o que for preciso.',
+  };
+}
+
 export {
   ACAO,
   ACOES_DO_PAINEL,
   MOTIVOS_DE_BLOQUEIO,
   MOTIVOS_DE_REATIVAR,
+  MOTIVOS_DA_FAMILIA,
+  PAPEL,
+  papelDoAlvo,
+  bloqueioVigente,
+  bloqueioVencido,
+  tiosParaAvisar,
+  avisoAoTio,
   GRAU,
   DIAS_PARA_RESPONDER,
   DIAS_MAXIMOS_DE_SUSPENSAO,
   LIMITE_DA_MENSAGEM,
   LIMITE_DA_EVIDENCIA,
-  MARCADOR_DA_CLAUSULA,
+  CLAUSULA_DOS_TERMOS,
   motivosPara,
   rotuloDoMotivo,
   validarPedido,

@@ -85,6 +85,10 @@ export const DESTINO_DO_AVISO = {
   // cartão da plataforma explica o estado da conta.
   conta_suspensa: '/tio',
   conta_reativada: '/tio',
+  // A família de uma criança da turma ficou sem os avisos, ou voltou: o tio
+  // abre o Início, onde a turma está.
+  familia_sem_avisos: '/tio',
+  familia_com_avisos: '/tio',
   aviso_da_plataforma: '/tio',
   auxiliar_confirmou_pagamento: '/tio/finance/auxiliar',
   acesso_substituta_encerrado: '/tio/finance/auxiliar/substitutas',

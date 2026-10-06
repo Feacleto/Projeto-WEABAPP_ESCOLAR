@@ -57,6 +57,20 @@ const {
   montarAcompanhamento,
 } = require('./reguaDoAcompanhamento');
 const { FieldValue, Timestamp } = require('firebase-admin/firestore');
+const { bloqueioVigente } = require('./reguaDoRegistro');
+
+/**
+ * ⚠️ A FAMÍLIA SUSPENSA NÃO GANHA LINK NOVO (05/10/2026). Ao suspender, a
+ * callable `suspenderConta` encerra os links abertos; aqui fecha a porta para
+ * os próximos — o de 24 horas (que o TIO também pode gerar) e o de quem busca
+ * hoje. Senão os avisos da rota voltariam pelo celular de outra pessoa.
+ */
+async function familiaSuspensa(db, parentUid) {
+  if (!parentUid) return false;
+  const snap = await db.doc(`users/${parentUid}`).get();
+  return snap.exists && bloqueioVigente(snap.data().bloqueio);
+}
+const RECUSA_DA_SUSPENSA = 'A família desta criança está sem acesso ao app agora.';
 const {
   DURACAO_DO_ACESSO_MS,
   MAXIMO_DE_APARELHOS,
@@ -137,6 +151,9 @@ function makeGerarAcessoDoDia(db) {
     // `request.data`. É a mesma regra dos outros callables do projeto.
     if (childSnap.data().parentUid !== uid) {
       throw new HttpsError('permission-denied', 'Esta criança não é da sua conta.');
+    }
+    if (await familiaSuspensa(db, uid)) {
+      throw new HttpsError('failed-precondition', RECUSA_DA_SUSPENSA);
     }
 
     const dateKey = chaveDoDia();
@@ -297,6 +314,9 @@ function makeGerarAcessoTemporario(db) {
     }
     if (!crianca.parentUid) {
       throw new HttpsError('failed-precondition', 'A família ainda não entrou no app.');
+    }
+    if (await familiaSuspensa(db, crianca.parentUid)) {
+      throw new HttpsError('failed-precondition', RECUSA_DA_SUSPENSA);
     }
     if (!String(crianca.parent2Phone || '').replace(/\D/g, '')) {
       throw new HttpsError('failed-precondition', 'Cadastre o WhatsApp do segundo responsável antes.');
