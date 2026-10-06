@@ -568,6 +568,7 @@ async function main() {
   await oKanbanDoDono({ novato, dono, anon });
   await osContatosDoDono({ novato, dono, anon });
   await oUsoDoApp({ novato, dono, anon });
+  await aSegurancaDoApp({ novato, dono, anon });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -4703,4 +4704,44 @@ async function oUsoDoApp({ novato, dono, anon }) {
   checar(BL, 'o dono não altera', 'NEGA', await escrever(P, dono, rotas(99), ['rotas']));
   checar(BL, 'o dono não apaga', 'NEGA', await apagar(P, dono));
   checar(BL, 'motorista não cria', 'NEGA', await criar('usoDoApp', '2026-10-07', moto, rotas(1)));
+}
+
+/**
+ * A SEGURANÇA DO APP (05/10/2026) — `segurancaDoApp/{AAAA-MM-DD}`: só números
+ * agregados, escritos só pela agendada (Admin SDK); só o dono lê.
+ */
+async function aSegurancaDoApp({ novato, dono, anon }) {
+  console.log('\n=== A SEGURANÇA DO APP (05/10/2026) ===');
+  const BL = 'segurancaDoApp';
+  const agora = Date.now();
+  const L = (values) => ({ arrayValue: { values } });
+  const moto = await criarLogin(`seg.moto.${agora}@teste.local`);
+  const pai = await criarLogin(`seg.pai.${agora}@teste.local`);
+  const aux = await criarLogin(`seg.aux.${agora}@teste.local`);
+  await semear(`users/${moto.uid}`, { role: S('admin'), name: S('Tio Seg') });
+  await semear(`users/${pai.uid}`, { role: S('parent'), name: S('Mae Seg') });
+  await semear(`users/${aux.uid}`, { role: S('auxiliar'), name: S('Aux Seg'), motoristaUids: L([S(moto.uid)]) });
+  await semear(`auxiliares/${moto.uid}_${aux.uid}`, {
+    motoristaUid: S(moto.uid), auxiliarUid: S(aux.uid), nome: S('Aux Seg'), ativa: B(true),
+  });
+  const P = 'segurancaDoApp/2026-10-05';
+  const dia = (n) => ({ senhaBloqueios: N(n) });
+  await semear(P, {
+    limites: { mapValue: { fields: { convite: { mapValue: { fields: { janelasNoLimite: N(2), bloqueados: N(1) } } } } } },
+    senhaBloqueios: N(0),
+    comprovantesDuplicados: N(1),
+    appCheckLigado: B(false),
+  });
+
+  checar(BL, 'o dono lê a segurança do dia [HOJE VERMELHO]', 'PASSA', await ler(P, dono));
+  checar(BL, 'o dono lista a segurança [HOJE VERMELHO]', 'PASSA', await listar('segurancaDoApp', dono));
+  checar(BL, 'motorista não lê', 'NEGA', await ler(P, moto));
+  checar(BL, 'família não lê', 'NEGA', await ler(P, pai));
+  checar(BL, 'auxiliar não lê', 'NEGA', await ler(P, aux));
+  checar(BL, 'novato não lê', 'NEGA', await ler(P, novato));
+  checar(BL, 'anônimo não lê', 'NEGA', await ler(P, anon));
+  checar(BL, 'o dono não cria', 'NEGA', await criar('segurancaDoApp', '2026-10-06', dono, dia(1)));
+  checar(BL, 'o dono não altera', 'NEGA', await escrever(P, dono, dia(99), ['senhaBloqueios']));
+  checar(BL, 'o dono não apaga', 'NEGA', await apagar(P, dono));
+  checar(BL, 'motorista não cria', 'NEGA', await criar('segurancaDoApp', '2026-10-07', moto, dia(1)));
 }
