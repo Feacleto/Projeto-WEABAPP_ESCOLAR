@@ -1911,8 +1911,8 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   `limparFotosVencidas`
   ([comunidade.js](functions/lib/comunidade.js), régua em
   [reguaDaComunidade.js](functions/lib/reguaDaComunidade.js), espelho em
-  `src/dominio/identidade/comunidade.js`, `testar:comunidade`). No Início do
-  tio, a linha "Comunidade" (`/tio/comunidade`, FORA da Carteira e da senha:
+  `src/dominio/identidade/comunidade.js`, `testar:comunidade`). No menu do
+  tio, a aba "Comunidade", no meio (`/tio/comunidade`, FORA da Carteira e da senha:
   quem posta costuma ser a auxiliar) com duas abas. ⚠️ **Foto da turma só
   com o "sim" de CADA família marcada** (`children.fotoDaTurmaConsentida`,
   escrito só pela responsável — rules; ausente é NÃO), vista só pelas
@@ -3904,7 +3904,13 @@ conteúdo. Três peças valem para o app inteiro:
   um cartão flutuando com sombra (o "bloco solto").
 - `overscroll-behavior-y: none` em html e body: puxar não estica nem
   recarrega a tela (o "parece que quebra"). Perde o puxar-para-atualizar.
-Os ajustes tela a tela estão no artifact, e entram um por vez.
+A saudação do Início usa o nome curto (`nomeDaSaudacao` em
+[greeting.js](src/marca/greeting.js): "Tio Zé" da marca, senão o primeiro
+nome). **Minha turma é para GERENCIAR** ([TioChildren](src/pages/tio/TioChildren.jsx)):
+uma linha por criança, sem o status da rota, e o "···" abre a folha com
+mandar recado, abrir a ficha, desativar e — só quando der — passar para
+outro tio. `npm run testar:densidade` trava tudo isso. Os ajustes tela a
+tela estão no artifact, e entram um por vez.
 
 **Navegação: uma tela só.** Cada troca de tela cobra pedágio — resolva em folha
 onde couber, e rotule o "voltar" onde não couber.

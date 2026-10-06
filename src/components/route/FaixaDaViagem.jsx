@@ -44,7 +44,7 @@ export default function FaixaDaViagem({
     .replace(' de ', ' ');
 
   return (
-    <div className="bg-primary px-4 pb-4 pt-3 text-white">
+    <div className="bg-primary px-4 pb-3 pt-2.5 text-white">
       <div className="flex items-center justify-between gap-3">
         <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 font-mono text-sm font-bold uppercase tracking-[0.1em] text-white">
           <span
@@ -61,11 +61,11 @@ export default function FaixaDaViagem({
         </span>
       </div>
 
-      <h2 className="mt-2 font-display text-[22px] font-extrabold leading-tight tracking-tight">
+      <h2 className="mt-1.5 font-display text-[22px] font-extrabold leading-tight tracking-tight">
         {titulo}
       </h2>
 
-      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[15px] font-semibold text-primaryChip">
+      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 font-mono text-[15px] font-semibold text-primaryChip">
         {contagem && (
           <span className="inline-flex items-center gap-1.5">
             <Users size={16} aria-hidden="true" />
@@ -96,7 +96,7 @@ export default function FaixaDaViagem({
  */
 function Trilho({ nos }) {
   return (
-    <div className="mt-3 flex items-center overflow-hidden" aria-hidden="true">
+    <div className="mt-2 flex items-center overflow-hidden" aria-hidden="true">
       {nos.map((no, i) => {
         const anterior = nos[i - 1];
         const trechoFeito =

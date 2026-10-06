@@ -469,26 +469,29 @@ export default function ControleDeRota({
     />
   );
 
+  /* ⚠️ O MESMO DESENHO, MENOR (05/10/2026, densidade aprovada pelo dono:
+   * "manter o design atual, só o tamanho"). Nada muda de lugar; só os vãos
+   * e a chave, que quebrava em três linhas a 360 px. */
   if (faixa) {
     return (
-      <div className="mt-3 space-y-2">
-        <div className="flex items-center gap-3">
+      <div className="mt-2 space-y-1.5">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={trocarCompartilhamento}
             role="switch"
             aria-checked={compartilha}
-            className="tap flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-xl bg-white/10 px-3 py-2 text-left"
+            className="tap flex min-h-12 min-w-0 flex-1 items-center gap-2.5 rounded-xl bg-white/10 px-2.5 py-1.5 text-left"
           >
             <span
               aria-hidden="true"
-              className={`relative h-8 w-[52px] shrink-0 rounded-full transition-colors duration-estado ${
+              className={`relative h-7 w-[46px] shrink-0 rounded-full transition-colors duration-estado ${
                 compartilha ? 'bg-accent' : 'bg-white/25'
               }`}
             >
               <span
-                className={`absolute left-[3px] top-[3px] h-[26px] w-[26px] rounded-full bg-white shadow transition-transform duration-estado ease-freio ${
-                  compartilha ? 'translate-x-5' : ''
+                className={`absolute left-[3px] top-[3px] h-[22px] w-[22px] rounded-full bg-white shadow transition-transform duration-estado ease-freio ${
+                  compartilha ? 'translate-x-[18px]' : ''
                 }`}
               />
             </span>

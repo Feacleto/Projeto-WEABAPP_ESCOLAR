@@ -33,3 +33,20 @@ export function greet(date = new Date()) {
   if (hora >= BOA_TARDE && hora < BOA_NOITE) return 'Boa tarde';
   return 'Boa noite';
 }
+
+/**
+ * O NOME CURTO DA SAUDAÇÃO (05/10/2026, densidade aprovada pelo dono).
+ *
+ * O Início dizia "Bom dia, Transporte Tio Zé!" — a marca inteira, em duas
+ * linhas de 28 px no topo da tela que ele abre todo dia. A saudação é para
+ * ELE, não para as famílias: vale o "Tio Zé" de dentro da marca, e, sem "Tio"
+ * ou "Tia" nela, o primeiro nome dele. A marca inteira só se não houver nome.
+ */
+export function nomeDaSaudacao({ marcaNome, name } = {}) {
+  const marca = String(marcaNome || '').trim().replace(/\s+/g, ' ');
+  const doTio = /(^|\s)(Tio|Tia)\s+[^\s,.!;:]+/i.exec(marca);
+  if (doTio) return doTio[0].trim();
+  const primeiro = String(name || '').trim().split(/\s+/)[0];
+  if (primeiro) return primeiro;
+  return marca || 'Tio';
+}

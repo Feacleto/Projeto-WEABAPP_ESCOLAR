@@ -28,7 +28,6 @@ import AbsenceListSheet from '../../components/dashboard/AbsenceListSheet';
 import ControleDeRota from '../../components/route/ControleDeRota';
 import ConfirmeSeuEmail from '../../components/common/ConfirmeSeuEmail';
 import ParaVoce from '../../components/tio/ParaVoce';
-import LinhaComunidade from '../../components/comunidade/LinhaComunidade';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
 import { usePedidosDeAcesso } from '../../hooks/usePedidosDeAcesso';
@@ -52,7 +51,7 @@ import {
   getActionForStatus,
 } from '../../services/routeStatusService';
 import { publicarOrdemDoDia } from '../../services/ridesService';
-import { greet } from '../../marca/greeting';
+import { greet, nomeDaSaudacao } from '../../marca/greeting';
 import MeuTransporteSheet from '../../components/tio/MeuTransporteSheet';
 import LinhaDaPerua from '../../components/perua/LinhaDaPerua';
 import { useRelogio } from '../../hooks/useRelogio';
@@ -368,8 +367,7 @@ export default function TioDashboard() {
     return { rotulo: 'Hoje', titulo: 'Nenhuma viagem pendente.' };
   })();
 
-  const primeiroNome =
-    profile?.marcaNome?.trim() || profile?.name?.split(' ')[0] || 'Tio';
+  const primeiroNome = nomeDaSaudacao(profile || {});
 
   // ── "PARA VOCÊ" (04/10/2026) ─────────────────────────────────────────────
   // Só existe quando ele está EM DIA — o mesmo total que esconde o "Para
@@ -428,11 +426,14 @@ export default function TioDashboard() {
           <div className="px-5 pt-5">
             {/* O DIA EM DUAS LINHAS (04/10/2026, decisão do dono): o nome e,
               * embaixo, a data numa linha só. A hora em letra de máquina e o
-              * botão festivo saíram: o Início ficou com quatro blocos. */}
-            <h1 className="text-[28px] font-extrabold leading-tight text-text">
+              * botão festivo saíram: o Início ficou com quatro blocos.
+              * ⚠️ UMA LINHA DE 24 PX, COM O NOME CURTO (05/10/2026, densidade
+              * aprovada pelo dono): "Bom dia, Tio Zé!" — eram duas linhas de
+              * 28 px com a marca inteira (`nomeDaSaudacao`). */}
+            <h1 className="truncate text-2xl font-extrabold leading-tight text-text">
               {greet(new Date())}, {primeiroNome}!
             </h1>
-            <p className="mt-1 text-base text-textBody">{dataDoDia(agora)}</p>
+            <p className="mt-0.5 text-base text-textBody">{dataDoDia(agora)}</p>
             {/* ⚠️ TURMA VAZIA: O CADASTRO VEM LOGO DEPOIS DA SAUDAÇÃO
               * (04/10/2026). Ele morava embaixo do "Confirme seu e-mail" e dos
               * avisos do nível, e no celular pequeno caía abaixo da dobra —
@@ -462,7 +463,7 @@ export default function TioDashboard() {
               </div>
             )}
             {/* Lembrete, nunca portão: some sozinho depois de confirmar. */}
-            <ConfirmeSeuEmail className="mt-4" />
+            <ConfirmeSeuEmail className="mt-3" />
             {/* OS AVISOS DE NÍVEL SAÍRAM DAQUI (04/10/2026): o do Bronze e o do
               * prazo da Platina moram agora no "Para você", no fim da tela.
               * Só um lugar fala de nível, e o topo fica com o dia dele. */}
@@ -614,7 +615,9 @@ export default function TioDashboard() {
               * coisa faziam ele procurar qual era a certa. */}
 
             <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
-            <LinhaComunidade />
+            {/* A linha "Comunidade" saiu (05/10/2026): a Comunidade mora no
+              * meio do menu de baixo, e duas portas para o mesmo lugar no
+              * Início faziam ele procurar qual era a certa. */}
           </div>
         )}
 
@@ -633,7 +636,6 @@ export default function TioDashboard() {
             />
 
             <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
-            <LinhaComunidade />
             {paraVoce}
           </div>
         )}
@@ -647,7 +649,6 @@ export default function TioDashboard() {
         {estado === 'vazio' && children.length > 0 && (
           <div className="px-5 pt-4 space-y-4">
             <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
-            <LinhaComunidade />
             {paraVoce}
           </div>
         )}
