@@ -490,14 +490,8 @@ export const PRIVACY_SECTIONS = [
       'Tratamos os seguintes dados pessoais:',
       '(a) Do motorista: nome, e-mail, telefone/WhatsApp, senha (guardada de forma cifrada pelo serviço de login), gênero (para o desenho do avatar), cidade e bairro, foto, nome e logotipo da marca dele, chave PIX, CPF ou CNPJ e endereço (para o contrato com as famílias e a cobrança da assinatura), alvará (somente quando ele o envia para receber o selo), despesas, quilômetros rodados nas rotas (só o total, sem trajeto) e a lista de postos de combustível dele, e a localização do veículo durante as rotas e nas leituras únicas descritas na cláusula 8 dos Termos;',
       '(b) Da auxiliar do motorista: nome, e-mail, telefone e as marcações que ela faz na rota; com cada motorista com quem trabalha (até dois ao mesmo tempo), o vínculo de trabalho: quando começou, quando terminou cada período (quem sai e volta tem mais de um) e o valor mensal que o motorista informou no convite, se informou; o recibo de cada pagamento (o mês, o valor que o motorista anotou ter pago, a data da anotação e a data em que ela confirmou o recebimento); as faltas dela que o motorista registra (o dia e quem a substituiu); a recomendação que um motorista escreve para ela; e a nota que ela dá ao motorista;',
-      // ⚠️ EM CONSTRUÇÃO (negocio, 05/10/2026): o recado do dia, o nome de quem
-      // busca na cópia da auxiliar e o "Faltou" marcado por ela. Conferir contra
-      // o código antes do advogado; se não entrar, a frase sai ou volta.
-      '(b.1) Do registro do dia da auxiliar: quando ela marca a rota, guardamos, para cada marcação, a hora, o primeiro nome dela e o identificador interno da conta dela, o primeiro nome da criança, o passo (entrou na perua, chegou na escola, entregue em casa ou faltou), se era a ida ou a volta e o nome da escola, junto do dia e do motorista, para o motorista ver o que ela marcou;',
+      '(b.1) Do registro do dia da auxiliar: quando ela marca a rota, guardamos, para cada marcação, a hora, o primeiro nome dela e o identificador interno da conta dela, o primeiro nome da criança, o passo (entrou na perua, chegou na escola, entregue em casa ou faltou), se era a ida, a volta ou o dia inteiro (na falta) e o nome da escola, junto do dia e do motorista, para o motorista ver o que ela marcou;',
       '(c) Do responsável: nome, e-mail, telefone/WhatsApp, senha (guardada de forma cifrada pelo serviço de login), gênero (para o desenho do avatar), foto (se ele enviar), o vínculo com a criança, o aceite do contrato com o motorista e os avisos de pagamento e comprovantes que ele envia;',
-      // ⚠️ EM CONSTRUÇÃO (negocio, 05/10/2026): o recado do dia, o nome de quem
-      // busca na cópia da auxiliar e o "Faltou" marcado por ela. Conferir contra
-      // o código antes do advogado; se não entrar, a frase sai ou volta.
       '(c.1) Do recado do dia: um recado curto (até 140 letras) que o responsável escreve ao motorista sobre aquele dia;',
       '(d) Da criança (informados pelo motorista ou pelo responsável): nome, gênero, foto, data de aniversário, escola, turma e professora, endereço de embarque e da escola, horários, as etapas do transporte de cada dia, faltas avisadas, recados, observações do transporte (por exemplo, o portão de entrada), valor e situação das mensalidades e o contrato de transporte;',
       '(d.1) Informações de saúde da criança (opcional): quando o responsável opta por informá-las, com consentimento específico e destacado, guardamos o texto que ele escreveu e a data do consentimento. Essa informação é exibida apenas ao motorista responsável pelo transporte daquela criança, com a finalidade de permitir atendimento adequado em caso de emergência durante o trajeto. Ela pode ser apagada pelo responsável a qualquer momento, na ficha da criança, e é excluída junto com o cadastro da criança;',
@@ -531,9 +525,6 @@ export const PRIVACY_SECTIONS = [
       // A CÓPIA DA AUXILIAR É UMA LISTA FECHADA (`CAMPOS_DA_TURMA_DA_AUXILIAR`
       // em functions/lib/reguaDoAuxiliar.js): campo novo da criança não chega
       // a ela sem alguém decidir. Esta frase é aquela lista lida em voz alta.
-      // ⚠️ EM CONSTRUÇÃO (negocio, 05/10/2026): o recado do dia, o nome de quem
-      // busca na cópia da auxiliar e o "Faltou" marcado por ela. Conferir contra
-      // o código antes do advogado; se não entrar, a frase sai ou volta.
       'O QUE A AUXILIAR VÊ DA CRIANÇA: o servidor mantém para ela uma cópia reduzida da turma de cada motorista com quem ela trabalha, com nome, foto, gênero, escola, turma, professora, telefone da escola, horários, as etapas do transporte e o nome e o telefone do responsável, as faltas avisadas para o dia, sem o recado, e o NOME de quem a família indicou para buscar a criança naquele dia (nunca o telefone), que some quando a indicação acaba. Ela pode marcar que a criança faltou, e a família recebe o mesmo aviso de falta. Ela NUNCA vê o endereço, a data de aniversário, o segundo responsável, mensalidades, contrato, recados (inclusive o recado do dia) nem informações de saúde. A cópia deixa de ser lida por ela no instante em que o motorista a desativa, e é apagada quando o motorista não tem mais nenhuma auxiliar ativa.',
       'O QUE A SUBSTITUTA DE UM DIA VÊ: pelo link do dia, sem conta, só a rota daquele dia — o primeiro nome de cada criança, a escola, a hora de pegar e de entregar, o turno, a etapa do transporte (em casa, na perua, na escola, entregue) e se a criança faltou ou vai com a família naquele dia. Do motorista, só a marca e o logo. Ela nunca vê sobrenome, foto, telefone, endereço, mensalidade, contrato nem saúde, e não marca nada. O link para à meia-noite, quando a rota é encerrada, quando o motorista o encerra ou quando a conta do motorista deixa de operar, o que vier primeiro.',
       // A LISTA É `CAMPOS_QUE_VAO` / `CAMPOS_QUE_NUNCA_VAO` em
@@ -599,9 +590,6 @@ export const PRIVACY_SECTIONS = [
       'Dentro do Aplicativo, cada pessoa vê só o que precisa:',
       '(a) Entre o motorista e as famílias atendidas por ele — no escopo necessário para o serviço (status do transporte, localização aproximada da perua durante a rota, contrato, mensalidades, recados). As famílias também veem o nome, a marca, o telefone, a chave PIX e os dados do motorista que constam no contrato;',
       '(a.1) A foto da turma que o motorista publica para a comunidade, só com as crianças cuja família respondeu "Sim", é vista também, numa tela separada, pelos motoristas parceiros daquele motorista e pelas famílias atendidas por esses parceiros, até ser apagada em 30 dias. Quem a vê recebe só a imagem, a época, a legenda e a marca do motorista: nunca os nomes das crianças nem quem publicou;',
-      // ⚠️ EM CONSTRUÇÃO (negocio, 05/10/2026): o recado do dia, o nome de quem
-      // busca na cópia da auxiliar e o "Faltou" marcado por ela. Conferir contra
-      // o código antes do advogado; se não entrar, a frase sai ou volta.
       '(a.2) O recado do dia é visto só pelo responsável que o escreveu e pelo motorista daquela criança;',
       '(b) A auxiliar do motorista vê, de cada motorista com quem trabalha e só enquanto está ativa com ele, a cópia reduzida da turma descrita na seção 4 (sem endereço, mensalidades, contrato nem informações de saúde), a marca e a chave PIX do motorista. Do vínculo, os dois veem o mesmo: os períodos de trabalho e o valor informado no convite. O recibo do pagamento é visto só pelos dois, e ela continua vendo os recibos dela depois de desativada. As faltas dela e a lista de substitutas são vistas SÓ pelo motorista; a auxiliar não as vê. Quem já trabalhou com o motorista continua na lista "quem já trabalhou comigo" dele, com os períodos;',
       '(b.1) A substituta que recebe do motorista o link de um dia vê só a rota daquele dia, como descrito na seção 4, e só enquanto o link valer. O nome e o WhatsApp dela são vistos só pelo motorista que a cadastrou;',
@@ -652,9 +640,6 @@ export const PRIVACY_SECTIONS = [
       'Na passagem da família para outro motorista, o registro do pedido (quem pediu, para quem, o primeiro nome da criança, a escola e as datas de cada passo) fica enquanto as contas existirem. O cadastro anterior da criança continua com o motorista anterior, inativo, com os registros do período em que ele atendeu a família, e segue os prazos desta seção.',
       'O link de um dia da substituta para de funcionar à meia-noite daquele dia, quando a rota é encerrada, quando o motorista o encerra ou quando a conta dele deixa de operar. Do link, guardamos só o nome dela, o dia, quando ele deixou de valer e o resumo cifrado do segredo, enquanto a conta do motorista existir.',
       'O registro do dia das marcações da auxiliar é apagado automaticamente depois de 7 (sete) dias.',
-      // ⚠️ EM CONSTRUÇÃO (negocio, 05/10/2026): o recado do dia, o nome de quem
-      // busca na cópia da auxiliar e o "Faltou" marcado por ela. Conferir contra
-      // o código antes do advogado; se não entrar, a frase sai ou volta.
       'O recado do dia é apagado automaticamente depois de 7 (sete) dias.',
       'Após esses prazos, os dados são apagados ou anonimizados.',
     ],
