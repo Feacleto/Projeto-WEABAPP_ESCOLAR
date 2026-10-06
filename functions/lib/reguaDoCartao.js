@@ -124,7 +124,11 @@ function uidDoConheca(caminho) {
  * MESMA pergunta para a prévia do link e para a página (`verCartaoDoTio`).
  */
 function tioTemCartao(uid, usuario) {
-  return idValido(uid) && !!usuario && usuario.role === 'admin' && usuario.suspenso !== true && !!marcaLimpa(usuario.marcaNome);
+  // ⚠️ OPT-IN (05/10/2026, QA): só com `cartaoPublico === true`, que o
+  // próprio tio grava ao mandar o cartão pela primeira vez e desliga na
+  // folha. Ausente é DESLIGADO — a página não existe sem ele querer.
+  return idValido(uid) && !!usuario && usuario.role === 'admin' && usuario.suspenso !== true
+    && usuario.cartaoPublico === true && !!marcaLimpa(usuario.marcaNome);
 }
 
 /** "Transporte escolar · São Paulo" — sem cidade, só "Transporte escolar". */
@@ -148,12 +152,14 @@ function cartaoDoConheca(uid, usuario) {
 
 /**
  * A PÁGINA `/conheca/<uid>` (callable pública `verCartaoDoTio`): o recorte é
- * uma LISTA FECHADA de seis campos, nunca um spread do doc. O WhatsApp é o
+ * uma LISTA FECHADA de cinco campos, nunca um spread do doc. ⚠️ O BAIRRO
+ * FICA DE FORA (05/10/2026, QA): `regiao` vem da posição lida no primeiro
+ * acesso e muitas vezes é onde o tio MORA. O WhatsApp é o
  * `phone` que ele mesmo cadastrou (é ele quem manda o próprio cartão), e só
  * vai se existir. Qualquer caso sem cartão devolve `null`, e quem chama
  * responde a MESMA frase — a callable não vira teste de "esse uid existe".
  */
-const CAMPOS_DO_CARTAO_DO_TIO = Object.freeze(['marca', 'logoURL', 'cor', 'cidade', 'bairro', 'whatsapp']);
+const CAMPOS_DO_CARTAO_DO_TIO = Object.freeze(['marca', 'logoURL', 'cor', 'cidade', 'whatsapp']);
 const FRASE_DO_CARTAO_QUE_NAO_VALE = 'Este cartão não vale mais.';
 
 function recorteDoCartaoDoTio(uid, usuario) {
@@ -165,7 +171,6 @@ function recorteDoCartaoDoTio(uid, usuario) {
     logoURL: logoConfiavel(usuario.marcaLogoURL) ? usuario.marcaLogoURL : null,
     cor: /^#[0-9a-fA-F]{6}$/.test(String(usuario.marcaCor || '')) ? usuario.marcaCor : null,
     cidade: texto(usuario.city, 60),
-    bairro: texto(usuario.regiao, 60),
     whatsapp: digitos.length >= 10 && digitos.length <= 13 ? digitos : null,
   };
 }

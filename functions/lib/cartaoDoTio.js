@@ -4,14 +4,16 @@
  *
  * O tio manda o próprio cartão a uma família NOVA pelo WhatsApp (o "Mandar
  * meu cartão a uma família" da folha da marca). Quem abre não tem conta, e
- * a página só APRESENTA o tio: marca, logo, cor, cidade, bairro e o WhatsApp
+ * a página só APRESENTA o tio: marca, logo, cor, cidade e o WhatsApp
  * dele — o `phone` que ele mesmo cadastrou, porque é ele quem está mandando
  * o cartão. Nada da turma, nada de preço.
  *
  * ── AS REGRAS (a régua pura é `recorteDoCartaoDoTio`, em reguaDoCartao.js)
  *   - o uid passa por `idValido` antes de virar caminho;
- *   - só motorista (`role == 'admin'`), não suspenso e COM marca;
- *   - uma LISTA FECHADA de seis campos, nunca um spread do doc;
+ *   - só motorista (`role == 'admin'`), não suspenso, COM marca e com o
+ *     cartão LIGADO por ele (`cartaoPublico === true`, opt-in);
+ *   - nunca o bairro (`regiao` costuma ser onde ele mora);
+ *   - uma LISTA FECHADA de cinco campos, nunca um spread do doc;
  *   - qualquer outro caso responde a MESMA frase ("Este cartão não vale
  *     mais."): a callable não pode virar teste de "esse uid existe";
  *   - o limite por IP é o do convite público, e conta só o que não deu

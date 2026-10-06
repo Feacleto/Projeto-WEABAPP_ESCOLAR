@@ -88,7 +88,7 @@ const padrao = trocarTagsDaPrevia(index, PADRAO, 'https://alobuzinou.com/convite
 eq('cartão padrão mantém as dimensões da imagem', padrao.includes('og:image:width'), true);
 
 console.log('\n\x1b[1m5b. /conheca/<uid>: o cartão para CONHECER o tio (05/10/2026)\x1b[0m');
-const motorista = { role: 'admin', marcaNome: 'Tio Nino', marcaCor: '#E07A3F', marcaLogoURL: LOGO, phone: '(11) 99999-8888', name: 'Antonino Silva', city: 'São Paulo', regiao: 'Socorro', pixKey: 'chave', criancasAtivas: 12, plano: 'mensal' };
+const motorista = { role: 'admin', marcaNome: 'Tio Nino', marcaCor: '#E07A3F', marcaLogoURL: LOGO, phone: '(11) 99999-8888', name: 'Antonino Silva', city: 'São Paulo', regiao: 'Socorro', cartaoPublico: true, pixKey: 'chave', criancasAtivas: 12, plano: 'mensal' };
 eq('o uid do caminho é lido', uidDoConheca('/conheca/UID1'), 'UID1');
 eq('com barra no fim também', uidDoConheca('/conheca/UID1/'), 'UID1');
 eq('sem uid, nenhum', uidDoConheca('/conheca/'), null);
@@ -118,9 +118,16 @@ eq('a /familia não passa mais pela função', /'\/familia'/.test(servidorDoCart
 
 console.log('\n\x1b[1m5c. a callable pública verCartaoDoTio\x1b[0m');
 const recorte = recorteDoCartaoDoTio('UID1', motorista);
-eq('só os seis campos, nessa ordem', Object.keys(recorte), ['marca', 'logoURL', 'cor', 'cidade', 'bairro', 'whatsapp']);
-eq('a lista fechada é a decidida', [...CAMPOS_DO_CARTAO_DO_TIO], ['marca', 'logoURL', 'cor', 'cidade', 'bairro', 'whatsapp']);
-eq('os valores', recorte, { marca: 'Tio Nino', logoURL: LOGO, cor: '#E07A3F', cidade: 'São Paulo', bairro: 'Socorro', whatsapp: '11999998888' });
+eq('com o cartão ligado: só os cinco campos, nessa ordem', Object.keys(recorte), ['marca', 'logoURL', 'cor', 'cidade', 'whatsapp']);
+eq('a lista fechada é a decidida', [...CAMPOS_DO_CARTAO_DO_TIO], ['marca', 'logoURL', 'cor', 'cidade', 'whatsapp']);
+eq('os valores', recorte, { marca: 'Tio Nino', logoURL: LOGO, cor: '#E07A3F', cidade: 'São Paulo', whatsapp: '11999998888' });
+eq('o BAIRRO nunca sai (nem a chave, nem o valor)', /bairro|regiao|Socorro/i.test(JSON.stringify(recorte)), false);
+const { cartaoPublico: _semCampo, ...semOptIn } = motorista;
+eq('OPT-IN: sem o campo, nada (a callable responde a frase única)', recorteDoCartaoDoTio('UID1', semOptIn), null);
+eq('OPT-IN: desligado (false), nada', recorteDoCartaoDoTio('UID1', { ...motorista, cartaoPublico: false }), null);
+eq('OPT-IN: sem o campo, o cartão do /conheca é o PADRÃO', cartaoDoConheca('UID1', semOptIn), PADRAO);
+eq('OPT-IN: desligado, o cartão do /conheca é o PADRÃO', cartaoDoConheca('UID1', { ...motorista, cartaoPublico: 'sim' }), PADRAO);
+eq('o cartão do WhatsApp só leva a cidade, nunca o bairro', /Socorro|bairro|regiao/i.test(JSON.stringify(cartaoDoConheca('UID1', motorista))), false);
 eq('nada de PIX, plano, turma ou nome civil', /chave|mensal|Antonino|"12"|:12/.test(JSON.stringify(recorte)), false);
 eq('sem telefone, o WhatsApp não vai', recorteDoCartaoDoTio('UID1', { ...motorista, phone: '' }).whatsapp, null);
 eq('logo de fora do projeto não vai', recorteDoCartaoDoTio('UID1', { ...motorista, marcaLogoURL: 'https://exemplo.com/a.png' }).logoURL, null);
