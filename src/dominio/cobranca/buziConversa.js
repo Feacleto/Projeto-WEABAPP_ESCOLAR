@@ -1,3 +1,4 @@
+import { formatBRL } from '../../compartilhado/formatters.js';
 import { PERGUNTA, TEMA } from './boletim.js';
 import { PERGUNTA_DA_PERUA, TEMA_DA_PERUA } from './buziDaPerua.js';
 import { PERGUNTA_DO_DIA, TEMA_DO_DIA } from '../rota/buziDoDia.js';
@@ -146,17 +147,56 @@ export function entenderPergunta(texto) {
 }
 
 /**
- * O QUE A VOZ FALA de uma resposta — só as frases, nunca a lista.
- * ⚠️ COM OS VALORES ESCONDIDOS, A VOZ NÃO FALA VALOR: a frase com valor
- * escondido sai, e a voz diz que os valores estão escondidos. Quem fechou o
- * olho está perto de alguém que não deve ver — nem ouvir.
+ * A VOZ DO BUZI (05/10/2026, decisão do dono): ELE NUNCA FALA VALOR SOZINHO.
+ *
+ *   - "Ouvir" (o toque dele numa resposta) → `falaDaResposta`: a resposta
+ *     INTEIRA, frases e lista, COM os valores. Quem está ao lado ouve porque
+ *     ele quis. Com o olho fechado, nem o "Ouvir" fala valor.
+ *   - A ligação, em que o Buzi responde falando sem ninguém tocar em nada →
+ *     `falaDaLigacao`: SEMPRE sem valor, mesmo com o olho aberto, e termina
+ *     com "Toque em Ouvir para ouvir os valores." O número continua escrito
+ *     na conversa.
+ *
+ * A auxiliar está dentro da perua, e é dela que a senha do Financeiro
+ * protege os valores — a voz não pode ser a porta dos fundos.
  */
+const PARECE_DINHEIRO = /R\$|••••|\d+,\d{2}/;
+
+/** As frases sem valor nenhum, e se alguma coisa ficou de fora. */
+function semValor(resposta) {
+  const frases = (resposta?.frases || []).filter((f) => !PARECE_DINHEIRO.test(f));
+  const escondeu = frases.length < (resposta?.frases || []).length
+    || (resposta?.linhas || []).some((l) => typeof l.valor === 'number');
+  return { frases, escondeu };
+}
+
+function linhaFalada(l, mostrar) {
+  const partes = [l.nome, l.detalhe].filter(Boolean);
+  if (typeof l.valor === 'number') {
+    if (mostrar) partes.push(formatBRL(l.valor));
+  } else if (l.valor) {
+    partes.push(l.valor);
+  }
+  return `${partes.join(', ')}.`;
+}
+
+/** O "Ouvir" de uma resposta — o toque explícito dele. */
 export function falaDaResposta(resposta, { mostrar = true } = {}) {
   if (!resposta) return '';
-  const frases = resposta.frases || [];
-  if (mostrar) return frases.join(' ');
-  const semValor = frases.filter((f) => !f.includes('••••'));
-  const escondeu = semValor.length < frases.length
-    || (resposta.linhas || []).some((l) => typeof l.valor === 'number');
-  return [...semValor, ...(escondeu ? ['Os valores estão escondidos.'] : [])].join(' ');
+  const linhas = (resposta.linhas || []).map((l) => linhaFalada(l, mostrar));
+  if (mostrar) return [...(resposta.frases || []), ...linhas].join(' ');
+  const { frases, escondeu } = semValor(resposta);
+  return [...frases, ...linhas, ...(escondeu ? ['Os valores estão escondidos.'] : [])].join(' ');
+}
+
+/** O que o Buzi fala SOZINHO na ligação: nunca valor. */
+export function falaDaLigacao(respostas = []) {
+  const lista = (respostas || []).filter(Boolean);
+  let escondeu = false;
+  const falas = lista.map((r) => {
+    const sem = semValor(r);
+    escondeu = escondeu || sem.escondeu;
+    return sem.frases.join(' ');
+  });
+  return [...falas.filter(Boolean), ...(escondeu ? ['Toque em Ouvir para ouvir os valores.'] : [])].join(' ');
 }

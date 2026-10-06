@@ -46,10 +46,11 @@ import {
   VAI_PARA_O_BOLETIM,
   assuntoDoTema,
   entenderPergunta,
+  falaDaLigacao,
   falaDaResposta,
   partesDoBoletim,
 } from '../src/dominio/cobranca/buziConversa.js';
-import { quemEstaAtrasado } from '../src/dominio/cobranca/boletim.js';
+import { quemEstaAtrasado, responder } from '../src/dominio/cobranca/boletim.js';
 
 let ok = 0;
 let falhas = 0;
@@ -243,6 +244,36 @@ checar('voz com o olho fechado: nenhum valor', !/R\$|••••|\d+,\d{2}/.tes
 checar('voz com o olho fechado: diz que estão escondidos', /valores estão escondidos/.test(voz), voz);
 const vozAberta = falaDaResposta(quemEstaAtrasado(PAG_ATRASO, { agora: QUARTA }), { mostrar: true });
 checar('voz com o olho aberto: fala o total', /380,00/.test(vozAberta), vozAberta);
+
+console.log('9. A voz: o Buzi nunca fala valor sozinho (decisão do dono)');
+const DINHEIRO = /R\$|••••|\d+,\d{2}/;
+// Toda resposta que o Buzi sabe dar, montada com o olho ABERTO e com o olho
+// fechado — a ligação tem que calar o valor nas duas.
+const PAG_TODOS = [...PAGAMENTOS, ...PAG_ATRASO, { id: 'av', childName: 'Helena', amount: 350, status: 'claimed', claimedAt: new Date(2026, 9, 12), dueDate: new Date(2026, 9, 10), month: '2026-10' }];
+const todas = (mostrar) => [
+  ...['atrasados', 'avisaram', 'entrou'].map((t) => responder(t, PAG_TODOS, { agora: AGORA, mostrar })),
+  ...Object.values(TEMA_DA_PERUA).map((t) => responderDaPerua(t, { pagamentos: PAG_TODOS, despesas: DESPESAS, config: CONFIG, agora: AGORA, mostrar })),
+  ...Object.values(TEMA_DO_DIA).map((t) => responderDoDia(t, { children: TURMA, agora: QUARTA })),
+  ...Object.values(TEMA_DA_TURMA).map((t) => responderDaTurma(t, { children: TURMA, agora: QUARTA })),
+];
+for (const mostrar of [true, false]) {
+  for (const r of todas(mostrar)) {
+    const falada = falaDaLigacao([r]);
+    checar(`ligação, olho ${mostrar ? 'aberto' : 'fechado'}, ${r.tema}: nenhum valor`, !DINHEIRO.test(falada), falada);
+  }
+}
+const ligAtraso = falaDaLigacao([quemEstaAtrasado(PAG_ATRASO, { agora: QUARTA, mostrar: true })]);
+checar('ligação com valor escondido: manda tocar em Ouvir', /Toque em Ouvir para ouvir os valores\.$/.test(ligAtraso), ligAtraso);
+checar('ligação com duas respostas: o aviso de Ouvir sai uma vez só', (falaDaLigacao(todas(true).slice(0, 3)).match(/Toque em Ouvir/g) || []).length === 1);
+const ligSemDinheiro = falaDaLigacao([responderDaTurma('convite', { children: TURMA, agora: QUARTA })]);
+checar('ligação sem dinheiro na resposta: não fala de Ouvir à toa', !/Ouvir/.test(ligSemDinheiro), ligSemDinheiro);
+const ouvirAberto = falaDaResposta(quemEstaAtrasado(PAG_ATRASO, { agora: QUARTA, mostrar: true }), { mostrar: true });
+checar('Ouvir com o olho aberto: fala os valores', /R\$\s?380,00/.test(ouvirAberto), ouvirAberto);
+checar('Ouvir com o olho aberto: fala a resposta inteira, com a lista', /Lucas/.test(ouvirAberto), ouvirAberto);
+for (const r of todas(false)) {
+  const o = falaDaResposta(r, { mostrar: false });
+  checar(`Ouvir, olho fechado, ${r.tema}: nenhum valor`, !DINHEIRO.test(o), o);
+}
 
 console.log(`\n${ok} ok, ${falhas} falha(s)`);
 if (falhas) process.exit(1);

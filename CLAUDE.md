@@ -2614,11 +2614,14 @@ celular do motorista e não pode ver valores.** Protótipo aprovado no artifact
   [buziDaTurma.js](src/dominio/identidade/buziDaTurma.js) (`testar:buzi`).
   Escrever ou falar é a EXCEÇÃO: `entenderPergunta` acha a pergunta pronta
   mais parecida por palavra-chave e a bolha diz "Entendi: …"; o que não casa
-  recebe "Ainda não sei responder isso" — nunca palpite. ⚠️ **A VOZ DO BUZI
-  ESTÁ DESLIGADA** (`VOZ_DO_BUZI = false` em TioBuzi, à espera do dono): a
-  ligação "Falar" e o "Ouvir" diriam valor pelo alto-falante com a auxiliar
-  na perua. O código fica; com o olho fechado a voz já não fala valor
-  (`falaDaResposta`). O microfone do ditado continua (só entra). "Pôr no Boletim" (só nas respostas de
+  recebe "Ainda não sei responder isso" — nunca palpite. ⚠️ **O BUZI NUNCA FALA VALOR
+  SOZINHO** (decisão do dono, 05/10/2026; `VOZ_DO_BUZI = true`): o "Ouvir"
+  que ELE toca numa resposta fala ela inteira, lista e valores
+  (`falaDaResposta`); a ligação "Falar", em que o Buzi responde sem ninguém
+  tocar, fala SEMPRE sem valor, mesmo com o olho aberto, e termina com
+  "Toque em Ouvir para ouvir os valores." (`falaDaLigacao`; os números ficam
+  escritos na conversa). Com o olho fechado nem o "Ouvir" fala valor. O
+  motivo é a auxiliar dentro da perua. `testar:buzi` varre toda resposta. "Pôr no Boletim" (só nas respostas de
   dinheiro) monta o Boletim com as partes que ELE escolheu, na ordem em que
   perguntou: `/tio/finance/boletim?partes=…`; sem parte, o de sempre. Do dia 1
   ao 7 o botão "Perguntar ao Buzi" da Carteira vira "Boletim de setembro

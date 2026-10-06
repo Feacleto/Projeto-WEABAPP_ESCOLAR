@@ -29,6 +29,7 @@ import {
   VAI_PARA_O_BOLETIM,
   assuntoDoTema,
   entenderPergunta,
+  falaDaLigacao,
   falaDaResposta,
   partesDoBoletim,
 } from '../../dominio/cobranca/buziConversa.js';
@@ -57,12 +58,14 @@ import {
  * nenhuma parte escolhida, o Boletim é o de sempre (entrou, atrasados,
  * avisaram).
  *
- * ── FALAR COM O BUZI (ao vivo)
+ * ── A VOZ: O BUZI NUNCA FALA VALOR SOZINHO (decisão do dono, 05/10/2026)
+ * "Ouvir", numa resposta, fala ela inteira COM os valores — é o toque dele.
  * O "Falar" do topo abre uma tela de ligação: ele fala, o Buzi responde
- * falando, e tudo fica escrito na conversa. ⚠️ Com os valores escondidos a
- * voz não fala valor (`falaDaResposta`). O áudio vai ao serviço de voz do
+ * falando SEM valor nenhum, mesmo com o olho aberto (`falaDaLigacao`), e
+ * manda tocar em "Ouvir"; os números ficam escritos na conversa. Com o olho
+ * fechado, nem o "Ouvir" fala valor. O áudio vai ao serviço de voz do
  * aparelho — o mesmo do ditado, declarado na Política (2b). Sem
- * reconhecimento de voz no aparelho, o botão não existe.
+ * reconhecimento de voz no aparelho, o "Falar" não existe.
  *
  * ── A CONVERSA DO DIA
  * O aparelho guarda as mensagens de hoje e as partes do Boletim — nunca um
@@ -86,14 +89,12 @@ const ACAO = {
 };
 
 /**
- * ⚠️ A VOZ DO BUZI ESTÁ DESLIGADA (05/10/2026, à espera do dono). A ligação
- * ("Falar") e o "Ouvir" de cada resposta falam pelo alto-falante — e com o
- * olho aberto isso é "entraram R$ 3.200" dito em voz alta dentro da perua,
- * com a auxiliar do lado, que é exatamente quem a senha do Financeiro
- * protege. O código fica; ligar é decisão do dono. Escrever e o microfone
- * do ditado continuam: eles só ENTRAM, não falam nada.
+ * A VOZ DO BUZI, ligada em 05/10/2026 com a regra do dono: valor em voz alta
+ * só no "Ouvir" que ele toca. Ficou desligada antes porque a ligação diria
+ * "entraram R$ 3.200" no alto-falante com a auxiliar do lado. Desligar de
+ * novo é trocar esta constante.
  */
-const VOZ_DO_BUZI = false;
+const VOZ_DO_BUZI = true;
 
 const MAXIMO_NA_CONVERSA = 40;
 const TIPOS_DO_BUZI = ['assuntos', 'perguntas', 'resposta', 'naoSei', 'boletim', 'boletimPronto'];
@@ -271,14 +272,17 @@ export default function TioBuzi() {
     voz.speak(falaDaResposta(responderTema(tema, visiveis), { mostrar: visiveis }));
   }
 
-  /** O que o Buzi responde na ligação: a mesma régua, dita em voz alta. */
+  /**
+   * O que o Buzi responde na ligação: a mesma régua, dita em voz alta — e
+   * montada SEM valor, mesmo com o olho aberto. Ninguém tocou em "Ouvir".
+   */
   function responderNaLigacao(falado) {
     const temas = enviarTexto(falado, 'falado');
-    const respostas = temas.map((t) => responderTema(t, visiveis));
+    const respostas = temas.map((t) => responderTema(t, false));
     let resposta;
     if (!temas.length) resposta = 'Ainda não sei responder isso.';
     else if (respostas.some((r) => r === null)) resposta = 'Ainda estou juntando os números. Pergunte de novo daqui a pouco.';
-    else resposta = respostas.map((r) => falaDaResposta(r, { mostrar: visiveis })).join(' ');
+    else resposta = falaDaLigacao(respostas);
     setLigacao((l) => (l ? { ...l, voce: falado, buzi: resposta } : l));
     voz.speak(resposta);
   }
@@ -440,7 +444,6 @@ export default function TioBuzi() {
           setLigacao={setLigacao}
           ditado={ditado}
           voz={voz}
-          visiveis={visiveis}
           aoOuvir={responderNaLigacao}
         />
       )}
@@ -623,7 +626,7 @@ function ConteudoDoBuzi({ m, responder, visiveis, noBoletim, onBoletim, onOuvir,
  * grandes: Falar e Desligar. Sem relógio de chamada: nada se mexe sozinho, e
  * um cronômetro seria exceção nova ao design system, sem aprovação.
  */
-function LigacaoComOBuzi({ ligacao, setLigacao, ditado, voz, visiveis, aoOuvir }) {
+function LigacaoComOBuzi({ ligacao, setLigacao, ditado, voz, aoOuvir }) {
   function desligar() {
     ditado.parar();
     voz.stop();
@@ -656,7 +659,7 @@ function LigacaoComOBuzi({ ligacao, setLigacao, ditado, voz, visiveis, aoOuvir }
       </div>
 
       <p className="mb-5 text-base text-menta">
-        {visiveis ? 'Tudo fica escrito na conversa.' : 'Valores escondidos: o Buzi não fala valor.'}
+        Aqui o Buzi não fala valor. Os números ficam escritos na conversa.
       </p>
       <div className="flex items-start gap-12">
         <div className="flex flex-col items-center gap-2 text-base font-semibold">
