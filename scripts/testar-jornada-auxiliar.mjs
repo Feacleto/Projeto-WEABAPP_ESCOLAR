@@ -405,6 +405,64 @@ async function main() {
   await chamar(idx.avaliarTio, AUX3, { motoristaUid: TIO_A, estrelas: 3 });
   checar('avaliar duas vezes não conta duas auxiliares', 3, (await chamar(idx.minhaNotaDasAuxiliares, TIO_A, {})).respostas);
 
+  // ── 8b. O FALTOU DA AUXILIAR ───────────────────────────────────────────
+  bloco('8b. O Faltou da auxiliar: declaração, aviso e registro, uma vez só');
+  const K = 'c2';
+  const base2 = await lerDoc('children/c2');
+  await db.doc('children/c5').set({ ...base2, name: 'Edu Pereira', status: 'onboard', statusUpdatedAt: Timestamp.now() });
+  await db.doc('children/c6').set({ ...base2, name: 'Fabi Pereira', status: 'home' });
+  const faltou = await chamar(idx.marcarFaltaPelaAuxiliar, AUX1, { childId: K, motoristaUid: TIO_A });
+  checar('o Faltou devolve ok e avisou', { ok: true, avisou: true }, faltou);
+  const decl = await lerDoc(`absenceDeclarations/${hoje}_${K}`);
+  checar('a declaração tem as mesmas chaves do Faltou do tio',
+    ['adminUid', 'childId', 'childName', 'createdAt', 'dateKey', 'declaredBy', 'note', 'parentUid', 'type', 'updatedAt'],
+    Object.keys(decl || {}).sort());
+  checar('a declaração é do dia inteiro, da auxiliar, do tio e da família', ['full', 'auxiliar', TIO_A, MAE],
+    [decl?.type, decl?.declaredBy, decl?.adminUid, decl?.parentUid]);
+  const avFalta = (await avisosDe(MAE, 'absence_declared')).filter((n) => n.childId === K);
+  checar('a família recebe um aviso de falta', 1, avFalta.length);
+  const reg = await lerDoc(`registroDaRota/${TIO_A}_${hoje}`);
+  verdade('o registro da rota ganha o evento "faltou"', (reg?.eventos || []).some((e) => e.passo === 'faltou'));
+  const segunda = await chamar(idx.marcarFaltaPelaAuxiliar, AUX1, { childId: K, motoristaUid: TIO_A });
+  checar('chamar de novo não avisa de novo', false, segunda.avisou);
+  checar('continua um aviso só à família', 1, (await avisosDe(MAE, 'absence_declared')).filter((n) => n.childId === K).length);
+  checar('continua um evento "faltou" só no registro', 1,
+    ((await lerDoc(`registroDaRota/${TIO_A}_${hoje}`))?.eventos || []).filter((e) => e.passo === 'faltou').length);
+
+  checar('criança que já embarcou não recebe Faltou', 'failed-precondition', (await recusa(idx.marcarFaltaPelaAuxiliar, AUX1, { childId: 'c5', motoristaUid: TIO_A })).code);
+  checar('...e nenhuma falta foi gravada para ela', null, await lerDoc(`absenceDeclarations/${hoje}_c5`));
+  checar('auxiliar sem vínculo com aquele tio é recusada', 'permission-denied', (await recusa(idx.marcarFaltaPelaAuxiliar, AUX2, { childId: 'c6', motoristaUid: TIO_B })).code);
+  checar('auxiliar do tio B não marca criança do tio A', 'permission-denied', (await recusa(idx.marcarFaltaPelaAuxiliar, AUX1, { childId: 'c6', motoristaUid: TIO_B })).code);
+  checar('auxiliar desativada é recusada', 'permission-denied', (await recusa(idx.marcarFaltaPelaAuxiliar, AUX3, { childId: 'c6', motoristaUid: TIO_A })).code);
+  await db.doc(`users/${TIO_A}`).update({ suspenso: true });
+  checar('com a conta do tio suspensa, o Faltou é recusado', 'failed-precondition', (await recusa(idx.marcarFaltaPelaAuxiliar, AUX1, { childId: 'c6', motoristaUid: TIO_A })).code);
+  await db.doc(`users/${TIO_A}`).update({ suspenso: false });
+  checar('childId com barra é recusado', 'invalid-argument', (await recusa(idx.marcarFaltaPelaAuxiliar, AUX1, { childId: 'a/b', motoristaUid: TIO_A })).code);
+  checar('...e nenhuma falta foi gravada para a c6', null, await lerDoc(`absenceDeclarations/${hoje}_c6`));
+
+  // ── 8c. QUEM BUSCA, SÓ COM O NOME ──────────────────────────────────────
+  bloco('8c. Quem busca chega à auxiliar só com o nome');
+  const idBusca = `${hoje}_${K}`;
+  const busca = {
+    dateKey: hoje, childId: K, parentUid: MAE, adminUid: TIO_A,
+    name: 'Tia Marlene Souza', phone: '11 98765-4321', relationship: 'tia',
+    createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
+  };
+  await db.doc(`altPickups/${idBusca}`).set(busca);
+  await idx.espelharQuemBuscaParaAuxiliar.run({ params: { id: idBusca }, data: { before: snapDe(null), after: snapDe(busca) } });
+  const qb = await lerDoc(`turmaDaAuxiliar/${TIO_A}/quemBusca/${idBusca}`);
+  checar('a cópia tem só childId, dateKey e nome', ['childId', 'dateKey', 'nome'], Object.keys(qb || {}).sort());
+  checar('o nome é o de quem busca', 'Tia Marlene Souza', qb?.nome);
+  verdade('nenhum campo de telefone na cópia', !Object.keys(qb || {}).some((k) => /phone|telefone|fone/i.test(k)));
+  verdade("nenhuma sequência de 8+ dígitos no nome da cópia", !/[0-9]{8,}/.test(String(qb?.nome || "").replace(/[ ().-]/g, "")));
+  await db.doc(`altPickups/${idBusca}`).delete();
+  await idx.espelharQuemBuscaParaAuxiliar.run({ params: { id: idBusca }, data: { before: snapDe(busca), after: snapDe(null) } });
+  checar('apagado o original, a cópia some', null, await lerDoc(`turmaDaAuxiliar/${TIO_A}/quemBusca/${idBusca}`));
+  const semAux = { ...busca, adminUid: 'tioSemAuxiliar' };
+  await idx.espelharQuemBuscaParaAuxiliar.run({ params: { id: idBusca }, data: { before: snapDe(null), after: snapDe(semAux) } });
+  checar('tio sem auxiliar ativa: o gatilho não cria nada', null, await lerDoc(`turmaDaAuxiliar/tioSemAuxiliar/quemBusca/${idBusca}`));
+  checar('...nem a raiz da turma', null, await lerDoc('turmaDaAuxiliar/tioSemAuxiliar'));
+
   // ── 9. DESATIVAR E RECONTRATAR ─────────────────────────────────────────
   bloco('9. Desativar e recontratar');
   checar('o tio B não desativa a auxiliar do tio A', 'permission-denied', (await recusa(idx.desativarAuxiliar, TIO_B, { auxiliarUid: AUX2 })).code);
