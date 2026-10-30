@@ -67,6 +67,7 @@ const { makeApagarViagensAntigas } = require('./lib/retencaoDasViagens');
 const {
   makeCriarSenhaDoFinanceiro,
   makeConferirSenhaDoFinanceiro,
+  makeRemoverSenhaDoFinanceiro,
 } = require('./lib/senhaDoFinanceiro');
 const { defineSecret, defineString } = require('firebase-functions/params');
 const admin = require('firebase-admin');
@@ -492,6 +493,8 @@ exports.verRotaDaSubstituta = makeVerRotaDaSubstituta(db);
 // `senhaDoFinanceiro.js` e a régua em `reguaDaSenhaDoFinanceiro.js`.
 exports.criarSenhaDoFinanceiro = makeCriarSenhaDoFinanceiro(db);
 exports.conferirSenhaDoFinanceiro = makeConferirSenhaDoFinanceiro(db);
+// A senha virou escolha (30/10/2026): desligar exige a atual, pela mesma régua.
+exports.removerSenhaDoFinanceiro = makeRemoverSenhaDoFinanceiro(db);
 
 // O RESPONSÁVEL SEM LINK PEDE ACESSO PELO WHATSAPP, E O MOTORISTA APROVA
 // (02/10/2026). O número sozinho não vincula nada — só cria o pedido. Ver o

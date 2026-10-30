@@ -28,7 +28,7 @@ import {
  *      aberto: "Trocar a senha" dos ajustes acontece lá dentro)
  *   2. destravado?                     → as telas de verdade
  *   3. ainda não se sabe se há senha?  → espera, sem piscar a tela errada
- *   4. não há senha?                   → a primeira vez
+ *   4. não há senha?                   → as telas de verdade (a senha é escolha)
  *   5. trancado?                       → o teclado, a caminho DAQUELE destino
  *
  * ⚠️ O CAIXA NÃO TEM MAIS TELA TRANCADA PRÓPRIA (04/10/2026, simulação "Rota
@@ -62,6 +62,10 @@ export default function GuardaDoFinanceiro({ children, voltarPara = null }) {
   }
   if (tranca.destravado) return children;
   if (tranca.temSenha === undefined) return <PontosDeEspera titulo="Financeiro" rotulo="Abrindo" />;
-  if (!tranca.temSenha) return <PrimeiraSenhaDoFinanceiro destino={aqui} voltarPara={voltarPara} />;
+  // ⚠️ SEM SENHA, ABRE DIRETO (30/10/2026, decisão do dono). A senha era
+  // obrigatória e virou escolha do motorista: a auxiliar é parceira, e se ele
+  // não se importa que ela veja, não há o que trancar. Quem quer proteger
+  // liga pelo cartão no topo da Carteira (`iniciarCriacao`).
+  if (!tranca.temSenha) return children;
   return <DigiteASenhaDoFinanceiro destino={aqui} voltarPara={voltarPara} />;
 }

@@ -256,11 +256,10 @@ const MISSOES = [
     cumprida: (f) => Number(f && f.acessosTemporariosCriados) > 0,
   },
   // Ouro → Platina
-  {
-    id: 'senhaDoFinanceiro', nivel: 'ouro', pre: true, titulo: 'Senha do Financeiro',
-    destino: '/tio/finance',
-    cumprida: (f) => cfg(f).temSenha === true,
-  },
+  // ⚠️ A SENHA DO FINANCEIRO SAIU DAQUI (30/10/2026): ela virou escolha do
+  // motorista. Como missão, ela seria a condição para chegar à Platina — a
+  // senha continuaria obrigatória para subir; como "pré", mostraria um ✓ a
+  // quem nunca criou. Espelho de `src/dominio/identidade/nivel.js`.
   {
     id: 'chavePix', nivel: 'ouro', pre: true, titulo: 'Chave PIX',
     destino: '/tio/pix',

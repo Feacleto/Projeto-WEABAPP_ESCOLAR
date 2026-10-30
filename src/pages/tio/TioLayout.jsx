@@ -24,6 +24,8 @@ import { useCobrancaLigada, useModuloDeCobranca } from '../../hooks/useCobrancaL
 import { useActiveCallsForAdmin } from '../../hooks/usePendingCall';
 import { useChildren } from '../../hooks/useChildren';
 import { useLiveLocation } from '../../hooks/useLiveLocation';
+import { useNivel } from '../../hooks/useNivel';
+import { liberado } from '../../dominio/identidade/liberadoPorNivel.js';
 import OutgoingCallPanel from '../../components/call/OutgoingCallPanel';
 import GuardaDoFinanceiro from '../../components/financeiro/GuardaDoFinanceiro';
 import BirthdayModal from '../../components/festive/BirthdayModal';
@@ -263,7 +265,16 @@ export default function TioLayout() {
   // Início: ele tocava em iniciar e não ia para a rota. O rastreamento já
   // ligado aqui é a prova de que a rota começou.
   const emRota = !!minhaRota?.routeActive || isTracking();
-  const itens = emRota ? ITENS_EM_ROTA : NAV_ITEMS;
+  // ⚠️ A COMUNIDADE SÓ APARECE NO OURO (30/10/2026, decisão do dono). Antes
+  // disso o menu tem duas abas. Lê o nível OFICIAL (`niveis/{uid}`, gravado
+  // pelo servidor), que nunca desce abaixo do Ouro depois de chegar — a aba
+  // não some. Carregando conta como "ainda não": melhor aparecer um instante
+  // depois do que piscar para quem não chegou. Ver `liberadoPorNivel.js`.
+  const { nivel: meuNivel } = useNivel(user?.uid || null);
+  const comunidadeLiberada = liberado('comunidade', meuNivel);
+  const itens = (emRota ? ITENS_EM_ROTA : NAV_ITEMS).filter(
+    (i) => i !== ABA_DA_COMUNIDADE || comunidadeLiberada
+  );
   const naTelaDaRota = location.pathname.startsWith('/tio/route/now');
   // Encerrou com a tela da rota aberta: a Carteira volta a ser do motorista
   // (`/tio/finance`, que pede a senha). Só depois de ler o documento — durante

@@ -27,6 +27,7 @@ import {
   camposQueFaltam,
   deveCadastrarATurma,
   passosQueFaltam,
+  PULO_DO_PASSO,
 } from '../../dominio/identidade/cadastroDoMotorista.js';
 
 /**
@@ -42,9 +43,15 @@ import {
  * Título, campos vazios e um botão. Sem placeholder de exemplo (um "Tio
  * Marcos" escrito dentro do campo confundia), sem pré-preencher o nome do
  * Google (ele quase nunca é o do documento), sem "confira se está como no seu
- * documento" (assusta), sem "já temos seu e-mail", sem "fazer depois". Quem
- * chega aqui só quer terminar. A ÚNICA linha de explicação é a da
- * localização, porque é a única pergunta que pede uma permissão do aparelho.
+ * documento" (assusta), sem "já temos seu e-mail". Quem chega aqui só quer
+ * terminar. A ÚNICA linha de explicação é a da localização, porque é a única
+ * pergunta que pede uma permissão do aparelho.
+ *
+ * ── ⚠️ "PULAR POR AGORA" EM TODO PASSO MENOS O PRIMEIRO (30/10/2026)
+ * O card era "sem fazer depois", e quem só queria ver o app desistia nele.
+ * Hoje só `voce` (nome, WhatsApp, gênero) e a cidade são obrigatórios; o
+ * resto tem pulo e tem onde voltar — ver `PULO_DO_PASSO` em
+ * cadastroDoMotorista.js.
  *
  * ── SÓ O QUE FALTA
  * Os passos vêm de `passosQueFaltam`, congelados na abertura — senão a lista
@@ -254,12 +261,15 @@ export default function PrimeiroAcesso({ config, onAdiarVagas }) {
     }
   };
 
-  // "PULAR POR AGORA" (04/10/2026, decisão do dono): o pedido volta na hora
-  // de mandar o primeiro contrato (InviteShare), com o mesmo texto.
-  const pularContrato = async () => {
+  // "PULAR POR AGORA" — nasceu no contrato (04/10/2026) e vale para todo
+  // passo menos o primeiro desde 30/10/2026 (`PULO_DO_PASSO`). Cada pulo
+  // grava a própria data e segue para o próximo passo, como quem salvou.
+  const pularPasso = async () => {
+    const marca = PULO_DO_PASSO[passo];
+    if (!marca) return;
     setSalvando(true);
     try {
-      await marcarCadastro(user.uid, ['contratoPuladoEm']);
+      await marcarCadastro(user.uid, [marca]);
       await depoisDoContrato();
     } catch (err) {
       console.error(err);
@@ -315,6 +325,20 @@ export default function PrimeiroAcesso({ config, onAdiarVagas }) {
       toast.error('Não deu pra remover agora.');
     } finally {
       setSubindoLogo(false);
+    }
+  };
+
+  // Pular a turma entra direto no app: o "Pronto! … 0 crianças no app" seria
+  // uma comemoração do que ele não fez.
+  const pularTurma = async () => {
+    setSalvando(true);
+    try {
+      await marcarCadastro(user.uid, ['turmaPuladaEm']);
+      await refreshProfile();
+    } catch (err) {
+      console.error(err);
+      toast.error('Não deu pra salvar. Tente de novo.');
+      setSalvando(false);
     }
   };
 
@@ -407,6 +431,20 @@ export default function PrimeiroAcesso({ config, onAdiarVagas }) {
                     className="tap mt-2 flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-border bg-card text-base font-bold text-primary"
                   >
                     Já cadastrei todas as minhas crianças
+                  </button>
+                )}
+                {/* ⚠️ A TURMA NÃO PRENDE MAIS (30/10/2026). Sem criança, a
+                  * única saída era cadastrar uma — quem só queria conhecer o
+                  * app desistia aqui. O Início vazio já é "Cadastrar a
+                  * primeira criança", então o pulo não perde o caminho. */}
+                {n === 0 && (
+                  <button
+                    type="button"
+                    onClick={pularTurma}
+                    disabled={salvando}
+                    className="tap mt-2 flex min-h-12 w-full items-center justify-center text-base font-bold text-primary disabled:opacity-60"
+                  >
+                    Pular por agora
                   </button>
                 )}
               </div>
@@ -715,11 +753,12 @@ export default function PrimeiroAcesso({ config, onAdiarVagas }) {
               {ultimo ? 'Entrar no app' : 'Continuar'}
             </Button>
           )}
-          {passo === 'contrato' && (
+          {/* Todo passo menos o essencial (`voce` e a cidade) tem saída. */}
+          {PULO_DO_PASSO[passo] && (
             <button
               type="button"
-              onClick={pularContrato}
-              disabled={salvando}
+              onClick={pularPasso}
+              disabled={salvando || subindoLogo}
               className="tap mt-2 flex min-h-12 w-full items-center justify-center text-base font-bold text-primary disabled:opacity-60"
             >
               Pular por agora

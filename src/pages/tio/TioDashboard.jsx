@@ -17,6 +17,9 @@ import {
   Bus,
 } from 'lucide-react';
 import PedidosDeAcesso from '../../components/tio/PedidosDeAcesso';
+import PedidosParaVoce from '../../components/transferencia/PedidosParaVoce';
+import { useNivel } from '../../hooks/useNivel';
+import { liberado } from '../../dominio/identidade/liberadoPorNivel.js';
 import AvaliacaoNoInicio from '../../components/feedback/AvaliacaoNoInicio';
 import { MOMENTO, PAPEL_DA_AVALIACAO, aconteceuHoje } from '../../dominio/suporte/avaliacaoRapida.js';
 import BarraDaAcao from '../../components/layout/BarraDaAcao';
@@ -134,6 +137,8 @@ export default function TioDashboard() {
   const { openTutorial } = useOutletContext() || {};
   const { children, loading: carregandoCriancas } = useChildren();
   const { pedidos } = usePedidosDeAcesso('motorista');
+  const { nivel: meuNivel } = useNivel(user?.uid || null);
+  const comunidadeLiberada = liberado('comunidade', meuNivel);
   // "Cida faltou hoje" — só nomes, nunca valor (o Início não tem senha).
   const faltasDaAuxiliar = useFaltaDaAuxiliarHoje();
   const pedidosAbertos = useMemo(
@@ -389,6 +394,32 @@ export default function TioDashboard() {
     />
   );
 
+  // O "MEU TRANSPORTE" ABRE NO PRÓPRIO INÍCIO (30/10/2026, pedido do dono): o
+  // botão e o painel logo abaixo dele, num bloco só. Ele aparece em cinco
+  // estados da tela (dirigindo, antes, entre, vazio com e sem turma), e só um
+  // deles está na tela por vez — então o painel abre embaixo do botão que foi
+  // tocado. As contagens vão por prop: esta tela já assina `children` e
+  // `escolas`, e reassinar dentro do painel abriria leituras duplicadas.
+  const blocoMeuTransporte = (dirigindo = false) => (
+    <div>
+      <LinhaMeuTransporte
+        dirigindo={dirigindo}
+        aberto={indiceAberto}
+        onClick={() => setIndiceAberto((v) => !v)}
+      />
+      <MeuTransporteSheet
+        open={indiceAberto}
+        onClose={() => setIndiceAberto(false)}
+        onBroadcast={() => setBroadcastOpen(true)}
+        onTutorial={() => openTutorial?.()}
+        criancas={children.length}
+        escolas={escolas.length}
+        semHorario={semHorario.length}
+        rotaRodando={rotaAtiva}
+      />
+    </div>
+  );
+
   return (
     <>
       <Header title="Início" marca />
@@ -527,10 +558,7 @@ export default function TioDashboard() {
               * novo. Uma linha de 56px no fim da rolagem é o preço de não ter
               * mais esse buraco. */}
             <div className="px-5 pt-2">
-              <LinhaMeuTransporte
-                dirigindo
-                onClick={() => setIndiceAberto(true)}
-              />
+              {blocoMeuTransporte(true)}
             </div>
           </>
         )}
@@ -599,6 +627,18 @@ export default function TioDashboard() {
           />
         )}
 
+        {/* ⚠️ O PEDIDO DE TRANSFERÊNCIA NÃO PODE SUMIR COM A COMUNIDADE.
+          * Ele mora na Comunidade, e ela só aparece no Ouro (30/10/2026). Um
+          * motorista novo indicado por um parceiro pode receber família antes
+          * disso — sem este cartão, a família ficaria esperando um aceite que
+          * ele não tem onde dar. O aviso e a volta dos planos caem aqui pelo
+          * guarda da rota. No Ouro ele volta a morar só na Comunidade. */}
+        {!comunidadeLiberada && estado !== 'dirigindo' && (
+          <div className="px-5 pt-5">
+            <PedidosParaVoce />
+          </div>
+        )}
+
         {estado === 'carregando' && (
           <div className="px-5 pt-4 space-y-3">
             <Skeleton className="h-40 rounded-2xl" />
@@ -614,7 +654,7 @@ export default function TioDashboard() {
               * a primeira linha da lista abaixo — duas telas dizendo a mesma
               * coisa faziam ele procurar qual era a certa. */}
 
-            <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
+            {blocoMeuTransporte()}
             {/* A linha "Comunidade" saiu (05/10/2026): a Comunidade mora no
               * meio do menu de baixo, e duas portas para o mesmo lugar no
               * Início faziam ele procurar qual era a certa. */}
@@ -635,7 +675,7 @@ export default function TioDashboard() {
               rotaRodando={rotaAtiva}
             />
 
-            <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
+            {blocoMeuTransporte()}
             {paraVoce}
           </div>
         )}
@@ -643,12 +683,12 @@ export default function TioDashboard() {
         {/* ─────────── VAZIO — ainda não há de onde tirar rota ─────────── */}
         {estado === 'vazio' && children.length === 0 && (
           <div className="px-5 pt-4">
-            <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
+            {blocoMeuTransporte()}
           </div>
         )}
         {estado === 'vazio' && children.length > 0 && (
           <div className="px-5 pt-4 space-y-4">
-            <LinhaMeuTransporte onClick={() => setIndiceAberto(true)} />
+            {blocoMeuTransporte()}
             {paraVoce}
           </div>
         )}
@@ -683,21 +723,6 @@ export default function TioDashboard() {
         </BarraDoInicio>
       )}
 
-
-      {/* O ÍNDICE. As contagens vão por prop: esta tela já assina `children`
-        * e `escolas`, e reassinar dentro da folha abriria duas leituras
-        * permanentes do mesmo dado — permanentes porque o hook roda com a
-        * folha fechada — e duas fontes que podem discordar por um instante. */}
-      <MeuTransporteSheet
-        open={indiceAberto}
-        onClose={() => setIndiceAberto(false)}
-        onBroadcast={() => setBroadcastOpen(true)}
-        onTutorial={() => openTutorial?.()}
-        criancas={children.length}
-        escolas={escolas.length}
-        semHorario={semHorario.length}
-        rotaRodando={rotaAtiva}
-      />
 
       <SchoolBroadcastSheet
         open={broadcastOpen}
@@ -816,12 +841,14 @@ function ParaResolver({
  * elemento escondido não quebra: vira um balão no rodapé e o tutorial segue,
  * ensinando sem mostrar. Já aconteceu duas vezes neste projeto.
  */
-function LinhaMeuTransporte({ onClick, dirigindo = false }) {
+function LinhaMeuTransporte({ onClick, dirigindo = false, aberto = false }) {
   return (
     <button
       type="button"
       data-tour="turma"
       onClick={onClick}
+      aria-expanded={aberto}
+      aria-controls="painel-meu-transporte"
       className="tap w-full min-h-14 text-left bg-card border border-border rounded-xl px-3 py-3 flex items-center gap-3"
     >
       <div className="w-10 h-10 rounded-lg bg-primaryChip text-primary flex items-center justify-center shrink-0">
@@ -837,7 +864,12 @@ function LinhaMeuTransporte({ onClick, dirigindo = false }) {
           <span className="block text-sm text-textMuted truncate">Avisar a escola</span>
         )}
       </span>
-      <ChevronRight size={16} className="text-textMuted shrink-0" />
+      {/* A seta gira para baixo com o painel aberto: é um menu que desce,
+        * não uma tela nova (30/10/2026). */}
+      <ChevronRight
+        size={16}
+        className={`text-textMuted shrink-0 transition-transform ${aberto ? 'rotate-90' : ''}`}
+      />
     </button>
   );
 }

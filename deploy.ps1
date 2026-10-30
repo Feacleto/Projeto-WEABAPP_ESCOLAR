@@ -85,6 +85,7 @@ $FuncoesNucleoLista = @(
   'functions:restaurarRelogio',
   'functions:criarSenhaDoFinanceiro',
   'functions:conferirSenhaDoFinanceiro',
+  'functions:removerSenhaDoFinanceiro',
   'functions:atualizarIndicesEconomicos',
   'functions:calcularNiveis',
   'functions:recalcularMeuNivel',

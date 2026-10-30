@@ -67,3 +67,18 @@ export async function conferirSenhaDoFinanceiro(pares) {
     throw new Error(mensagemDeErro(err, 'abrir o Financeiro'), { cause: err });
   }
 }
+
+/**
+ * Desliga a senha (30/10/2026 — a senha é escolha do motorista). Confere os
+ * pares pela mesma régua de tentativas e, se baterem, o servidor apaga a senha
+ * e grava `temSenha: false`. Mesmo formato de resposta da conferência.
+ */
+export async function removerSenhaDoFinanceiro(pares) {
+  exigirCloud('desligar a senha do Financeiro');
+  try {
+    const { data } = await httpsCallable(functions, 'removerSenhaDoFinanceiro')({ pares });
+    return data;
+  } catch (err) {
+    throw new Error(mensagemDeErro(err, 'desligar a senha do Financeiro'), { cause: err });
+  }
+}

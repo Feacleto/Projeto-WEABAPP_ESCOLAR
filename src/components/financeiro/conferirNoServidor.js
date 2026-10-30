@@ -17,7 +17,11 @@ import { conferirSenhaDoFinanceiro } from '../../services/senhaDoFinanceiroServi
  */
 const MUITAS = 'Muitas tentativas. Aguarde 1 minuto.';
 
-export async function conferirNoServidor(pares, { comDigital = false } = {}) {
+/**
+ * `chamar` é a callable: a de conferir (padrão) ou a de desligar a senha
+ * (30/10/2026), que responde no mesmo formato e conta tentativa igual.
+ */
+export async function conferirNoServidor(pares, { comDigital = false, chamar = conferirSenhaDoFinanceiro } = {}) {
   const semRede = comDigital
     ? 'Sem internet. Use a digital ou o rosto.'
     : 'Sem internet. A senha precisa de internet para ser conferida.';
@@ -25,7 +29,7 @@ export async function conferirNoServidor(pares, { comDigital = false } = {}) {
     return { erro: semRede };
   }
   try {
-    const r = await conferirSenhaDoFinanceiro(pares);
+    const r = await chamar(pares);
     if (r?.ok) return { ok: true };
     if (r?.restam === 0) return { erro: MUITAS, bloquear: true };
     return { erro: 'Senha incorreta.' };

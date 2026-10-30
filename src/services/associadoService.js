@@ -210,7 +210,15 @@ export async function completarCadastro(uid, dados, { ultimo = false } = {}) {
  * cadastro da turma. Só datas, gravadas pelo próprio motorista — não são
  * cláusula (o `update` de `users` é lista de PROIBIDOS, e estas não estão lá).
  */
-const MARCAS_DO_CADASTRO = ['contratoPuladoEm', 'turmaIniciadaEm', 'turmaConcluidaEm'];
+// Os pulos de 30/10/2026 (`PULO_DO_PASSO` em cadastroDoMotorista.js).
+const MARCAS_DO_CADASTRO = [
+  'contratoPuladoEm',
+  'turmaIniciadaEm',
+  'turmaConcluidaEm',
+  'marcaPuladaEm',
+  'vagasPuladasEm',
+  'turmaPuladaEm',
+];
 export async function marcarCadastro(uid, marcas) {
   if (!uid) throw new Error('Sem sessão.');
   const gravar = {};

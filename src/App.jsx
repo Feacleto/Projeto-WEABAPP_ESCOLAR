@@ -136,6 +136,8 @@ import CookieBanner from './components/legal/CookieBanner';
 import { useAuth } from './hooks/useAuth';
 import { useVagasDaPerua } from './hooks/useVagasDaPerua';
 import { useCobrancaLigada, useModuloDeCobranca } from './hooks/useCobrancaLigada';
+import { useNivel } from './hooks/useNivel';
+import { liberado } from './dominio/identidade/liberadoPorNivel.js';
 import { faltaCompletarCadastro } from './dominio/identidade/cadastroDoMotorista.js';
 import { passosDoResponsavel } from './dominio/identidade/cadastroDoResponsavel.js';
 import { permissaoDeAvisos } from './compartilhado/browserEnv';
@@ -560,6 +562,19 @@ function SoComCobranca({ children, modulo = null }) {
   return children;
 }
 
+/**
+ * A rota de um recurso que só aparece a partir de um nível (`liberadoPorNivel.js`).
+ * Esconder a aba não basta: link de aviso, histórico do navegador ou o
+ * endereço digitado chegariam na tela. Abaixo do nível, volta para o Início.
+ */
+function SoNoNivel({ recurso, children }) {
+  const { user } = useAuth();
+  const { nivel, carregando } = useNivel(user?.uid || null);
+  if (carregando) return <FullScreenLoader />;
+  if (!liberado(recurso, nivel)) return <Navigate to="/tio" replace />;
+  return children;
+}
+
 function ParaOSite() {
   useEffect(() => {
     window.location.replace(SITE_INSTITUCIONAL);
@@ -778,7 +793,8 @@ export default function App() {
         <Route path="nivel" element={<TioNivel />} />
         {/* A COMUNIDADE (05/10/2026): a foto da turma e os tios parceiros.
           * Fora da Carteira e da senha: quem posta costuma ser a auxiliar. */}
-        <Route path="comunidade" element={<TioComunidade />} />
+        {/* Só a partir do Ouro (30/10/2026) — ver `liberadoPorNivel.js`. */}
+        <Route path="comunidade" element={<SoNoNivel recurso="comunidade"><TioComunidade /></SoNoNivel>} />
         <Route path="indicar" element={<SoComCobranca modulo="indicacao"><ZonaDaPlataforma><TioIndicar /></ZonaDaPlataforma></SoComCobranca>} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />

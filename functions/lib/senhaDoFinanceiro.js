@@ -130,6 +130,61 @@ function makeCriarSenhaDoFinanceiro(db) {
   );
 }
 
+/**
+ * Confere os pares contra a senha guardada e conta a tentativa — a régua de
+ * erros e de espera é UMA, usada por quem abre o Financeiro e por quem desliga
+ * a senha. Devolve `{ ok: true }` ou `{ ok: false, restam, max }`.
+ */
+async function conferirPares(db, uid, pares) {
+  if (!paresValidos(pares)) {
+    throw new HttpsError('invalid-argument', 'Toque os quatro números da senha.');
+  }
+
+  const ref = db.doc(`${COLECAO}/${uid}`);
+  const snap = await ref.get();
+  const doc = snap.exists ? snap.data() : null;
+  if (!doc?.hash || !doc?.sal) {
+    throw new HttpsError('failed-precondition', 'Crie a senha primeiro.');
+  }
+  if (trancado({ bloqueadoAteMs: msDe(doc.bloqueadoAte), agoraMs: Date.now() })) {
+    throw new HttpsError('resource-exhausted', MENSAGEM_DE_ESPERA);
+  }
+
+  // As 16 senhas que os pares descrevem, todas calculadas (sem sair na
+  // primeira que bate: o tempo da resposta não diz em qual posição estava).
+  const sal = Buffer.from(doc.sal, 'base64');
+  const guardado = Buffer.from(doc.hash, 'base64');
+  let bateu = false;
+  for (const candidata of candidatasDosPares(pares)) {
+    const h = await hashDe(candidata, sal);
+    if (h.length === guardado.length && crypto.timingSafeEqual(h, guardado)) bateu = true;
+  }
+
+  // O contador é relido na transação: dois toques simultâneos não podem
+  // contar um erro só.
+  return db.runTransaction(async (tx) => {
+    const s = await tx.get(ref);
+    const d = s.exists ? s.data() : {};
+    const agoraMs = Date.now();
+    if (bateu) {
+      if ((Number(d.erros) || 0) > 0 || d.bloqueadoAte) {
+        tx.update(ref, { erros: 0, bloqueadoAte: null });
+      }
+      return { ok: true };
+    }
+    const bloqueadoAteMs = msDe(d.bloqueadoAte);
+    if (trancado({ bloqueadoAteMs, agoraMs })) {
+      throw new HttpsError('resource-exhausted', MENSAGEM_DE_ESPERA);
+    }
+    const novo = depoisDoErro({ erros: d.erros, bloqueadoAteMs, agoraMs });
+    tx.update(ref, {
+      erros: novo.erros,
+      bloqueadoAte: novo.bloqueadoAteMs ? new Date(novo.bloqueadoAteMs) : null,
+    });
+    return { ok: false, restam: novo.restam, max: MAX_ERROS };
+  });
+}
+
 function makeConferirSenhaDoFinanceiro(db) {
   return onCall(
     { ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO },
@@ -138,56 +193,41 @@ function makeConferirSenhaDoFinanceiro(db) {
       // O "acordar" da tela trancada (04/10/2026): só liga a function, não
       // confere nada e não conta tentativa. Ver aquecerSenhaDoFinanceiro.
       if (request.data?.aquecer === true) return { aquecida: true };
-      const pares = request.data?.pares;
-      if (!paresValidos(pares)) {
-        throw new HttpsError('invalid-argument', 'Toque os quatro números da senha.');
-      }
-
-      const ref = db.doc(`${COLECAO}/${uid}`);
-      const snap = await ref.get();
-      const doc = snap.exists ? snap.data() : null;
-      if (!doc?.hash || !doc?.sal) {
-        throw new HttpsError('failed-precondition', 'Crie a senha primeiro.');
-      }
-      if (trancado({ bloqueadoAteMs: msDe(doc.bloqueadoAte), agoraMs: Date.now() })) {
-        throw new HttpsError('resource-exhausted', MENSAGEM_DE_ESPERA);
-      }
-
-      // As 16 senhas que os pares descrevem, todas calculadas (sem sair na
-      // primeira que bate: o tempo da resposta não diz em qual posição estava).
-      const sal = Buffer.from(doc.sal, 'base64');
-      const guardado = Buffer.from(doc.hash, 'base64');
-      let bateu = false;
-      for (const candidata of candidatasDosPares(pares)) {
-        const h = await hashDe(candidata, sal);
-        if (h.length === guardado.length && crypto.timingSafeEqual(h, guardado)) bateu = true;
-      }
-
-      // O contador é relido na transação: dois toques simultâneos não podem
-      // contar um erro só.
-      return db.runTransaction(async (tx) => {
-        const s = await tx.get(ref);
-        const d = s.exists ? s.data() : {};
-        const agoraMs = Date.now();
-        if (bateu) {
-          if ((Number(d.erros) || 0) > 0 || d.bloqueadoAte) {
-            tx.update(ref, { erros: 0, bloqueadoAte: null });
-          }
-          return { ok: true };
-        }
-        const bloqueadoAteMs = msDe(d.bloqueadoAte);
-        if (trancado({ bloqueadoAteMs, agoraMs })) {
-          throw new HttpsError('resource-exhausted', MENSAGEM_DE_ESPERA);
-        }
-        const novo = depoisDoErro({ erros: d.erros, bloqueadoAteMs, agoraMs });
-        tx.update(ref, {
-          erros: novo.erros,
-          bloqueadoAte: novo.bloqueadoAteMs ? new Date(novo.bloqueadoAteMs) : null,
-        });
-        return { ok: false, restam: novo.restam, max: MAX_ERROS };
-      });
+      return conferirPares(db, uid, request.data?.pares);
     }
   );
 }
 
-module.exports = { makeCriarSenhaDoFinanceiro, makeConferirSenhaDoFinanceiro };
+/**
+ * DESLIGAR A SENHA (30/10/2026, pedido do dono): a senha passou a ser
+ * escolha, e quem escolhe também desfaz.
+ *
+ * ⚠️ EXIGE A SENHA ATUAL, conferida pela MESMA régua de tentativas. Sem isso,
+ * quem pega o celular destravado (a auxiliar com a sessão dele, o motivo de a
+ * senha existir) desligaria a trava antes de olhar os valores. Errar conta
+ * tentativa e bloqueia igual ao abrir.
+ *
+ * Apaga o hash — senha desligada não fica guardada esperando — e grava
+ * `temSenha: false` no mesmo lote. Ligar de novo é criar outra, do zero.
+ */
+function makeRemoverSenhaDoFinanceiro(db) {
+  return onCall(
+    { ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO },
+    async (request) => {
+      const uid = await exigirMotoristaOuAuxiliar(db, request);
+      const conferido = await conferirPares(db, uid, request.data?.pares);
+      if (!conferido.ok) return conferido;
+      const lote = db.batch();
+      lote.delete(db.doc(`${COLECAO}/${uid}`));
+      lote.set(db.doc(`configFinanceiro/${uid}`), { temSenha: false }, { merge: true });
+      await lote.commit();
+      return { ok: true, removida: true };
+    }
+  );
+}
+
+module.exports = {
+  makeCriarSenhaDoFinanceiro,
+  makeConferirSenhaDoFinanceiro,
+  makeRemoverSenhaDoFinanceiro,
+};

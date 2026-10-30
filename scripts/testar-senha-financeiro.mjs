@@ -214,15 +214,26 @@ bloco('10 · O QUE O SERVIDOR NÃO PODE FAZER (leitura de arquivo)');
   checar('a régua não requer nada', false, /require\s*\(/.test(codigo(regua)));
   checar('compara com timingSafeEqual', true, /timingSafeEqual/.test(codigo(callable)));
   checar('usa scrypt', true, /crypto\.scrypt\(/.test(codigo(callable)));
+  // `[^{]*\{` e não `[\s\S]*?\{`: o detector antigo podia pular o corpo do
+  // laço e acusar o `return` da PRÓXIMA função do arquivo (30/10/2026, quando
+  // a conferência virou ajudante de duas callables). Agora ele olha só o
+  // primeiro `{` depois do `for` — o corpo — e a sonda abaixo continua
+  // provando que um `break`/`return` ali dentro é pego.
   checar('não sai do laço na primeira que bate (sem break/return dentro do for)', false,
-    /for \(const candidata[\s\S]*?\{[^}]*\b(break|return)\b[^}]*\}/.test(codigo(callable)));
+    /for \(const candidata[^{]*\{[^}]*\b(break|return)\b[^}]*\}/.test(codigo(callable)));
   checar('nunca grava o campo `senha`', false, /\bsenha\s*:/.test(codigo(callable)));
   checar('o escopo é o uid de exigirMotorista, não do payload', false,
     /request\.data\??\.uid/.test(codigo(callable)));
   // Sonda positiva do detector de laço: o código errado tem que ser pego.
   checar('sonda: o detector pegaria um `break` no laço', true,
-    /for \(const candidata[\s\S]*?\{[^}]*\b(break|return)\b[^}]*\}/.test(
+    /for \(const candidata[^{]*\{[^}]*\b(break|return)\b[^}]*\}/.test(
       'for (const candidata of lista) { if (x) break; }'));
+  checar('sonda: e um `return` no laço', true,
+    /for \(const candidata[^{]*\{[^}]*\b(break|return)\b[^}]*\}/.test(
+      'for (const candidata of lista(p)) { if (x) return { ok: true }; }'));
+  checar('sonda: e não acusa o `return` de uma função DEPOIS do laço', false,
+    /for \(const candidata[^{]*\{[^}]*\b(break|return)\b[^}]*\}/.test(
+      'for (const candidata of lista) { y = 1; }\nfunction f() { return 2; }'));
   const rules = ler('firestore.rules');
   checar('as rules fecham senhasDoFinanceiro', true,
     /match \/senhasDoFinanceiro\/\{uid\} \{\s*allow read, write: if false;/.test(rules));

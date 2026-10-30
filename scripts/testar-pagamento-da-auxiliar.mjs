@@ -148,7 +148,13 @@ const indice = ler('functions/index.js');
 checar('as duas callables estão exportadas', true,
   ['anotarPagamentoDaAuxiliar', 'confirmarRecebimentoDaAuxiliar'].every((n) => indice.includes(`exports.${n} =`)));
 const senha = ler('functions/lib/senhaDoFinanceiro.js');
-checar('a senha aceita a auxiliar (mesmas callables, sem cópia)', 2, (senha.match(/await exigirMotoristaOuAuxiliar\(db, request\)/g) || []).length);
+// Toda callable da senha passa pelo mesmo guarda. Era "exatamente 2" — e a
+// terceira (desligar, 30/10/2026) é a prova de que o número fixo envelhece:
+// o que importa é nenhuma callable do arquivo ficar sem ele.
+const callablesDaSenha = (senha.match(/\bonCall\(/g) || []).length;
+checar('a senha aceita a auxiliar (toda callable usa o mesmo guarda, sem cópia)', true,
+  callablesDaSenha >= 2 &&
+  (senha.match(/await exigirMotoristaOuAuxiliar\(db, request\)/g) || []).length === callablesDaSenha);
 const papeis = ler('functions/lib/papeis.js');
 checar('o guarda novo só abre motorista e auxiliar', true, papeis.includes("dados?.role !== 'auxiliar'") && papeis.includes('!ehMotorista(dados)'));
 

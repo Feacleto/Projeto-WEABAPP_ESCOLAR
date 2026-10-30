@@ -166,7 +166,10 @@ bloco('3 · PRÉ JÁ MARCADA E PROGRESSO ANTECIPADO');
   const r = calcularNivel(bronze(), { agora: AGORA });
   const pre = r.missoes.filter((m) => m.pre);
   checar('toda missão pré aparece feita', true, pre.every((m) => m.feita));
-  checar('são 6 missões pré (3 do bronze, 1 da prata, 2 do ouro)', ['primeiroAcesso', 'primeiraCrianca', 'primeiraRota', 'contratoDeCada', 'senhaDoFinanceiro', 'chavePix'], pre.map((m) => m.id));
+  // A senha do Financeiro saiu em 30/10/2026: virou escolha, não missão.
+  checar('são 5 missões pré (3 do bronze, 1 da prata, 1 do ouro)', ['primeiroAcesso', 'primeiraCrianca', 'primeiraRota', 'contratoDeCada', 'chavePix'], pre.map((m) => m.id));
+  checar('a senha do Financeiro não é missão (é escolha do motorista)', false,
+    r.missoes.some((m) => m.id === 'senhaDoFinanceiro'));
   checar('pré não aparece em "faltam"', false, r.proximo.faltam.some((x) => pre.some((p) => p.id === x.id)));
   checar('chave PIX ausente não segura o ouro (é pré)', 'ouro', n(ouro()));
 }

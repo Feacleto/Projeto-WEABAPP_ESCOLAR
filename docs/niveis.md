@@ -52,6 +52,12 @@
 
 `[pré]` = a jornada já obriga; aparece marcado.
 
+⚠️ **A Senha do Financeiro SAIU da lista em 30/10/2026.** Ela era `[pré]`
+porque o app obrigava a criar; virou escolha do motorista (ligar e desligar
+nos ajustes da Carteira). Como missão de verdade, seria a condição para chegar
+à Platina — a senha voltaria a ser obrigatória para subir; como `[pré]`,
+mostraria um ✓ a quem nunca criou.
+
 | Nível de onde sai | Missão | Fonte do dado |
 |---|---|---|
 | Bronze | [pré] Primeiro acesso completo | `users.name`, `marcaNome`, `city` |
@@ -66,7 +72,6 @@
 | Prata | Telefone da escola de todas as crianças | `children.schoolPhone` em toda criança ativa |
 | Prata | Turma ou professora de todas as crianças | `children.turma` ou `children.professora` |
 | Prata | Um acesso de 24h mandado | `acessosTemporarios` criado por ele |
-| Ouro | [pré] Senha do Financeiro | `configFinanceiro/{uid}.temSenha` |
 | Ouro | [pré] Chave PIX | `users.pixKey` |
 | Ouro | Primeira despesa lançada | `expenses` com `adminUid` |
 | Ouro | "A perua roda só nas rotas?" respondido | `configFinanceiro.usoDaPerua` |

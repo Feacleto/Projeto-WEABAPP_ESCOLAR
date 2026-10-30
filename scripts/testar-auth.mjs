@@ -665,6 +665,27 @@ checar('turma concluída fecha o card', [],
   passosQueFaltam({ ...cadastroCompleto, turmaIniciadaEm: 1, turmaConcluidaEm: 2 }));
 checar('conta antiga, sem a marca da turma, nunca é desviada por ela', false,
   faltaCompletarCadastro(cadastroCompleto));
+// "PULAR POR AGORA" EM TODO PASSO MENOS O ESSENCIAL (30/10/2026, decisão do
+// dono): quem só queria ver o app desistia no card. Nome, WhatsApp, gênero e
+// cidade continuam obrigatórios; marca, vagas, contrato e turma pulam.
+checar('marca pulada não reabre o card', [],
+  passosQueFaltam({ ...cadastroCompleto, marcaNome: '', marcaPuladaEm: 1 }));
+checar('vagas puladas não reabrem o card', [],
+  passosQueFaltam({ ...cadastroCompleto, vagasPuladasEm: 1 }, { vagasDaPerua: null }));
+checar('sonda: sem o pulo, as vagas reabrem', ['vagas'],
+  passosQueFaltam(cadastroCompleto, { vagasDaPerua: null }));
+checar('o essencial não pula: nome continua pedido', ['voce'],
+  passosQueFaltam({ ...cadastroCompleto, name: '', vocePuladoEm: 1 }));
+checar('o essencial não pula: cidade continua pedida', ['local'],
+  passosQueFaltam({ ...cadastroCompleto, city: '', localPuladoEm: 1 }));
+checar('turma pulada fecha o card, sem criança nenhuma', [],
+  passosQueFaltam({ ...cadastroCompleto, turmaIniciadaEm: 1, turmaPuladaEm: 2 }));
+checar('pular a turma não é concluí-la (marca própria)', false,
+  /turmaPuladaEm[\s\S]{0,40}turmaConcluidaEm|marcarCadastro\(user\.uid, \['turmaConcluidaEm'\]\);\s*await refreshProfile/.test(fontePrimeiro11));
+checar('o pulo aparece em todo passo com marca de pulo', true,
+  fontePrimeiro11.includes('PULO_DO_PASSO[passo] &&'));
+checar('e na turma sem criança', true,
+  /n === 0 && \([\s\S]{0,200}onClick=\{pularTurma\}/.test(fontePrimeiro11));
 checar('todo passo tem Voltar', true, fontePrimeiro11.includes('Voltar') && fontePrimeiro11.includes('setIndice((i) => Math.max(0, i - 1))'));
 checar('e grava os campos que o contrato le', true,
   /companyDocument:[\s\S]{0,80}companyAddress:/.test(fontePrimeiro11));

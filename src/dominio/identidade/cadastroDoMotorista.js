@@ -124,10 +124,43 @@ export function camposQueFaltam(profile, passoId, config) {
  */
 export function passosQueFaltam(profile, config) {
   if (!profile || profile.role !== 'admin') return [];
-  const passos = PASSOS.filter((p) => camposQueFaltam(profile, p.id, config).length > 0).map(
-    (p) => p.id
-  );
+  const passos = PASSOS.filter(
+    (p) => !foiPulado(profile, p.id) && camposQueFaltam(profile, p.id, config).length > 0
+  ).map((p) => p.id);
   return emCadastroDaTurma(profile) ? [...passos, 'turma'] : passos;
+}
+
+/**
+ * "PULAR POR AGORA" EM TODO PASSO MENOS O PRIMEIRO (30/10/2026, decisão do
+ * dono). Quem só queria conhecer o app esbarrava no card logo depois do login,
+ * não achava saída e desistia. O essencial continua sem pulo:
+ *   voce      nome, WhatsApp e gênero — quem a conta é, e o avatar dele
+ *   local     a cidade é a PARTE no contrato com a plataforma
+ *             (`contratoAssociacao`) e vai no PIX, e nenhuma tela a pede
+ *             depois; custa um toque ("Permitir localização")
+ *
+ * Os outros têm saída E têm onde voltar, que é o que torna o pulo seguro:
+ *   marca     o cabeçalho mostra "Início" até ele pôr; o Perfil tem a marca
+ *   vagas     a linha da perua some sem o número; o cadastro da criança
+ *             pergunta de novo (`PerguntaDasVagas`)
+ *   contrato  o pedido volta ao mandar o primeiro contrato (já era assim)
+ *   turma     o Início vazio é "Cadastrar a primeira criança"
+ *
+ * Cada pulo é uma DATA própria (o molde de `contratoPuladoEm`): pular não é
+ * concluir, e "pulou a turma" nunca pode ser lido como "cadastrou a turma".
+ * Pulado, o passo não volta a abrir o card — senão o pulo não pularia nada.
+ */
+export const PULO_DO_PASSO = {
+  marca: 'marcaPuladaEm',
+  vagas: 'vagasPuladasEm',
+  contrato: 'contratoPuladoEm',
+  turma: 'turmaPuladaEm',
+};
+
+/** O passo foi pulado? `voce` e `local` nunca são. */
+export function foiPulado(profile, passoId) {
+  const campo = PULO_DO_PASSO[passoId];
+  return Boolean(campo && profile?.[campo]);
 }
 
 /**
@@ -141,12 +174,16 @@ export function passosQueFaltam(profile, config) {
  * card fica aberto até `turmaConcluidaEm`, mesmo que ele feche o app no meio.
  */
 export function emCadastroDaTurma(profile) {
-  return Boolean(profile?.turmaIniciadaEm) && !profile?.turmaConcluidaEm;
+  return Boolean(profile?.turmaIniciadaEm) && !profile?.turmaConcluidaEm && !foiPulado(profile, 'turma');
 }
 
 /** O card deve abrir a turma no fim dos passos? Só para quem não tem criança. */
 export function deveCadastrarATurma(profile) {
-  return !profile?.turmaConcluidaEm && !(Number(profile?.criancasAtivas) > 0);
+  return (
+    !profile?.turmaConcluidaEm &&
+    !foiPulado(profile, 'turma') &&
+    !(Number(profile?.criancasAtivas) > 0)
+  );
 }
 
 /** `true` quando o motorista ainda deve algum passo do primeiro acesso. */

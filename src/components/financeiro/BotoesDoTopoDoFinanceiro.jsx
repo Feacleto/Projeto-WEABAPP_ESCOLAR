@@ -20,7 +20,7 @@ import { useTrancaDoFinanceiro } from '../../hooks/useTrancaDoFinanceiro';
  * não comporta duas palavras ao lado do título, e ajuste é visita rara.
  */
 export default function BotoesDoTopoDoFinanceiro() {
-  const { trancar } = useTrancaDoFinanceiro();
+  const { trancar, temSenha, iniciarCriacao } = useTrancaDoFinanceiro();
   const [ajustes, setAjustes] = useState(false);
   const classe =
     'tap h-12 min-w-12 rounded-xl bg-surface flex items-center justify-center gap-1.5 text-text';
@@ -28,15 +28,31 @@ export default function BotoesDoTopoDoFinanceiro() {
   return (
     <>
       <span className="flex gap-2">
-        <button
-          type="button"
-          aria-label="Trancar o Financeiro"
-          onClick={trancar}
-          className={`${classe} px-3 text-base font-bold`}
-        >
-          <Lock size={20} aria-hidden="true" />
-          Trancar
-        </button>
+        {/* ⚠️ A SENHA É ESCOLHA DO MOTORISTA (30/10/2026). Sem senha, "Trancar"
+          * não tranca nada — o mesmo lugar vira "Pôr senha", a um toque, que é
+          * o "ligar fácil" que o dono pediu. Desligar mora nos ajustes, porque
+          * pede a senha atual. */}
+        {temSenha === false ? (
+          <button
+            type="button"
+            aria-label="Pôr senha no Financeiro"
+            onClick={iniciarCriacao}
+            className={`${classe} px-3 text-base font-bold`}
+          >
+            <Lock size={20} aria-hidden="true" />
+            Pôr senha
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label="Trancar o Financeiro"
+            onClick={trancar}
+            className={`${classe} px-3 text-base font-bold`}
+          >
+            <Lock size={20} aria-hidden="true" />
+            Trancar
+          </button>
+        )}
         <button
           type="button"
           aria-label="Ajustes do Financeiro"

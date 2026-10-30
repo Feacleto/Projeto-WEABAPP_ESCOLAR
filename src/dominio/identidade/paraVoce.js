@@ -25,6 +25,7 @@
  * Puro de propósito: `npm run testar:para-voce`.
  */
 import { diasRestantes } from '../associacao/trial.js';
+import { LIBERA_NO, liberado } from './liberadoPorNivel.js';
 
 /** A janela do fim do teste: de 60 a 31 dias do fim (os 30 finais são do AvisoDoTrial). */
 export const JANELA_DO_TESTE = { de: 60, ate: 31 };
@@ -109,6 +110,19 @@ export function itemDoParaVoce({
   }
 
   if (ROTULO[nivel] && posicao(nivel) > posicao(nivelVisto)) {
+    // ⚠️ A COMUNIDADE CHEGA NO OURO (30/10/2026) — ver `liberadoPorNivel.js`.
+    // A celebração que cruza o Ouro diz isso, como quem anuncia uma novidade
+    // do app, e leva direto para ela. Uma vez só, como toda celebração.
+    if (liberado('comunidade', nivel) && !liberado('comunidade', nivelVisto)) {
+      return {
+        tipo: 'nivel',
+        frase: `Você chegou ${AO[nivel]} ${ROTULO[nivel]}. A Comunidade já está no menu.`,
+        toque: 'Ver a Comunidade',
+        destino: LIBERA_NO.comunidade.rota,
+        icone: 'selo',
+        nivel,
+      };
+    }
     return {
       tipo: 'nivel',
       frase: `Você chegou ${AO[nivel]} ${ROTULO[nivel]}.`,

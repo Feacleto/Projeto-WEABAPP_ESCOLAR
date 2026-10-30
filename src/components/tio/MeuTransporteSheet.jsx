@@ -5,7 +5,6 @@ import {
   ChevronRight,
   FileText,
   HelpCircle,
-  LayoutGrid,
   ListOrdered,
   Megaphone,
   Notebook,
@@ -14,7 +13,6 @@ import {
   TriangleAlert,
   Users,
 } from 'lucide-react';
-import AppSheet from '../common/AppSheet';
 import { useAuth } from '../../hooks/useAuth';
 import { dadosDaContratadaFaltando } from '../../services/contractService';
 import { DESCONTO_POR_INDICACAO } from '../../dominio/associacao/planos.js';
@@ -33,11 +31,12 @@ import { useCobrancaLigada, useModuloDeCobranca } from '../../hooks/useCobrancaL
  * uma escola ele encerrava a rota, apagava a perua do mapa das famílias e
  * ligava de novo.
  *
- * POR QUE FOLHA E NÃO TELA
+ * POR QUE ABRE NO PRÓPRIO INÍCIO (30/10/2026, pedido do dono)
  * Índice é o lugar mais visitado e menos habitado do app: ele entra pra
- * sair. Tela cobra ida e volta, tira o Início da vista e coloca um "voltar"
- * no caminho. A folha fecha no X, no toque fora e arrastando pra baixo, e
- * devolve ele onde estava. Uma tela que só encaminha não paga pedágio.
+ * sair. Tela cobra ida e volta, e a folha por cima (com o fundo escuro)
+ * também tirava o Início da vista. Agora é um painel que abre logo abaixo do
+ * botão "Meu transporte", dentro da rolagem do Início: tocar de novo no
+ * botão fecha. O conteúdo é o mesmo Modelo F de 04/10/2026.
  *
  * O QUE NÃO ENTROU AQUI
  * A chave PIX. Ela já é uma folha dentro do Financeiro (PixSheet), na tela
@@ -95,13 +94,12 @@ export default function MeuTransporteSheet({
     navigate(rota);
   };
 
+  if (!open) return null;
+
   return (
-    <AppSheet
-      open={open}
-      onClose={onClose}
-      icon={LayoutGrid}
-      title="Meu transporte"
-      size="tall"
+    <div
+      id="painel-meu-transporte"
+      className="animate-sheet-fade mt-2 rounded-2xl border border-border bg-card p-4 shadow-rest"
     >
       {/* ⚠️ O MODELO F (04/10/2026, escolhido pelo dono entre seis). O
         * motorista de 40+ abre a folha com pressa e quer ver o que mais chama
@@ -263,7 +261,7 @@ export default function MeuTransporteSheet({
           />
         </Grupo>
       </div>
-    </AppSheet>
+    </div>
   );
 }
 

@@ -35,8 +35,8 @@ import {
 export default function PrimeiraSenhaDoFinanceiro({ troca = false, destino, voltarPara }) {
   const { user, profile } = useAuth();
   const tranca = useTrancaDoFinanceiro();
-  // Congelado na montagem: o servidor grava `temSenha` no meio do fluxo.
-  const [ehTroca] = useState(troca);
+  // Congelado na montagem (o `useState` só lê `troca` uma vez): o servidor
+  // grava `temSenha` no meio do fluxo, e a primeira vez não vira troca.
   const [etapa, setEtapa] = useState(troca ? 'criar' : 'apresentacao');
   const [digitos, setDigitos] = useState('');
   const [primeira, setPrimeira] = useState('');
@@ -122,6 +122,10 @@ export default function PrimeiraSenhaDoFinanceiro({ troca = false, destino, volt
           <Button onClick={comecar} className="h-[60px] text-lg">
             Criar senha
           </Button>
+          {/* A senha é escolha (30/10/2026): sem ela a Carteira abre direto. */}
+          <Button variant="secondary" onClick={tranca.cancelarFluxo} className="border-2 text-[17px]">
+            Agora não
+          </Button>
         </>
       )}
 
@@ -141,7 +145,8 @@ export default function PrimeiraSenhaDoFinanceiro({ troca = false, destino, volt
         <TecladoDeBanco titulo="Confirme a senha" aoCompletar={confirmar} />
       )}
 
-      {(etapa === 'criar' || etapa === 'confirmar') && ehTroca && (
+      {/* Na primeira vez também: a senha deixou de ser obrigatória (30/10/2026). */}
+      {(etapa === 'criar' || etapa === 'confirmar') && (
         <button
           type="button"
           onClick={tranca.cancelarFluxo}

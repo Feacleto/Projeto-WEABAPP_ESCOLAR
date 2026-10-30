@@ -72,7 +72,6 @@ export default function ParaVoce({ foraDaRota, emDia, criancas = 0, familias = 0
           .filter((a) => !a.feita && !a.vencida)
           .sort((a, b) => a.diasRestantes - b.diasRestantes)[0] || null
       : null;
-    const senha = resultado?.missoes.find((m) => m.id === 'senhaDoFinanceiro');
     return itemDoParaVoce({
       foraDaRota,
       emDia,
@@ -88,7 +87,8 @@ export default function ParaVoce({ foraDaRota, emDia, criancas = 0, familias = 0
       nivelVisto,
       platina: platina ? { titulo: platina.titulo, diasRestantes: platina.diasRestantes } : null,
       proximo: resultado?.proximo || null,
-      senhaCriada: senha ? senha.feita : true,
+      // A senha é escolha do motorista (30/10/2026): sem lembrete para pôr.
+      senhaCriada: true,
       faseDoNegocio: resultado ? faseDeHoje(resultado.trilha?.fases) : null,
       agora,
     });

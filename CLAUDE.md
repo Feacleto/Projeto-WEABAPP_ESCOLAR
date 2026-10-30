@@ -32,7 +32,7 @@ npm run testar                   # 101 scripts. O PRIMEIRO é
                                  # comunidade,
                                  # contrato, combinado,
                                  # pix, brcode,
-                                 # status, auth, trial, planos, vitrine, autoatendimento, para-voce, avisos,
+                                 # status, auth, trial, planos, vitrine, autoatendimento, para-voce, liberado, avisos,
                                  # preferencias, multa, encerramento,
                                  # conta, cobranca, gateway, assinante, carteira, retrato, registro,
                                  # resumo-da-avaliacao, vendas-do-painel,
@@ -2161,11 +2161,34 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   (pública) grava UMA avaliação por link, depois da entrega, marcando
   `avaliadoEm` no próprio acesso na mesma transação
   ([reguaDaAvaliacao.js](functions/lib/reguaDaAvaliacao.js))
-- **Senha do Financeiro:** `criarSenhaDoFinanceiro` e `conferirSenhaDoFinanceiro`
+- **Senha do Financeiro:** `criarSenhaDoFinanceiro`, `conferirSenhaDoFinanceiro`
+  e `removerSenhaDoFinanceiro`
   ([senhaDoFinanceiro.js](functions/lib/senhaDoFinanceiro.js), régua pura em
   [reguaDaSenhaDoFinanceiro.js](functions/lib/reguaDaSenhaDoFinanceiro.js),
   espelho de `src/dominio/identidade/tecladoDeBanco.js`). Ver "A SENHA DO
   FINANCEIRO" abaixo.
+  ⚠️ **A SENHA VIROU ESCOLHA DO MOTORISTA (30/10/2026, decisão do dono).** Sem
+  senha a Carteira abre direto; "Pôr senha" fica no topo dela, e "Desligar a
+  senha" nos ajustes, pedindo a ATUAL pela mesma régua de tentativas. A
+  auxiliar é parceira: se ele não se importa que ela veja, a decisão é dele. A
+  missão "Senha do Financeiro" saiu dos níveis — como missão ela voltaria a
+  ser obrigatória para chegar à Platina.
+
+**O QUE CADA NÍVEL LIBERA NA TELA (30/10/2026)** — [liberadoPorNivel.js](src/dominio/identidade/liberadoPorNivel.js),
+`npm run testar:liberado`. A **Comunidade só aparece do Ouro em diante**: a
+aba some do menu e a rota volta ao Início abaixo disso. Os níveis não descem
+abaixo do Ouro depois de alcançado, então a aba nunca some. ⚠️ O pedido de
+transferência (que mora na Comunidade) aparece no Início para quem está
+abaixo do Ouro — senão uma família ficaria esperando um aceite que ele não tem
+onde dar. ⚠️ Nunca esconda o que uma missão pede: o teste cruza o `destino`
+das missões com as rotas escondidas.
+
+**O PRIMEIRO ACESSO TEM "PULAR POR AGORA" (30/10/2026)** — em marca, vagas,
+contrato e turma (`PULO_DO_PASSO` em cadastroDoMotorista.js). Nome, WhatsApp,
+gênero e cidade continuam obrigatórios: a cidade é a parte no contrato com a
+plataforma e nenhuma tela a pede depois. Cada pulo é uma data própria
+(`turmaPuladaEm` nunca é lido como turma concluída). E o **"Meu transporte"
+abre no próprio Início**, logo abaixo do botão, em vez de folha por cima.
 - **Contratação:** `contratarPlano` — o MOTORISTA escolhe mensal ou anual e o
   servidor escreve a cláusula (`users.plano` mais o desconto do degrau, com
   `ate: null`). É function porque esses campos estão na lista que o cliente

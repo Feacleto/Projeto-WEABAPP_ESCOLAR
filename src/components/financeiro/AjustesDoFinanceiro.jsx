@@ -6,6 +6,9 @@ import Button from '../common/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { useTrancaDoFinanceiro } from '../../hooks/useTrancaDoFinanceiro';
 import { OPCOES_DE_PEDIR_SENHA } from '../../dominio/identidade/trancaDoFinanceiro.js';
+import TecladoDeBanco from './TecladoDeBanco';
+import { conferirNoServidor } from './conferirNoServidor';
+import { removerSenhaDoFinanceiro } from '../../services/senhaDoFinanceiroService';
 import {
   biometriaDisponivel,
   biometriaLigada,
@@ -61,6 +64,76 @@ export default function AjustesDoFinanceiro({ open, onClose }) {
     tranca.pedirTrocaDeSenha();
   };
 
+  const porSenha = () => {
+    onClose?.();
+    tranca.iniciarCriacao();
+  };
+
+  // Desligar pede a senha ATUAL, no mesmo teclado de banco e com a mesma
+  // contagem de tentativas do servidor (`removerSenhaDoFinanceiro`).
+  const [desligando, setDesligando] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!open) setDesligando(false);
+  }, [open]);
+  const confirmarDesligar = async (pares) => {
+    const r = await conferirNoServidor(pares, { chamar: removerSenhaDoFinanceiro });
+    if (r.ok) {
+      // Sem senha a digital não tem o que abrir.
+      desligarBiometria(user?.uid);
+      setDigitalLigada(false);
+      setDesligando(false);
+      onClose?.();
+      toast.success('Senha desligada. A Carteira abre direto.');
+    }
+    return r;
+  };
+
+  // ⚠️ SEM SENHA (30/10/2026, a senha é escolha do motorista): não há o que
+  // pedir nem trocar. Uma frase neutra sobre o que muda — a auxiliar é
+  // parceira, e a decisão é dele — e o caminho para pôr a senha.
+  if (tranca.temSenha === false) {
+    return (
+      <Sheet open={open} onClose={onClose} title="Ajustes do Financeiro" icon={SlidersHorizontal}>
+        <div className="flex flex-col gap-3">
+          <h3 className="font-display text-[22px] font-extrabold text-text">Senha</h3>
+          <p className="text-[17px] leading-snug text-textBody">
+            Sem senha, a Carteira abre direto e quem usar o seu celular vê os valores.
+          </p>
+          <Button size="md" onClick={porSenha} className="text-[17px]">
+            Pôr senha
+          </Button>
+          <Button variant="secondary" size="md" onClick={onClose} className="border-2 text-base">
+            Pronto
+          </Button>
+        </div>
+      </Sheet>
+    );
+  }
+
+  if (desligando) {
+    return (
+      <Sheet open={open} onClose={onClose} title="Desligar a senha" icon={SlidersHorizontal}>
+        <div className="flex flex-col gap-3">
+          <TecladoDeBanco
+            naFolha
+            titulo="Digite a senha atual"
+            dica="Depois disso a Carteira abre sem senha"
+            aoCompletar={confirmarDesligar}
+          >
+            <button
+              type="button"
+              onClick={() => setDesligando(false)}
+              className="tap h-12 text-base font-bold text-textBody"
+            >
+              Voltar
+            </button>
+          </TecladoDeBanco>
+        </div>
+      </Sheet>
+    );
+  }
+
   return (
     <Sheet open={open} onClose={onClose} title="Ajustes do Financeiro" icon={SlidersHorizontal}>
       <div className="flex flex-col gap-3">
@@ -112,6 +185,9 @@ export default function AjustesDoFinanceiro({ open, onClose }) {
 
         <Button variant="secondary" size="md" onClick={trocarSenha} className="border-2 text-base">
           Trocar a senha
+        </Button>
+        <Button variant="secondary" size="md" onClick={() => setDesligando(true)} className="border-2 text-base">
+          Desligar a senha
         </Button>
         <Button size="md" onClick={onClose} className="text-[17px]">
           Pronto
