@@ -15,6 +15,7 @@
  *   node scripts/testar-carteira.mjs      (ou: npm run testar:carteira)
  */
 
+import { readFileSync } from 'node:fs';
 import { degrauDo, mensalidadeDe, notasPorMotorista, resumirCarteira } from '../src/dominio/associacao/carteira.js';
 import { FUNDADOR, ORIGEM } from '../src/dominio/associacao/planos.js';
 
@@ -93,6 +94,19 @@ const semRelogio = resumirCarteira({
 checar('quem roda sem relógio conta como em teste', 1, semRelogio.emTeste);
 checar('e não conta como "ainda não rodou"', 1, semRelogio.naoComecou);
 checar('sem trialInicio não inventa dias restantes', 0, semRelogio.acabandoEm7);
+
+// ⚠️ ÂMBAR É AVISO E NADA MAIS. A pastilha âmbar de `em_teste` existe para o
+// prazo ("12d"); sem `trialInicio` não há prazo, e pintar de âmbar todo motorista
+// que roda faria o painel inteiro parecer alerta. Lido do arquivo, porque a
+// pastilha mora atrás do JSX, onde o Node não chega.
+const PASTILHA_DO_TESTE = /em_teste:\s*faltam !== null\s*\?\s*\['bg-warning[^\]]*\]\s*:\s*\['(?!bg-warning)([^']*)'/;
+const veioDoArquivo = (caminho) => readFileSync(new URL(`../${caminho}`, import.meta.url), 'utf8');
+['src/components/admin/MotoristasTab.jsx', 'src/components/admin/FichaDoMotorista.jsx'].forEach((arq) => {
+  checar(`${arq}: sem trialInicio a pastilha não usa warning`, true, PASTILHA_DO_TESTE.test(veioDoArquivo(arq)));
+});
+// A sonda positiva: o padrão antigo (âmbar sempre) tem que ser reprovado.
+checar('sonda: a pastilha antiga, âmbar mesmo sem prazo, é reprovada', false, PASTILHA_DO_TESTE.test(
+  "em_teste: ['bg-warningSoft text-warningText', faltam !== null ? `${faltam}d` : 'teste'],"));
 
 // ───────────────────────────── a mensalidade ───────────────────────────────
 
