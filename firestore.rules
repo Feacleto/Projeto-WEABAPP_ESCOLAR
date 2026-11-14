@@ -3143,10 +3143,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // O RESPONSÁVEL SEM LINK PEDE ACESSO, E O MOTORISTA APROVA (02/10/2026).
+    // O RESPONSÁVEL SEM LINK PEDE ACESSO (02/10/2026).
     // Quem escreve é só o servidor (`functions/lib/pedidosDeAcesso.js`): o
-    // pedido nasce de um número digitado, que não é segredo, e o vínculo só
-    // acontece quando o motorista dono da criança aprova pela callable.
+    // pedido nasce de um número digitado, que não é segredo.
+    // ⚠️ E O PEDIDO NUNCA VINCULA (14/11/2026, decisão 28): o motorista não
+    // aprova mais — manda o link do convite ao WhatsApp que ELE cadastrou, e
+    // o pedido fecha como `link_enviado`, estado que quem pediu NÃO lê (ver
+    // a lista abaixo). `aprovado` só existe em pedido antigo.
     // A mãe lê os pedidos DELA (para saber em que pé está); o motorista lê os
     // das crianças DELE — nunca os de outro motorista.
     match /pedidosDeVinculo/{pedidoId} {

@@ -194,7 +194,7 @@ async function completarChaveDoTelefone(db, doc, c, chave) {
   // Quem pediu acesso com este número ANTES de a chave existir não foi achado
   // por `pedirAcessoPeloTelefone`. É o mesmo passo do gatilho do cadastro
   // (`vincularIrmao.js`): o número dela não é comprovado, então nasce o
-  // PEDIDO, e o motorista aprova. `abrirPedido` é idempotente pelo id.
+  // PEDIDO, e o motorista manda o link ao WhatsApp cadastrado. `abrirPedido` é idempotente pelo id.
   if (c.parentUid || !c.adminUid) return;
   try {
     const esperando = await db

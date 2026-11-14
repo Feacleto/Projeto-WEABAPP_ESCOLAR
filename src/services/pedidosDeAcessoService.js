@@ -7,7 +7,9 @@ import { exigirCloud, mensagemDeErro } from './callableError';
  * O PEDIDO DE ACESSO SEM LINK (02/10/2026) — `pedidosDeVinculo`.
  *
  * Quem chega sem o link informa o WhatsApp; se o número está numa criança
- * sem responsável, o motorista dela recebe um pedido e aprova com um toque.
+ * sem responsável, o motorista dela recebe um pedido e manda o link do
+ * convite ao WhatsApp que ELE cadastrou (desde 14/11/2026 não há mais
+ * "aprovar": o pedido nunca vincula a conta que pediu).
  * O número sozinho não vincula nada — telefone não é segredo, e quem
  * conhece a família é o motorista. Tudo que escreve é callable
  * (`functions/lib/pedidosDeAcesso.js`); daqui só se lê.
@@ -28,11 +30,15 @@ export async function pedirAcessoPeloTelefone({ telefone, nome = '' }) {
   }
 }
 
-/** O motorista aprova ou diz "não conheço". */
-export async function responderPedidoDeAcesso(pedidoId, aprovar) {
+/**
+ * O motorista fecha o pedido: `'enviar_link'` (a tela já abriu o WhatsApp
+ * cadastrado com o link do convite) ou `'descartar'`. Nenhuma das duas
+ * vincula a conta que pediu (14/11/2026, decisão 28).
+ */
+export async function responderPedidoDeAcesso(pedidoId, acao) {
   exigirCloud('responder o pedido');
   try {
-    await httpsCallable(functions, 'responderPedidoDeAcesso')({ pedidoId, aprovar });
+    await httpsCallable(functions, 'responderPedidoDeAcesso')({ pedidoId, acao });
   } catch (err) {
     throw new Error(mensagemDeErro(err, 'responder o pedido'), { cause: err });
   }

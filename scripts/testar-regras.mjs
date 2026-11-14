@@ -3680,6 +3680,23 @@ async function decisao12({ tio1, tio2, pai1, novato, dono }) {
   checar('pedido', 'nem o motorista aprova por fora da callable', 'NEGA',
     await escrever('pedidosDeVinculo/kid-saude_' + pai1.uid, tio1,
       { status: S('aprovado') }, ['status']));
+  // ⚠️ O LINK ENVIADO NÃO É LIDO POR QUEM PEDIU (14/11/2026, decisão 28). O
+  // motorista não aprova mais: manda o link ao WhatsApp que cadastrou, e o
+  // pedido fecha como `link_enviado`. Se quem pediu lesse esse estado, a
+  // tela diria a um estranho que aquele número é de uma família — a mãe de
+  // verdade já sabe, a mensagem chegou no WhatsApp dela. Sem rule nova: a
+  // lista de estados legíveis (`aprovado`, `recusado`) já o deixa fora.
+  await semear('pedidosDeVinculo/kid-link_' + pai1.uid, {
+    childId: S('kid-link'), adminUid: S(tio1.uid), parentUid: S(pai1.uid),
+    status: S('link_enviado'),
+  });
+  checar('pedido', 'quem pediu NAO le o pedido com o link enviado', 'NEGA',
+    await ler('pedidosDeVinculo/kid-link_' + pai1.uid, pai1));
+  checar('pos', 'o motorista le o pedido com o link enviado', 'PASSA',
+    await ler('pedidosDeVinculo/kid-link_' + pai1.uid, tio1));
+  checar('pedido', 'nem o motorista marca o link enviado por fora da callable', 'NEGA',
+    await escrever('pedidosDeVinculo/kid-saude_' + pai1.uid, tio1,
+      { status: S('link_enviado') }, ['status']));
 
   // A PORTA QUE CONTINUA ABERTA, e tem consumidor: remover pai vinculado.
   //

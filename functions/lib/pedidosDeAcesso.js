@@ -6,7 +6,8 @@
  * mandar. Agora a pessoa entra (Google ou e-mail), informa o WhatsApp, e:
  *
  *   - se o número está numa criança ainda sem responsável, sai um PEDIDO
- *     para o motorista daquela criança, que aprova com um toque;
+ *     para o motorista daquela criança, que manda o LINK do convite ao
+ *     WhatsApp que ele cadastrou (14/11/2026 — antes, "aprovava");
  *   - se não está em nenhuma, ela fica com a conta criada e o app pede para
  *     ela chamar o motorista. Quando ele cadastrar a criança com esse
  *     número, o pedido nasce sozinho (`vincularIrmao.js`).
@@ -14,9 +15,14 @@
  * ── ⚠️ O NÚMERO SOZINHO NÃO ABRE NADA, e esta é a decisão inteira
  * Telefone não é segredo: o ex-marido sabe, a vizinha sabe. Se digitar o
  * número bastasse, quem o conhece veria endereço, escola, foto e a perua da
- * criança ao vivo. O dono preferiu a aprovação do motorista ao SMS (custo).
- * Por isso aqui nada é vinculado — só se cria o pedido. Quem vincula é
- * `responderPedidoDeAcesso`, chamado pelo motorista dono da criança.
+ * criança ao vivo. Por isso aqui nada é vinculado — só se cria o pedido.
+ *
+ * ⚠️ E A RESPOSTA DO MOTORISTA TAMBÉM NÃO VINCULA (14/11/2026, decisão 28).
+ * A "aprovação" era a mesma falha um passo adiante: o motorista via um nome
+ * (escolhido pela conta) e um número (que ELE digitou) batendo com o
+ * cadastro, e aprovava o ex-companheiro. Agora `responderPedidoDeAcesso` só
+ * fecha o pedido, e a tela leva o LINK ao WhatsApp cadastrado: entra quem
+ * tem aquele WhatsApp na mão. Sem SMS, sem toque a mais.
  *
  * ── ⚠️ E A RESPOSTA NÃO DIZ NEM SE ACHOU (03/10/2026)
  * Quem digita um número alheio não pode sair sabendo que ali existe "Lucas" —
@@ -39,7 +45,8 @@
  *
  * ── ⚠️ `telefoneAguardandoChave` NÃO É `phoneChave`
  * A chave do vínculo automático de irmão (`phoneChave`) só nasce de número
- * COMPROVADO — por link ou por aprovação. Este campo guarda o número que a
+ * COMPROVADO — pelo link (a aprovação que também a gravava saiu em
+ * 14/11/2026). Este campo guarda o número que a
  * pessoa digitou, não comprovado: serve só para gerar pedido quando o
  * motorista cadastrar a criança depois. Os dois são proibidos ao cliente.
  */
@@ -53,6 +60,7 @@ const { criancasQueEsperam, chaveDoTelefone } = require('./reguaDoIrmao');
 const { idValido } = require('./reguaDosIds');
 const { REGRAS, MENSAGEM_DE_LIMITE } = require('./reguaDasTentativas');
 const limite = require('./limiteDeTentativas');
+const { acaoDoPedido, respostaAoPedido } = require('./reguaDoPedidoDeAcesso');
 
 const REGION = 'southamerica-east1';
 
@@ -86,14 +94,16 @@ async function abrirPedido(db, { crianca, parentUid, nome, telefone }) {
     { merge: true }
   );
   if (!atual.exists) {
-    const quem = primeiroNome(nome) || 'Um responsável';
+    // ⚠️ O NOME DE QUEM PEDIU NÃO ENTRA NO AVISO (14/11/2026): é o nome que
+    // a conta ESCOLHEU, e o pedido não se decide mais por ele — o link vai
+    // para o WhatsApp que o motorista cadastrou.
     const filho = primeiroNome(crianca.name) || 'uma criança';
     await db.collection('notifications').add({
       userId: crianca.adminUid,
       type: 'pedido_de_acesso',
       childId: crianca.id,
-      title: `${quem} pediu acesso a ${filho}`,
-      body: 'Confira se é o responsável e aprove no Início.',
+      title: `Pedido de acesso a ${filho}`,
+      body: 'Mande o link ao WhatsApp que você cadastrou, no Início.',
       read: false,
       createdAt: FieldValue.serverTimestamp(),
     });
@@ -154,7 +164,7 @@ function makePedirAcessoPeloTelefone(db) {
     // motorista. `criancasQueEsperam` recalcula a chave do `parentPhone` de
     // cada criança achada e descarta a que já tem responsável — uma chave
     // forjada só faz a criança não ser achada, e o pedido continua passando
-    // pela aprovação do motorista.
+    // pelo motorista, que só manda o link ao WhatsApp que ele cadastrou.
     //
     // ⚠️ CRIANÇA ANTIGA AINDA SEM CHAVE não é achada até a varredura das 9h
     // passar por ela — uma janela de um dia, uma vez. O pedido não se perde:
@@ -180,94 +190,60 @@ function makePedirAcessoPeloTelefone(db) {
 }
 
 /**
- * O MOTORISTA RESPONDE: aprova (vincula como o link faria) ou "não conheço".
+ * O MOTORISTA RESPONDE — e a resposta NUNCA vincula (14/11/2026, decisão 28).
+ *
+ * Era "Aprovar": a conta que pediu virava responsável da criança. Agora a
+ * tela abre o WhatsApp no número que o motorista cadastrou, com o link do
+ * convite, e esta callable só FECHA o pedido (`link_enviado`). Quem entra é
+ * quem tem aquele WhatsApp, pelo link. "Descartar" continua avisando quem
+ * pediu. A decisão é pura e testada: `reguaDoPedidoDeAcesso.js`.
+ *
  * O escopo vem do uid dele — só responde pedido de criança dele.
  */
 function makeResponderPedidoDeAcesso(db) {
   return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const adminUid = await exigirMotorista(db, request);
     const pedidoId = request.data?.pedidoId;
-    const aprovar = request.data?.aprovar === true;
+    const acao = acaoDoPedido(request.data);
     // O id vira caminho: sem a conferência, uma barra endereçaria outro
     // documento (ver `reguaDosIds.js`).
     if (!idValido(pedidoId)) throw new HttpsError('invalid-argument', 'Qual pedido?');
 
     const pedidoRef = db.doc(`pedidosDeVinculo/${pedidoId}`);
 
-    const pedido = await db.runTransaction(async (tx) => {
+    const resposta = await db.runTransaction(async (tx) => {
       const p = await tx.get(pedidoRef);
-      const dados = p.exists ? p.data() : null;
-      if (!dados || dados.adminUid !== adminUid) {
-        throw new HttpsError('permission-denied', 'Este pedido não é seu.');
-      }
-      if (dados.status !== 'aguardando') {
-        throw new HttpsError('failed-precondition', 'Este pedido já foi respondido.');
-      }
-      // TODAS AS LEITURAS ANTES DE QUALQUER ESCRITA, mesmo as que a recusa
-      // não usa: o Admin SDK lança com leitura depois de escrita, e
-      // `testar:transacoes` lê a ordem pelo texto, não pelo caminho.
-      const childRef = db.doc(`children/${dados.childId}`);
-      const userRef = db.doc(`users/${dados.parentUid}`);
-      const [c, u] = await Promise.all([tx.get(childRef), tx.get(userRef)]);
-
-      if (!aprovar) {
-        tx.update(pedidoRef, { status: 'recusado', respondidoEm: FieldValue.serverTimestamp() });
-        return dados;
-      }
-      const nomeDaCrianca = c.exists ? c.data().name : '';
-      const crianca = c.exists ? c.data() : null;
-      if (!crianca || crianca.adminUid !== adminUid) {
-        throw new HttpsError('not-found', 'Criança não encontrada.');
-      }
-      // O link pode ter chegado antes: quem entrou primeiro venceu.
-      if (crianca.parentUid) {
-        throw new HttpsError('failed-precondition', 'Esta criança já tem responsável no app.');
-      }
-      const conta = u.exists ? u.data() : {};
-      if (conta.role && conta.role !== 'parent') {
-        throw new HttpsError('failed-precondition', 'Esta conta não é de responsável.');
-      }
-
-      tx.update(childRef, {
-        parentUid: dados.parentUid,
-        inviteStatus: 'used',
-        inviteUsedAt: FieldValue.serverTimestamp(),
-        vinculadoPor: 'aprovacao',
+      const pedido = p.exists ? p.data() : null;
+      // TODAS AS LEITURAS ANTES DE QUALQUER ESCRITA: o Admin SDK lança com
+      // leitura depois de escrita, e `testar:transacoes` lê a ordem pelo
+      // texto. A conta de quem pediu NÃO é lida: nada nela muda.
+      const c = pedido && idValido(pedido.childId)
+        ? await tx.get(db.doc(`children/${pedido.childId}`))
+        : null;
+      const r = respostaAoPedido({
+        pedido,
+        crianca: c && c.exists ? c.data() : null,
+        adminUid,
+        acao,
       });
-      // O mesmo vínculo do `redeemInvite`. E o número agora está COMPROVADO
-      // pelo motorista: vira `phoneChave`, a chave do irmão automático.
-      const chave = chaveDoTelefone(crianca.parentPhone);
-      tx.set(
-        userRef,
-        {
-          role: 'parent',
-          adminUid: conta.adminUid || adminUid,
-          adminUids: FieldValue.arrayUnion(adminUid),
-          childIds: FieldValue.arrayUnion(dados.childId),
-          childId: conta.childId || dados.childId,
-          ...(!conta.phoneChave && chave ? { phoneChave: chave } : {}),
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-      tx.update(pedidoRef, { status: 'aprovado', respondidoEm: FieldValue.serverTimestamp() });
-      // A família entrar não liga mais o relógio do teste (04/10/2026): ele
-      // começa no 3º dia de rota (`relogioNaRota.js`).
-      return { ...dados, nomeDaCrianca };
+      if (!r.ok) throw new HttpsError(r.codigo, r.erro);
+      // A ÚNICA escrita: o estado do pedido. Nada em `children`, nada em
+      // `users` — é isso que o teste da régua e o do emulador conferem.
+      tx.update(pedidoRef, { status: r.status, respondidoEm: FieldValue.serverTimestamp() });
+      return { ...r, pedido };
     });
 
-    const filho = primeiroNome(pedido.nomeDaCrianca) || 'Seu filho';
-    await db.collection('notifications').add({
-      userId: pedido.parentUid,
-      type: aprovar ? 'acesso_aprovado' : 'acesso_recusado',
-      childId: pedido.childId,
-      title: aprovar ? `${filho} já aparece no seu app` : 'O motorista não confirmou o acesso',
-      body: aprovar
-        ? 'O motorista confirmou que você é o responsável.'
-        : 'Fale com ele para conferir o número cadastrado.',
-      read: false,
-      createdAt: FieldValue.serverTimestamp(),
-    });
+    if (resposta.avisarQuemPediu) {
+      await db.collection('notifications').add({
+        userId: resposta.pedido.parentUid,
+        type: 'acesso_recusado',
+        childId: resposta.pedido.childId,
+        title: 'O motorista não confirmou o acesso',
+        body: 'Fale com ele para conferir o número cadastrado.',
+        read: false,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    }
     return { ok: true };
   });
 }
