@@ -274,9 +274,14 @@ export default function InviteShare({
   // caminho de mandar convite passa por este componente (fim do cadastro e
   // ficha da criança). Reenviar a quem já entrou (`jaEntrou`) não trava: ali o
   // assunto é o link de volta, não o contrato.
+  //
+  // `data-dados-do-contrato`: o toque na lista do fim do cadastro rola até
+  // aqui (ChildForm, `mandarConvite`). Sem isso o "Mandar" de lá procurava o
+  // link do WhatsApp, que não existe enquanto esta trava está de pé, e o
+  // toque não fazia nada (rodada 2 do passeio visual, 14/11/2026).
   if (!jaEntrou && faltaContrato) {
     return (
-      <div className="space-y-3 rounded-2xl border border-border bg-card p-4 text-left">
+      <div data-dados-do-contrato className="scroll-mt-4 space-y-3 rounded-2xl border border-border bg-card p-4 text-left">
         <p className="flex items-center gap-2 text-base font-bold text-text">
           <FileSignature size={18} className="shrink-0 text-primary" />
           Antes do convite: seus dados para o contrato

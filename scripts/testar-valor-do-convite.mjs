@@ -359,6 +359,25 @@ eq('o botão que a frase manda tocar existe em AguardandoVoce',
   /toque em ([^.]+)\./.test(AVISO_DO_BANCO.texto) &&
     aguardando.includes(AVISO_DO_BANCO.texto.match(/toque em ([^.]+)\./)[1]), true);
 
+// "MANDAR" QUE NÃO FAZIA NADA (rodada 2): sem CPF/CNPJ e endereço o InviteShare
+// troca o link pelo formulário, e o "Mandar" da lista procurava o link.
+const formSemComentario = codigo('src/components/children/ChildForm.jsx');
+const shareSemComentario = codigo('src/components/children/InviteShare.jsx');
+const mandar = (formSemComentario.match(/const mandarConvite = \(\) => \{[\s\S]*?\n {2}\};/) || [''])[0];
+eq('o InviteShare marca o formulário dos dados do contrato',
+  /if \(!jaEntrou && faltaContrato\) \{\s*return \(\s*<div data-dados-do-contrato/.test(shareSemComentario), true);
+eq('sem o link, o toque da lista leva ao formulário dos dados do contrato',
+  /\[data-convite-whatsapp\]/.test(mandar) && /\[data-dados-do-contrato\]/.test(mandar) && /scrollIntoView/.test(mandar), true);
+eq('a linha diz o que falta e o botão muda de nome enquanto falta',
+  /faltaContrato && \([\s\S]{0,200}Antes, seus dados para o contrato/.test(formSemComentario)
+    && /\{faltaContrato \? 'Preencher' : 'Mandar'\}/.test(formSemComentario), true);
+eq('a lista sabe que falta pela mesma régua do InviteShare',
+  /const faltaContrato = dadosDaContratadaFaltando\(profile\)\.length > 0/.test(formSemComentario), true);
+// Sonda: o "Mandar" antigo (só procura o link) não passa.
+const mandarAntigo = "const mandarConvite = () =>\n    document.querySelector('[data-convite-whatsapp]')?.click();";
+eq('sonda: o "Mandar" antigo reprova', /\[data-dados-do-contrato\]/.test(mandarAntigo), false);
+eq('o rótulo do botão usa o nome sem tratamento', /const responsavel = primeiroNomeSemTratamento\(parentName\)/.test(formSemComentario), true);
+
 console.log('\n\x1b[1m5b. Os textos corrigidos na 2ª rodada\x1b[0m');
 const reguaDosAvisos = require('../functions/lib/reguaDosAvisos.js');
 const aviso = reguaDosAvisos.avisoDoConvite({

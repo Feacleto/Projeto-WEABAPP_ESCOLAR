@@ -34,7 +34,9 @@ import { addChild, updateChild, reservarIdDeCrianca } from '../../services/child
 import { uploadContratoAnterior } from '../../services/photoService';
 import { STORAGE_ENABLED } from '../../config/capabilities';
 import { usePerguntaDaChavePix } from '../payments/PerguntaDaChavePix';
-import { formatCurrency } from '../../compartilhado/formatters';
+import { formatCurrency, primeiroNomeSemTratamento } from '../../compartilhado/formatters';
+import { useAuth } from '../../hooks/useAuth';
+import { dadosDaContratadaFaltando } from '../../services/contractService';
 import { searchAddress, buscarCep } from '../../services/locationService';
 import { normalizaHora, periodoDaHora, horaCurta } from '../../dominio/rota/horarios';
 import { useEscolas } from '../../hooks/useEscolas';
@@ -1754,7 +1756,9 @@ function InviteCodeSuccess({
   // destaque passa para "Cadastrar outra criança" — o próximo gesto.
   const [enviado, setEnviado] = useState(false);
   const primeiro = String(childName || '').trim().split(/\s+/)[0] || 'A criança';
-  const responsavel = String(parentName || '').trim().split(/\s+/)[0];
+  // Sem o tratamento: contato salvo como "Dona Marta" vira "Marta" no botão
+  // e na frase do enviado, nunca "Mandar convite para Dona".
+  const responsavel = primeiroNomeSemTratamento(parentName);
   // O IRMÃO QUE ENTROU SOZINHO. Se o WhatsApp é de quem já usa o app, o
   // servidor vincula a criança à conta dela em segundos
   // (`functions/lib/vincularIrmao.js`) — e mandar convite aí seria pedir a
@@ -1767,8 +1771,26 @@ function InviteCodeSuccess({
   // check mesmo que a tela tenha sido recarregada na volta do WhatsApp.
   const conviteFeito = enviado || !!aoVivo?.conviteEnviadoEm;
   const contratoAssinado = !!aoVivo?.contratoVigente;
-  const mandarConvite = () =>
-    document.querySelector('[data-convite-whatsapp]')?.click();
+  // OS DADOS DO CONTRATO VÊM ANTES DO CONVITE (InviteShare trava o link sem
+  // eles). Antes o "Mandar" desta lista procurava o link, não achava, e o
+  // toque não fazia nada — o pior caso para quem toca e espera ver o que
+  // aconteceu (rodada 2 do passeio visual, 14/11/2026). Agora a própria linha
+  // diz o que falta e o toque leva ao formulário, mais abaixo nesta tela.
+  const { profile } = useAuth();
+  const faltaContrato = dadosDaContratadaFaltando(profile).length > 0;
+  const mandarConvite = () => {
+    const link = document.querySelector('[data-convite-whatsapp]');
+    if (link) {
+      link.click();
+      return;
+    }
+    const dados = document.querySelector('[data-dados-do-contrato]');
+    if (!dados) return;
+    dados.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // O primeiro campo vazio recebe o foco: o teclado já sobe onde ele digita.
+    const vazio = [...dados.querySelectorAll('input')].find((i) => !i.value.trim());
+    (vazio || dados.querySelector('input'))?.focus({ preventScroll: true });
+  };
 
   return (
     <div className="min-h-screen flex flex-col px-6 pt-8 pb-6 gap-5">
@@ -1812,12 +1834,17 @@ function InviteCodeSuccess({
           ) : (
             <Circle size={22} className="shrink-0 text-textMuted" aria-hidden />
           )}
-          <span className="flex-1 text-base text-text">
+          <span className="flex-1 py-2 text-base text-text">
             {jaEntrou
               ? `${responsavel || 'A família'} já entrou no app`
               : conviteFeito
               ? 'Convite enviado'
               : 'Convite para a família'}
+            {!jaEntrou && !conviteFeito && faltaContrato && (
+              <span className="block text-sm leading-snug text-textMuted">
+                Antes, seus dados para o contrato
+              </span>
+            )}
           </span>
           {!jaEntrou && !conviteFeito && !(aoVivo && valorDaMensalidadeFalta(aoVivo)) && (
             <button
@@ -1825,7 +1852,7 @@ function InviteCodeSuccess({
               onClick={mandarConvite}
               className="tap -mr-2 min-h-12 px-2 text-base font-bold text-primary"
             >
-              Mandar
+              {faltaContrato ? 'Preencher' : 'Mandar'}
             </button>
           )}
         </li>
