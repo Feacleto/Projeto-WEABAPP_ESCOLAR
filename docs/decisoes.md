@@ -334,6 +334,8 @@ E o campo é **gravável uma vez e nunca alterável**, com a trava nas rules e n
 
 **Como verificar.** `npm run testar:trial` (61 casos, com a hora injetada). E `npm run testar:regras`, três casos: ele liga o próprio relógio, não consegue ligar de novo, e não encosta no do colega.
 
+**⚠️ Atualização de 14/11/2026.** Esta decisão não diz que o relógio só corre com a cobrança ligada: com `cobrancaLigada` desligada o campo não é gravado. Para o teste de 10 a 20 motoristas, vale a decisão 30.
+
 ---
 
 ## 22. Só o fundador chega a zero, e o desconto nunca vira crédito
@@ -382,6 +384,108 @@ Sobre ela incidem:
 **Consequência.** O dinheiro empurra por outro caminho: o que ele ganha pagando aparece SÓ na tela dele. ⚠️ **Desde 04/10/2026 a família NÃO vê o nível** (decisão do dono): o selo é só do motorista, e as rules fecham `niveis/{uid}` para todo mundo menos ele. A queda da Platina para o Ouro continua calada.
 
 **Como verificar.** `npm run testar:nivel` — a régua e o espelho do servidor caso a caso, as frases sem as raízes de `marca/promessas.js`, os declarados que não contam para o Diamante. A aba do dono só oferece chaves do catálogo.
+
+---
+
+## 24. Quando duas áreas discordam, a ordem é: segurança e lei, decisões registradas, a persona, o hábito, o custo
+
+**Estado:** aceita (14/11/2026, o dono aprovou a recomendação depois da análise de cinco especialistas sobre o teste com 10 a 20 motoristas)
+
+**Contexto.** Os cinco especialistas discordaram em pontos reais: esconder a Comunidade na tela ou fechá-la no servidor, gravar `inicioEm` da rota ou minimizar dado, desfazer o aviso ou atrasar o push. Sem uma ordem escrita, cada conflito vira conversa.
+
+**Decisão.** 1) Segurança, LGPD e obrigação legal bloqueiam. 2) Depois, as decisões deste arquivo. 3) Depois, a persona: o que o motorista pouco técnico consegue usar sozinho vence enfeite. 4) Depois, hábito e retenção. 5) Custo e esforço só desempatam.
+
+**Consequência.** Uma ideia que contraria uma decisão daqui não é recomendada em silêncio: vira pergunta ao dono.
+
+**Como verificar.** Não há teste de código. A evidência é cada relatório de `docs/analise/` registrar o nível que resolveu cada conflito ([00-consolidacao.md](analise/00-consolidacao.md), seção 4).
+
+---
+
+## 25. Durante o teste, a superfície do app é reduzida por chave, não por plano nem por branch
+
+**Estado:** aceita (14/11/2026) — em implementação, Lote 2 · complementa a 11 e a 18
+
+**Contexto.** A produção tem 36 telas do motorista, e quem "entra, usa e some" se perde em quase todas. A decisão 11 prevê bandeiras de **entrada** (aprovação, convite), não de **superfície**, e a 18 proíbe capar o app por plano.
+
+**Decisão.** Existe um modo teste: uma lista de áreas lida de `platformConfig`, no formato do catálogo que já esconde por nível (`liberadoPorNivel`). Ficam: Início, rota, turma, convite e a Carteira básica. Ficam atrás da chave: Comunidade, Buzi e Boletim, Reserva, Economia, "Preciso aumentar", Meu negócio, Selo, Indicar, Substitutas e o relatório de 12 meses. Vale igual para todo motorista do teste e **sai** quando o relatório da coorte 0 disser que a superfície completa pode voltar.
+
+**Consequência.** Não é plano capado: ninguém paga mais nem menos. E não é segurança: esconder a tela não fecha a coleção (a decisão 26 fecha o dado).
+
+**Como verificar.** A criar na tarefa 13 do plano: teste que confira a lista e que a rota escondida redirecione.
+
+---
+
+## 26. A Comunidade fica desligada no servidor durante o teste
+
+**Estado:** aceita (14/11/2026) — em implementação, Lote 2 · complementa a 13 e a 23
+
+**Contexto.** `indicacoes` aceita criação de qualquer conta logada, com `chave` (telefone) livre e sem teto, e `meusParceiros` só exige ser motorista e não checa nível. Um estranho que indica telefones de colegas vira "parceiro" quando eles se cadastram e passa a ler o WhatsApp deles e as fotos da Comunidade. A Comunidade já some da tela abaixo do Ouro, mas a trava é só visual.
+
+**Decisão.** A Comunidade tem uma chave **no servidor** (`platformConfig`, ausente = desligada, no padrão de `cobrancaLigada`). Desligada, nenhuma conta lê dado de outro motorista por essa porta. Religá-la exige antes a confirmação do indicado e um teto de indicações por conta.
+
+**Consequência.** O programa de indicação e o `casarNoCadastro` não podem quebrar; o desenho é da Segurança e passa pela auditoria da Condução.
+
+**Como verificar.** A criar na tarefa 9: casos em `npm run testar:regras` em que um estranho não lê WhatsApp nem fotos de colegas.
+
+---
+
+## 27. Avaliação do tio e nível da família ficam desligados no teste
+
+**Estado:** aceita (14/11/2026) · complementa a 14
+
+**Contexto.** A decisão 14 reserva a avaliação do responsável sobre o motorista ao estágio 4 e proíbe a média pública de cinco estrelas. Segundo o `CLAUDE.md` da produção, a família dá ao tio de 1 a 5 estrelas, uma por semestre. E, segundo o relatório de hábito, o nível da família mede mensalidade em dia e aviso de falta, o sinal de pontualidade que a decisão 14 recusa sobre responsável, mesmo visto só por ela.
+
+**Decisão.** Durante o teste os dois ficam desligados. Religá-los exige o dono escrever aqui se a decisão 14 cobre a auto-visão da família e a agregação mínima.
+
+**Como verificar.** A criar: a mesma chave da decisão 25 esconde as duas telas, coberta pelo mesmo teste.
+
+---
+
+## 28. O telefone sozinho nunca prova vínculo
+
+**Estado:** aceita (14/11/2026) — em implementação, Lote 2 · complementa a 5
+
+**Contexto.** O pedido de acesso nasce com o telefone que o motorista digitou no cadastro da criança e com o nome que a conta escolheu, e o cartão oferece "Aprovar". Quem conhece o WhatsApp da mãe cria uma conta, pede acesso com o nome dela e, se o motorista aprovar, vê endereço e a perua ao vivo.
+
+**Decisão.** O número só vincula quando vem do motorista ou do link de convite. O pedido de acesso deixa de "aprovar": o botão leva o link ao WhatsApp que o motorista cadastrou, e a conta que fez o pedido nunca é vinculada por aprovação. O telefone também não vira login: SMS custa, e telefone é chave de vínculo, não credencial.
+
+**Como verificar.** A criar na tarefa 10: caso em `npm run testar:regras` e no teste do gatilho de que um pedido não vincula conta nenhuma.
+
+---
+
+## 29. O consentimento de dado de criança é registrado por criança
+
+**Estado:** aceita (14/11/2026) — em implementação, Lote 1 · segue [consentimento-saude.md](consentimento-saude.md)
+
+**Contexto.** O cadastro exige o checkbox de autorização por criança, mas `addChild` não grava nada e os dois caminhos rápidos nem o pedem. A camada 1 do consentimento existe na tela e não no banco.
+
+**Decisão.** Toda criança nasce com `autorizacaoDeclarada`, `autorizacaoDeclaradaEm` (carimbo do servidor) e `autorizacaoDeclaradaPor` (uid), por qualquer caminho. A tela pode pedir a declaração uma vez por sessão de cadastro, desde que ela seja gravada em cada criança. A redação continua sendo revisão jurídica.
+
+**Como verificar.** A criar na tarefa 1: teste dos três caminhos de cadastro gravando os três campos.
+
+---
+
+## 30. O teste de 90 dias conta a partir de ligar a cobrança, e isso se diz por escrito
+
+**Estado:** aceita (14/11/2026) · atualiza a 21
+
+**Contexto.** Com `cobrancaLigada` desligada, `trialInicio` não é gravado e o relógio não corre. Ligar a cobrança ao fim de um teste de uns 60 dias dá mais 90 dias e reinicia a escada de fechamento. E o site promete duas coisas: "por enquanto é grátis" e "até 3 meses".
+
+**Decisão.** Cada participante do teste ganha 90 dias contados do dia em que a cobrança for ligada, com aviso escrito antes. A frase pública passa a ser uma só.
+
+**Como verificar.** A criar no Lote 3: teste da frase do site e do aviso. `npm run testar:trial` já cobre a conta dos 90 dias.
+
+---
+
+## 31. O loop diário é do motorista, registra o que ele tocou e não fala por push durante o teste
+
+**Estado:** aceita (14/11/2026) — onda 3
+
+**Contexto.** A análise de hábito desenhou "dia fechado", resumo da semana e marcos. Um feed para a família vazaria nome, hora e dinheiro de terceiros e viraria ata contra o motorista. E o app não sabe se o PIX chegou: a família avisa e o motorista confirma.
+
+**Decisão.** 1) O diário é só do motorista. 2) Ele escreve o que o motorista tocou ("avisou que pagou", "confirmada"), nunca "chegou" antes da confirmação. 3) Zero push de loop no teste; se um dia houver, a espécie é `oferta`, desligável. 4) Só mecânica sobre fato real: contador mensal antes de sequência (dia sem rota é neutro) e nenhuma atividade de Platina lançada no teste. 5) Início e fim da rota podem ser gravados, sem coordenada, só o motorista vê, com o prazo de `rides` (60 dias).
+
+**Como verificar.** A criar na onda 3: varredura de texto do diário contra "chegou" antes da confirmação, nos moldes de `testar:selo`. `npm run testar:preferencias` já exige classificar a espécie de todo aviso novo.
 
 ---
 
