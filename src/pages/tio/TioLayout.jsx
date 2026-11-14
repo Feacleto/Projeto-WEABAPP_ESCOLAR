@@ -3,7 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMarcosDoApp } from '../../hooks/useMarcosDoApp';
 import { Bus, Home, Users, Wallet } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
-import { indiceDaAba } from '../../compartilhado/abaAtiva';
+import { indiceDaAba, semBarraDeBaixo } from '../../compartilhado/abaAtiva';
 import InstallPrompt from '../../components/common/InstallPrompt';
 import ConvitePush from '../../components/tio/ConvitePush';
 import InteractiveTour from '../../components/tutorial/InteractiveTour';
@@ -424,7 +424,10 @@ export default function TioLayout() {
           </GuardaDoFinanceiro>
         </AvisosDoCabecalhoProvider>
       </div>
-      {/* ⚠️ O CADASTRO DA CRIANÇA NÃO TEM A BARRA DE BAIXO (02/10/2026).
+      {/* ⚠️ O CADASTRO DA CRIANÇA NÃO TEM A BARRA DE BAIXO (02/10/2026) — NEM
+        * QUANDO ELE É O "COMPLETAR" (`/tio/children/:id/completar`, o MESMO
+        * `ChildForm`). Quem decide é `semBarraDeBaixo`, que lista as duas
+        * rotas.
         * Ele é um passo a passo com "Cancelar" e "Avançar" próprios, num
         * rodapé fixo. A tela mora dentro do `div` da animação de entrada, e
         * animação (transform/opacidade) cria um contexto de empilhamento: o
@@ -432,7 +435,7 @@ export default function TioLayout() {
         * ficava POR CIMA do "Avançar" — o motorista não saía do passo 1.
         * Achado do teste no navegador (M3). Num passo a passo a barra também
         * é a saída que perde o que ele digitou. */}
-      {!location.pathname.startsWith('/tio/children/new') && <BottomNav items={itens} />}
+      {!semBarraDeBaixo(location.pathname) && <BottomNav items={itens} />}
       <InstallPrompt />
       <InteractiveTour
         open={!!tour}
