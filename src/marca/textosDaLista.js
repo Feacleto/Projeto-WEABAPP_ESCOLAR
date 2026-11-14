@@ -80,8 +80,8 @@ export function textoDeTirar({
   if (temFamilia) {
     linhas.push(
       irmaoNaTurma
-        ? 'A família continua no app: ela tem outro filho na sua turma.'
-        : 'A conta da família no app é encerrada quando este é o único filho dela.'
+        ? 'A família continua no app com o outro filho.'
+        : `A família deixa de ver ${primeiro} no app, e a conta dela continua.`
     );
   }
   linhas.push(APAGADOS_AO_TIRAR);

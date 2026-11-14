@@ -60,6 +60,11 @@ npm run testar:envio             # os dois agendados escrevendo na MESMA base
 npm run testar:limpeza           # o único script de MANUTENÇÃO que apaga dado,
                                  # medido contra o emulador antes de encostar
                                  # em produção. 24 casos.
+npm run testar:irmao-depois      # o telefone digitado DEPOIS: o gatilho de
+                                 # troca e a resposta "É seu filho?" contra
+                                 # o emulador (48 casos)
+npm run testar:desvincular       # tirar a criança não apaga a conta da mãe,
+                                 # e o convite novo a religa (32 casos)
 npm run testar:regras            # rules do Firestore — precisa do emulador
 npm run testar:storage           # rules do Storage — precisa de auth,firestore
                                  # E storage juntos (ele semeia usuário e
@@ -796,7 +801,7 @@ Coleções de raiz, como aparecem em [firestore.rules](firestore.rules):
 `feedbacks` · `supportTickets` · `expenses` · `taxaConfig` · `taxaParceiros` ·
 `faturasParceiro` · `contratosAssociacao` · `pedidosAdesivo` ·
 `indicacoes` · `interesses` · `alertasDeComprovante` · `pedidosDeVinculo` · `leadsInvestidor` · `acessosTemporarios` · `niveis` · `atividadesDaPlatina` · `platformConfig` ·
-`limitesDeTentativa`, `asaasEventosProcessados`, `senhasDoFinanceiro`, `codigosDeIndicacao`, `convitesDeAuxiliar` e `documentosDeAssinante` (um CPF/CNPJ, uma conta) (só o servidor) ·
+`limitesDeTentativa`, `asaasEventosProcessados`, `senhasDoFinanceiro`, `codigosDeIndicacao`, `convitesDeAuxiliar`, `documentosDeAssinante` (um CPF/CNPJ, uma conta) e `perguntasDeIrmao` (a pergunta "É seu filho?" e as recusas, por criança) (só o servidor) ·
 `auxiliares` (o vínculo do PAR `{motorista}_{auxiliar}`, com os períodos; nunca apagado; os dois do par e o dono leem, ninguém escreve pelo cliente) ·
 `faltasDaAuxiliar` e `substitutasDoTio` (a falta da auxiliar e a lista de substitutas; só o próprio motorista lê e escreve) ·
 `turmaDaAuxiliar` (a cópia sem valor da turma; só a auxiliar ativa lê) ·
@@ -2102,7 +2107,9 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   A conta dela nasce `role: 'parent'` sem filho, e o `/pai` aparece borrado
   com o card de espera (`SemVinculoGate` no App). Sem criança com o número, o
   card pede para ela mandar o app ao motorista; quando ele cadastrar o filho
-  com esse número, o gatilho do irmão abre o pedido. `telefoneAguardandoChave`
+  com esse número, o gatilho do irmão abre o pedido — no CADASTRO e também
+  quando o número é digitado DEPOIS (`irmaoNaTrocaDoTelefone`, ver "Irmão").
+  `telefoneAguardandoChave`
   (o número digitado, não comprovado) só gera pedido; `phoneChave` só nasce
   de link. A resposta ao pedido não diz o nome da criança, e o aviso ao motorista não leva o nome que a conta escolheu; o estado `link_enviado` é invisível a quem pediu (régua em [reguaDoPedidoDeAcesso.js](functions/lib/reguaDoPedidoDeAcesso.js), `testar:pedido-nao-vincula`). ⚠️ Vínculos feitos pela aprovação ANTIGA continuam valendo e o gatilho do irmão ainda os alimenta: antes do deploy, conferir no console `children` com `vinculadoPor == 'aprovacao'` e `pedidosDeVinculo` com `status == 'aprovado'`.
 - **Contato de investidor (site):** `registrarInteresseInvestidor` (HTTP
@@ -2123,13 +2130,46 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   proibida ao cliente nas rules — `phone` a própria pessoa edita, e pôr ali o
   número de outra mãe daria os filhos dela a quem mudou. Régua pura em
   [reguaDoIrmao.js](functions/lib/reguaDoIrmao.js), `npm run testar:irmaos`.
+  ⚠️ **NA TROCA DO NÚMERO O SERVIDOR PERGUNTA, NUNCA VINCULA** (14/11/2026) —
+  `irmaoNaTrocaDoTelefone` (`onDocumentUpdated` em `children/{id}`) e
+  `responderIrmao` (callable), em
+  [perguntaDoIrmao.js](functions/lib/perguntaDoIrmao.js). A Lista da turma
+  deixa o telefone para depois, e o gatilho do cadastro não via a troca. Mas
+  na troca o tio pode digitar o número de cada família dele, uma depois da
+  outra, e anexar uma criança dele à conta de qualquer uma (que passaria a
+  ver nome, endereço e escola) — então a mãe recebe "É seu filho?" (aviso
+  `irmao_pergunta`, só o primeiro nome, espécie `fato`) no Início
+  ([AvisoDeIrmao](src/components/children/AvisoDeIrmao.jsx)). "Sim" vincula
+  pelas MESMAS escritas do irmão automático (`vinculadoPor:
+  'irmao_confirmado'`) e o tio recebe "a família entrou"; "Não" guarda a
+  recusa PARA SEMPRE para o par (criança, conta) e avisa o tio como o
+  `recusarIrmao` — que agora também a guarda. No máximo 3 perguntas por
+  criança. O registro mora em `perguntasDeIrmao/{childId}`, que nenhuma rule
+  abre: na criança o tio apagaria a recusa. Sem mãe a perguntar, abre o
+  pedido de quem esperava (`telefoneAguardandoChave`); com a criança JÁ
+  vinculada (família que entrou pelo link sem número), grava a `phoneChave`
+  dela se faltar e não for de outra conta. Só age quando a CHAVE muda e nunca
+  reescreve o telefone (sem laço). Régua pura em
+  [reguaDaPerguntaDoIrmao.js](functions/lib/reguaDaPerguntaDoIrmao.js)
+  (`npm run testar:pergunta-do-irmao`, com mutação); o gatilho de verdade em
+  `npm run testar:irmao-depois` (emulador).
 - **Remover criança:** `desvincularResponsavel`
   ([desvincularResponsavel.js](functions/lib/desvincularResponsavel.js)).
   ⚠️ **Remover a criança APAGAVA a conta da mãe inteira** (até 02/10/2026) — e
   com ela o acesso ao irmão, ou ao filho na perua de outro motorista. Agora a
   callable tira só aquela criança de `childIds` (e o motorista de `adminUids`,
-  se não sobrar filho com ele) e só apaga a conta quando não sobra filho. As
-  rules recusam o motorista apagar `users` de quem tem mais de um `childId`.
+  se não sobrar filho com ele). ⚠️ **E DESDE 14/11/2026 ELA NUNCA APAGA A
+  CONTA** (decisão do dono): a mãe de um filho só ficava com o Auth órfão e
+  caía em "Falta ligar sua conta". Sem outro filho, a conta fica `role:
+  'parent'` sem criança, sem motorista e sem o `childId` legado (que
+  `getChildIds` contaria), marcada com `semFilhoDesde` — e o card de espera
+  ([AguardandoVinculo](src/components/acesso/AguardandoVinculo.jsx)) diz
+  "Nenhuma criança na sua conta agora", com "Excluir minha conta" (o perfil
+  fica inerte por baixo). Nome, telefone, termos, aparelhos e `phoneChave`
+  são dela e ficam. Um convite novo religa a MESMA conta (`redeemInvite`
+  aceita responsável existente). `npm run testar:desvincular` (emulador).
+  ⚠️ As rules AINDA deixam o motorista apagar `users` de quem tem até um
+  `childId` — nenhum caminho do app faz isso, e fechar é decisão pendente.
   ⚠️ **O link do convite da criança removida morre junto**: remover devolve
   `inviteStatus` a `pending`, então `lookupInvite`, `redeemInvite` e
   `getInvitePreview` recusam `active: false`.

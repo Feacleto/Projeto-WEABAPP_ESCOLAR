@@ -214,6 +214,24 @@ export async function recusarIrmao(childId) {
   }
 }
 
+/**
+ * "É SEU FILHO?" — a resposta à pergunta do telefone digitado depois
+ * (14/11/2026, `functions/lib/perguntaDoIrmao.js`). Quando o motorista põe o
+ * WhatsApp dela numa criança já cadastrada, o servidor pergunta em vez de
+ * vincular sozinho. `resposta` é 'sim' ou 'nao'; o servidor confere que a
+ * pergunta é desta conta e ainda vale.
+ */
+export async function responderIrmao(childId, resposta) {
+  exigirCloud('responder');
+  const fn = httpsCallable(functions, 'responderIrmao');
+  try {
+    const res = await fn({ childId, resposta });
+    return res.data || {};
+  } catch (err) {
+    throw new Error(friendlyCallableError(err), { cause: err });
+  }
+}
+
 export async function redeemInvite({ inviteCode, name = '' }) {
   exigirCloud('criar sua conta');
   const fn = httpsCallable(functions, 'redeemInvite');

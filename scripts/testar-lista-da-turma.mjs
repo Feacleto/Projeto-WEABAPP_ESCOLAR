@@ -281,7 +281,7 @@ const FUNCIONALIDADES = {
   'a-completar-recalcula': [['src/dominio/escola/listaDaTurma.js', /export function gruposACompletar\(criancas\)/]],
   'tirar-da-turma': [
     ['src/services/accountService.js', /httpsCallable\(functions, 'desvincularResponsavel'\)/],
-    ['functions/lib/desvincularResponsavel.js', /tx\.delete\(userRef\);\s*return \{ ok: true, conta: 'apagada' \}/],
+    ['functions/lib/desvincularResponsavel.js', /return \{ ok: true, conta: 'mantida', filhosRestantes: 0 \}/],
     ['src/services/accountService.js', /contractAcceptedAt: null/],
     ['src/services/accountService.js', /await deleteChildPhoto\(childId\)/],
     ['src/services/childrenService.js', /if \('active' in updates\) \{/],
@@ -338,7 +338,7 @@ bloco('7b. Tirar da turma diz TUDO o que se perde — conferido contra o serviç
   const todos = textoDeTirar({ nome: 'Pedro Henrique', temFamilia: true, temAceite: true, temFoto: true });
   eq('com família, aceite e foto: palavra por palavra', todos.linhas, [
     'Pedro sai da turma e da rota.',
-    'A conta da família no app é encerrada quando este é o único filho dela.',
+    'A família deixa de ver Pedro no app, e a conta dela continua.',
     'As faltas marcadas, quem busca e os recados são apagados.',
     'O aceite do contrato é apagado.',
     'A foto é apagada.',
@@ -346,7 +346,7 @@ bloco('7b. Tirar da turma diz TUDO o que se perde — conferido contra o serviç
   ]);
   eq('com irmão na turma: a conta da família continua (e diz por quê)',
     textoDeTirar({ nome: 'Ana', temFamilia: true, irmaoNaTurma: true }).linhas[1],
-    'A família continua no app: ela tem outro filho na sua turma.');
+    'A família continua no app com o outro filho.');
   eq('sem família: não fala de conta', /conta/.test(textoDeTirar({ nome: 'Ana' }).corpo), false);
   eq('contrato só esperando aceite: diz que é retirado (e não "aceite apagado")',
     [/esperava aceite/.test(textoDeTirar({ nome: 'Ana', temContratoEsperando: true }).corpo),
@@ -373,7 +373,7 @@ bloco('7b. Tirar da turma diz TUDO o que se perde — conferido contra o serviç
   };
   const EFEITOS = {
     turma: /sai da turma e da rota/,
-    conta: /conta da família no app é encerrada/,
+    conta: /a conta dela continua/,
     faltas: /faltas marcadas/,
     quemBusca: /quem busca/,
     recados: /recados/,
@@ -420,8 +420,11 @@ bloco('7b. Tirar da turma diz TUDO o que se perde — conferido contra o serviç
   eq('toda operação que apaga ou zera dado está mapeada para um efeito', naoMapeadas(corpo), []);
   const completo = textoDeTirar({ nome: 'Ana', temFamilia: true, temAceite: true, temContratoEsperando: true, temFoto: true }).corpo;
   eq('todo efeito do serviço aparece no texto completo', semFrase(corpo, completo), []);
-  eq('o servidor APAGA a conta da família de um filho só (a frase diz isso)',
-    /if \(outros\.length === 0\) \{[\s\S]{0,120}tx\.delete\(userRef\)/.test(ler('functions/lib/desvincularResponsavel.js')), true);
+  eq('o servidor MANTÉM a conta da família ao tirar o último filho (a frase diz isso)',
+    /tx\.delete\(userRef\)/.test(semComentarios(ler('functions/lib/desvincularResponsavel.js'))), false);
+  // SONDA POSITIVA: se alguém voltar a apagar a conta, a leitura enxerga o delete.
+  eq('sonda: a leitura enxerga um tx.delete(userRef) quando ele existe',
+    /tx\.delete\(userRef\)/.test(semComentarios('if (outros.length === 0) {\n tx.delete(userRef);\n}')), true);
   // MUTAÇÃO: uma operação nova no serviço, sem frase, reprova.
   const comNova = corpo.replace('altResponsibles: [],', 'altResponsibles: [],\n    contatosDaEscola: [],');
   eq('mutação: campo novo zerado no serviço sem frase na tela reprova', naoMapeadas(comNova).length > 0, true);

@@ -17,8 +17,22 @@
  *   - tira a criança de `users.childIds` da família, e o motorista de
  *     `adminUids` se nenhum outro filho dela roda com ele (mesma regra de
  *     `recusarIrmao`);
- *   - só APAGA a conta quando não sobra filho nenhum — o comportamento antigo,
- *     que continua valendo para a família de um filho só.
+ *   - ⚠️ NUNCA APAGA A CONTA (14/11/2026, decisão do dono). Era assim que a
+ *     família de um filho só terminava: o documento `users` sumia, a conta do
+ *     Auth ficava órfã e, ao entrar, ela caía em "Falta ligar sua conta" —
+ *     uma tela que manda começar uma conta que ela já tem. Agora ela perde
+ *     SÓ o acesso àquela criança. Sem outro filho, fica `role: 'parent'`
+ *     sem criança, no card de espera que o app já tem (`SemVinculoGate`),
+ *     marcada com `semFilhoDesde` para o card dizer o que aconteceu em vez
+ *     de "Pedido enviado". Um convite novo a religa (`redeemInvite` aceita
+ *     responsável que já existe), e apagar a conta é escolha dela.
+ *
+ * O que sai do documento dela é o que era DO FILHO: o id na lista, o
+ * motorista (singular e lista) quando nenhum outro filho roda com ele, e o
+ * `childId` legado — que `getChildIds` soma à lista, e que sobrando faria o
+ * app achar que ela ainda tem filho. O que é DELA fica: nome, telefone,
+ * e-mail, aceite dos termos, aparelhos (`fcmTokens`), marcos, e a
+ * `phoneChave` (o número dela, não do filho).
  *
  * Quem desativa a criança (active:false, limpa vínculo e aceite) continua
  * sendo o cliente, depois desta chamada.
@@ -78,9 +92,24 @@ function makeDesvincularResponsavel(db) {
       // `testar:transacoes` confere).
       const outrosSnaps = await Promise.all(outros.map((id) => tx.get(db.doc(`children/${id}`))));
       if (outros.length === 0) {
-        // Família de um filho só: o comportamento de sempre.
-        tx.delete(userRef);
-        return { ok: true, conta: 'apagada' };
+        // O último filho: a conta FICA, sem criança e sem motorista. O
+        // motorista sai do singular e da lista inteira — sem filho, nenhum
+        // motorista tem por que ler o documento dela (as rules escopam por
+        // esses dois campos) — e `childId` sai, senão `getChildIds` ainda o
+        // contaria e o card de espera nunca apareceria.
+        tx.set(
+          userRef,
+          {
+            childIds: [],
+            childId: FieldValue.delete(),
+            adminUid: FieldValue.delete(),
+            adminUids: [],
+            semFilhoDesde: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+        return { ok: true, conta: 'mantida', filhosRestantes: 0 };
       }
 
       // Tem outro filho (irmão ou em outra perua): a conta FICA.

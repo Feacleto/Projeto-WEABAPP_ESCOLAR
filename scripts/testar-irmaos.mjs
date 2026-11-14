@@ -333,10 +333,19 @@ checar('conta sem papel: não', false, podeDesvincular({ childIds: ['k1'] }, 'k1
 const desvincularTxt = readFileSync(new URL('../functions/lib/desvincularResponsavel.js', import.meta.url), 'utf8');
 {
   const guarda = desvincularTxt.indexOf('if (!podeDesvincular(familia, childId))');
-  const apaga = desvincularTxt.indexOf('tx.delete(userRef)');
   const escreve = desvincularTxt.indexOf('tx.set(');
-  checar('a function confere a régua ANTES de apagar ou escrever na conta', true,
-    guarda > 0 && apaga > guarda && escreve > guarda);
+  checar('a function confere a régua ANTES de escrever na conta', true,
+    guarda > 0 && escreve > guarda);
+  /* ⚠️ A CONTA DA FAMÍLIA NUNCA É APAGADA (14/11/2026, decisão do dono).
+     Sem outro filho ela fica `role: 'parent'` sem criança, no card de
+     espera. O comportamento real (um filho, dois filhos, religar) é medido
+     no emulador: `npm run testar:desvincular`. */
+  const semComentario = desvincularTxt.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  checar('a function não apaga documento nenhum', false, /\.delete\(\s*\w*[Rr]ef\s*\)/.test(semComentario));
+  checar('SONDA: o padrão acha o apagar quando ele existe', true, /\.delete\(\s*\w*[Rr]ef\s*\)/.test('tx.delete(userRef);'));
+  checar('sem filho, `childId` legado sai (senão getChildIds ainda o conta)', true,
+    /childIds: \[\],\s*childId: FieldValue\.delete\(\)/.test(semComentario));
+  checar('sem filho, a conta é marcada para o card dizer o que houve', true, semComentario.includes('semFilhoDesde'));
 }
 
 bloco('8 · ⚠️ TODO ID QUE VEM DO CLIENTE PASSA POR `idValido` ANTES DE VIRAR CAMINHO');

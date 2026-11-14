@@ -59,6 +59,10 @@ const ESPECIE_DO_AVISO = {
   // filho dela (ou com o cadastro dele). Não se desliga.
   irmao_vinculado: ESPECIE.FATO,
   irmao_recusado: ESPECIE.FATO,
+  // A pergunta "É seu filho?" quando o tio digita o número DEPOIS
+  // (14/11/2026, `perguntaDoIrmao.js`): fato sobre o filho dela, e sem
+  // resposta a criança não entra — desligar seria nunca ver a pergunta.
+  irmao_pergunta: ESPECIE.FATO,
   // A família usou o convite pelo link (14/11/2026, RC2): fato sobre a
   // turma dele, não empurrão de hábito — a decisão 31 veta push de LOOP, não
   // de fato. Ver `functions/lib/reguaDaFamiliaEntrou.js`.

@@ -37,10 +37,118 @@ const { idValido } = require('./reguaDosIds');
 const { responsavelDoIrmao, chaveDoTelefone, ehFamiliaDe } = require('./reguaDoIrmao');
 const { abrirPedido } = require('./pedidosDeAcesso');
 
+const COLECAO_DAS_PERGUNTAS = 'perguntasDeIrmao';
+
+/**
+ * Guarda que ESTA conta disse "não é meu filho" sobre ESTA criança. Mora em
+ * `perguntasDeIrmao/{childId}`, coleção que nenhuma rule abre (cai no
+ * `{document=**}` que nega tudo): só o Admin SDK lê e escreve. Na criança
+ * não serviria — o motorista escreve quase qualquer campo dela, e apagaria a
+ * recusa para perguntar de novo.
+ */
+async function guardarRecusa(db, { childId, parentUid, adminUid }) {
+  await db.doc(`${COLECAO_DAS_PERGUNTAS}/${childId}`).set(
+    {
+      childId,
+      ...(adminUid ? { adminUid } : {}),
+      recusadoPor: FieldValue.arrayUnion(parentUid),
+      atualizadoEm: FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
 const REGION = 'southamerica-east1';
 
 function primeiroNome(nome) {
   return String(nome || '').trim().split(/\s+/)[0] || '';
+}
+
+/**
+ * O VÍNCULO DE IRMÃO AINDA CABE? — sobre os snapshots que a transação leu.
+ *
+ * Usada pelo gatilho do cadastro (que vincula sozinho) e pela resposta "Sim,
+ * é meu filho" à pergunta do telefone digitado depois (`perguntaDoIrmao.js`).
+ * Recebe SNAPSHOT, não a transação: quem lê é quem chama, antes de escrever
+ * (`testar:transacoes`).
+ */
+function vinculoAindaCabe(c, u) {
+  // O link pode ter chegado antes: quem resgatou primeiro venceu.
+  if (!c.exists || c.data().parentUid) return false;
+  if (!u.exists || u.data().role !== 'parent') return false;
+  const crianca = c.data();
+  // Defesa em profundidade (03/10/2026): a conta tem que já ser
+  // família DESTE motorista pelo que o SERVIDOR gravou (`adminUids`),
+  // não só pelo `parentUid` que ele mesmo pode ter escrito numa criança.
+  if (!ehFamiliaDe(u.data(), crianca.adminUid)) return false;
+  return true;
+}
+
+/**
+ * As escritas do vínculo — as MESMAS nos dois caminhos. Só `vinculadoPor`
+ * muda: `'irmao'` (o servidor decidiu, e a mãe pode desfazer com "Não é meu
+ * filho") ou `'irmao_confirmado'` (ela mesma disse "Sim").
+ */
+function gravarVinculoDeIrmao(tx, { childRef, userRef, adminUid, vinculadoPor }) {
+  tx.update(childRef, {
+    parentUid: userRef.id,
+    inviteStatus: 'used',
+    inviteUsedAt: FieldValue.serverTimestamp(),
+    vinculadoPor,
+  });
+  tx.set(
+    userRef,
+    {
+      childIds: FieldValue.arrayUnion(childRef.id),
+      ...(adminUid ? { adminUids: FieldValue.arrayUnion(adminUid) } : {}),
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+/**
+ * QUEM JÁ PEDIU ACESSO COM ESTE NÚMERO E ESTAVA ESPERANDO
+ * (`pedidosDeAcesso.js`). O número dela não é comprovado, então aqui nunca
+ * se vincula: nasce o PEDIDO, e o motorista manda o link ao WhatsApp que ELE
+ * cadastrou (o pedido também não vincula). Usada no cadastro e na troca do
+ * telefone (`perguntaDoIrmao.js`). Devolve quantos pedidos abriu.
+ */
+async function abrirPedidosDeQuemEspera(db, { childId, crianca, chave }) {
+  const esperando = await db
+    .collection('users')
+    .where('telefoneAguardandoChave', '==', chave)
+    .limit(3)
+    .get();
+  let abertos = 0;
+  for (const d of esperando.docs) {
+    const conta = d.data();
+    if (conta.role !== 'parent') continue;
+    const abriu = await abrirPedido(db, {
+      crianca: { id: childId, ...crianca },
+      parentUid: d.id,
+      nome: conta.name,
+      email: conta.email,
+      telefone: crianca.parentPhone,
+    });
+    if (abriu) abertos += 1;
+  }
+  return abertos;
+}
+
+/** O aviso ao motorista quando a família diz que a criança não é dela. */
+async function avisarMotoristaDaRecusa(db, crianca, childId) {
+  if (!crianca || !crianca.adminUid) return;
+  const nome = primeiroNome(crianca.name) || 'a criança';
+  await db.collection('notifications').add({
+    userId: crianca.adminUid,
+    type: 'irmao_recusado',
+    childId,
+    title: `O WhatsApp de ${nome} pode estar errado`,
+    body: 'A pessoa desse número disse que não é responsável. Confira o número e mande o convite pelo link.',
+    read: false,
+    createdAt: FieldValue.serverTimestamp(),
+  });
 }
 
 function makeVincularIrmao(db) {
@@ -83,26 +191,7 @@ function makeVincularIrmao(db) {
             .map((d) => d.data()),
         });
         if (!parentUid) {
-          // QUEM JÁ PEDIU ACESSO COM ESTE NÚMERO E ESTAVA ESPERANDO
-          // (`pedidosDeAcesso.js`). O número dela não é comprovado, então
-          // aqui nunca se vincula: nasce o PEDIDO, e o motorista manda o link
-          // ao WhatsApp que ELE cadastrou (o pedido também não vincula).
-          const esperando = await db
-            .collection('users')
-            .where('telefoneAguardandoChave', '==', chave)
-            .limit(3)
-            .get();
-          for (const d of esperando.docs) {
-            const conta = d.data();
-            if (conta.role !== 'parent') continue;
-            await abrirPedido(db, {
-              crianca: { id: childId, ...crianca },
-              parentUid: d.id,
-              nome: conta.name,
-              email: conta.email,
-              telefone: crianca.parentPhone,
-            });
-          }
+          await abrirPedidosDeQuemEspera(db, { childId, crianca, chave });
           return;
         }
 
@@ -110,28 +199,8 @@ function makeVincularIrmao(db) {
         const userRef = db.doc(`users/${parentUid}`);
         const vinculou = await db.runTransaction(async (tx) => {
           const [c, u] = await Promise.all([tx.get(childRef), tx.get(userRef)]);
-          // O link pode ter chegado antes: quem resgatou primeiro venceu.
-          if (!c.exists || c.data().parentUid) return false;
-          if (!u.exists || u.data().role !== 'parent') return false;
-          // Defesa em profundidade (03/10/2026): a conta tem que já ser
-          // família DESTE motorista pelo que o SERVIDOR gravou (`adminUids`),
-          // não só pelo `parentUid` que ele mesmo pode ter escrito numa criança.
-          if (!ehFamiliaDe(u.data(), crianca.adminUid)) return false;
-          tx.update(childRef, {
-            parentUid,
-            inviteStatus: 'used',
-            inviteUsedAt: FieldValue.serverTimestamp(),
-            vinculadoPor: 'irmao',
-          });
-          tx.set(
-            userRef,
-            {
-              childIds: FieldValue.arrayUnion(childId),
-              ...(crianca.adminUid ? { adminUids: FieldValue.arrayUnion(crianca.adminUid) } : {}),
-              updatedAt: FieldValue.serverTimestamp(),
-            },
-            { merge: true }
-          );
+          if (!vinculoAindaCabe(c, u)) return false;
+          gravarVinculoDeIrmao(tx, { childRef, userRef, adminUid: crianca.adminUid, vinculadoPor: 'irmao' });
           return true;
         });
         if (!vinculou) return;
@@ -207,20 +276,28 @@ function makeRecusarIrmao(db) {
       return dados;
     });
 
-    if (crianca.adminUid) {
-      const nome = primeiroNome(crianca.name) || 'a criança';
-      await db.collection('notifications').add({
-        userId: crianca.adminUid,
-        type: 'irmao_recusado',
-        childId,
-        title: `O WhatsApp de ${nome} pode estar errado`,
-        body: 'A pessoa desse número disse que não é responsável. Confira o número e mande o convite pelo link.',
-        read: false,
-        createdAt: FieldValue.serverTimestamp(),
-      });
+    // A recusa vale PARA SEMPRE para este par (criança, conta): se o
+    // motorista trocar o número e voltar ao dela, a pergunta não volta
+    // (`perguntaDoIrmao.js`). Fora da transação: o vínculo já foi desfeito, e
+    // falhar aqui só deixaria a próxima troca perguntar uma vez.
+    try {
+      await guardarRecusa(db, { childId, parentUid: uid, adminUid: crianca.adminUid });
+    } catch (err) {
+      logger.warn('[irmao] recusa não guardada', { childId, err: err?.message });
     }
+    await avisarMotoristaDaRecusa(db, crianca, childId);
     return { ok: true };
   });
 }
 
-module.exports = { makeVincularIrmao, makeRecusarIrmao };
+module.exports = {
+  makeVincularIrmao,
+  makeRecusarIrmao,
+  vinculoAindaCabe,
+  gravarVinculoDeIrmao,
+  abrirPedidosDeQuemEspera,
+  avisarMotoristaDaRecusa,
+  guardarRecusa,
+  primeiroNome,
+  COLECAO_DAS_PERGUNTAS,
+};

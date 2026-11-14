@@ -513,6 +513,18 @@ Sobre ela incidem:
 
 ---
 
+## 34. O número digitado depois só pergunta; quem confirma o filho é a mãe
+
+**Estado:** aceita (14/11/2026) — implementada na segunda versão · complementa a 28
+
+**Contexto.** O irmão se reconhecia pelo WhatsApp só no cadastro da criança, e a Lista da turma deixa o telefone para depois. Estender o vínculo automático à troca do número abriria um caminho que o cadastro não tem: o motorista digita o número de cada família dele, uma depois da outra, e anexa uma criança à conta de qualquer uma, que passa a ver nome, endereço e escola dela. E tirar uma criança da turma apagava a conta de quem só tinha aquele filho, deixando o login órfão.
+
+**Decisão.** Na troca do número, o servidor nunca vincula: pergunta à dona da conta ("É seu filho?"), só com o primeiro nome. "Sim" vincula pelo mesmo caminho do irmão; "Não" vale para sempre para aquele par (criança, conta), inclusive o "Não é meu filho" do irmão automático, e o registro mora numa coleção que só o servidor lê. No máximo três perguntas por criança. Quem esperava pelo número recebe o pedido ao motorista, nunca o vínculo. Tirar o filho da turma nunca apaga a conta da família: ela perde só aquela criança e, sem outra, fica no card de espera com a saída de excluir a conta.
+
+**Como verificar.** `npm run testar:pergunta-do-irmao` (régua, com mutação de cada guarda), `npm run testar:irmao-depois` e `npm run testar:desvincular` (emulador).
+
+---
+
 ## Como adicionar uma decisão
 
 Copie o formato. Contexto em duas linhas, decisão em uma, consequência no que ela custa, e **sempre** a linha de como verificar. Decisão sem teste é comentário — e comentário que promete garantia sem prová-la já foi problema recorrente neste repositório.
