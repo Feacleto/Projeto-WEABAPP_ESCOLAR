@@ -1436,9 +1436,10 @@ export default function OperacaoDaRota({
         * da lista, rolando com ela. Inverteu: aqui fica o botão da parada em
         * foco, preso acima da barra de abas, e o encerrar subiu para a faixa.
         *
-        * É `sticky` no fim do conteúdo, não `fixed`: rolando até o fim, ele
-        * pousa no lugar dele e a última linha da viagem nunca fica por baixo
-        * — o espaço que ele ocupa já é o respiro da lista. */}
+        * É a `BarraDaAcao`: `fixed` acima do menu (`bottom` = `--altura-do-menu`
+        * mais a área segura, em `.barra-da-acao`), com um espaço do tamanho
+        * dela no fim da lista para a última linha da viagem nunca ficar por
+        * baixo. Já foi `sticky`; este comentário dizia isso depois da troca. */}
       {foco && (
         <BarraDaAcao>
           <BarraDaParada

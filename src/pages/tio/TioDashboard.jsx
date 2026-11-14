@@ -881,11 +881,11 @@ function LinhaMeuTransporte({ onClick, dirigindo = false, aberto = false }) {
  * a ação do momento mora onde o polegar descansa, e a tela de cima fica para
  * LER — onde estou, quem vai, que horas.
  *
- * `sticky` no fim do conteúdo, não `fixed`: rolando até o fim ela pousa no
- * lugar dela, e o último cartão nunca fica escondido por baixo.
- *
  * ⚠️ COLADA NO MENU, SEM FLUTUAR (05/10/2026, densidade aprovada pelo dono):
- * é a `BarraDaAcao`, a mesma da rota e da família.
+ * é a `BarraDaAcao`, a mesma da rota e da família — `fixed` acima do menu
+ * (`bottom` = `--altura-do-menu` mais a área segura, em `.barra-da-acao`) e
+ * com um espaço do tamanho dela no fim, para o último cartão nunca ficar
+ * escondido por baixo. Já foi `sticky`, e este comentário seguiu dizendo isso.
  */
 function BarraDoInicio({ children }) {
   return <BarraDaAcao>{children}</BarraDaAcao>;

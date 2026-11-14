@@ -129,9 +129,21 @@ export default function MinhaRota() {
         )}
       </div>
 
-      {/* O BOTÃO DA ROTA, no pé, onde o polegar descansa. */}
+      {/* O BOTÃO DA ROTA, no pé, onde o polegar descansa.
+        *
+        * ⚠️ O `bottom` É A ALTURA DO MENU, NÃO ZERO (11/2026). Com `bottom-0`
+        * a barra grudava na borda da JANELA, que é onde mora o menu fixo
+        * (`BottomNav`): no 360x640 só 10 px do "Iniciar a rota" apareciam e o
+        * toque no centro caía em Carteira. O conteúdo já reserva o espaço do
+        * menu no `paddingBottom` do `TioLayout`; este deslocamento só diz ao
+        * `sticky` onde a janela útil termina — não soma uma segunda reserva.
+        * É a mesma conta do `TioLayout` e do `BottomNav`
+        * (`npm run testar:barra-da-rota`). */}
       {blocos.length > 0 && (
-        <div className="sticky bottom-0 z-10 border-t border-border bg-bg px-5 py-3">
+        <div
+          className="sticky z-10 border-t border-border bg-bg px-5 py-3"
+          style={{ bottom: 'calc(var(--altura-do-menu) + env(safe-area-inset-bottom, 0px))' }}
+        >
           {rotaAtiva ? (
             <button
               type="button"

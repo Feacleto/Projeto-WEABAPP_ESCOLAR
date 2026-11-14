@@ -1165,9 +1165,17 @@ export default function TioFinance() {
       </div>
 
       {/* O PÉ DA CARTEIRA: "Iniciar a rota" é o único botão cheio da tela. Com
-        * a rota rodando, a aba "Rota" já leva à rota; aqui vira "Abrir". */}
+        * a rota rodando, a aba "Rota" já leva à rota; aqui vira "Abrir".
+        *
+        * ⚠️ O `bottom` É A ALTURA DO MENU, NÃO ZERO (11/2026): com `bottom-0`
+        * a barra grudava na borda da janela, atrás do menu fixo, e no 360x640
+        * o "Iniciar a rota" quase não aparecia. Mesma conta da `MinhaRota`
+        * (`npm run testar:barra-da-rota`). */}
       {viagem.blocos.length > 0 && (
-        <div className="sticky bottom-0 z-10 border-t border-border bg-bg px-4 py-3">
+        <div
+          className="sticky z-10 border-t border-border bg-bg px-4 py-3"
+          style={{ bottom: 'calc(var(--altura-do-menu) + env(safe-area-inset-bottom, 0px))' }}
+        >
           {viagem.rotaAtiva ? (
             <button
               type="button"
