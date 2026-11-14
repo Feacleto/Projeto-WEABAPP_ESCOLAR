@@ -407,9 +407,12 @@ export default function ChildForm() {
   /* ACABOU DE COMBINAR UMA MENSALIDADE: é a hora em que a chave PIX passa a
    * fazer falta. ⚠️ MAS A PERGUNTA VEM DEPOIS DO CONVITE, e não por cima dele
    * (04/10/2026, aprovado pelo dono): ela cobria o "Mandar convite", que é o
-   * gesto da tela. Agora aparece quando ele manda o convite, ou quando sai
-   * da tela (outra criança, ver a turma) — uma vez por criança, e o "agora
-   * não" vale a sessão inteira. Ver `PerguntaDaChavePix`. */
+   * gesto da tela. E também NÃO NO TOQUE DE MANDAR (rodada 2 do passeio
+   * visual, 14/11/2026): ali ela tapava o "Enviado para Marta. Quando ela
+   * entrar…", que é a única frase que diz o que acontece depois. Ela aparece
+   * quando ele SAI da tela (outra criança, ver a turma, ver contratos) — a
+   * confirmação já foi vista, e é a passagem natural. Uma vez por criança, e
+   * o "agora não" vale a sessão inteira. Ver `PerguntaDaChavePix`. */
   const perguntarPixDepois = (depois) => {
     const fee = parseFloat(form.monthlyFee) || 0;
     if (fee <= 0 || pixPerguntado) {
@@ -458,7 +461,6 @@ export default function ChildForm() {
         gender={form.gender}
         parentName={form.parentName}
         parentPhone={unmaskPhone(form.parentPhone)}
-        onEnviado={() => perguntarPixDepois()}
         onOutra={() => perguntarPixDepois(cadastrarOutra)}
         onDone={() =>
           perguntarPixDepois(() => navigate('/tio/children', { replace: true }))

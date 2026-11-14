@@ -130,7 +130,15 @@ const fimDoCadastro = ler('src/components/children/ChildForm.jsx');
 caso('e o destaque passa para "Cadastrar outra criança"',
   /variant=\{enviado \|\| jaEntrou \? 'primary' : 'secondary'\}/.test(fimDoCadastro));
 caso('o joinha é verde, não âmbar', !/bg-perua/.test(fimDoCadastro));
-caso('a pergunta do PIX vem depois do convite', fimDoCadastro.includes('onEnviado={() => perguntarPixDepois()}'));
+// A PERGUNTA DO PIX NÃO TAPA O "ENVIADO" (rodada 2 do passeio visual): ela
+// vinha no toque de mandar e cobria a frase que diz o que acontece depois.
+// Agora vem quando ele SAI da tela — os três caminhos de saída perguntam.
+caso('a pergunta do PIX não vem no toque de mandar o convite',
+  !/onEnviado=\{\(\) => perguntarPixDepois/.test(fimDoCadastro));
+caso('a pergunta do PIX vem ao sair da tela (outra criança, turma, contratos)',
+  /onOutra=\{\(\) => perguntarPixDepois\(cadastrarOutra\)\}/.test(fimDoCadastro) &&
+  /onDone=\{\(\) =>\s*perguntarPixDepois\(/.test(fimDoCadastro) &&
+  /onVerContratos=\{\(\) =>\s*perguntarPixDepois\(/.test(fimDoCadastro));
 caso('a folha Nova escola tem o próprio data-avancar',
   /<Button\s+data-avancar/.test(ler('src/components/children/NovaEscolaSheet.jsx')));
 
