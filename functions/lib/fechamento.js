@@ -63,6 +63,15 @@ const {
 
 const REGION = 'southamerica-east1';
 
+/**
+ * O motivo do caso COMUM em que um parceiro não fecha: quem deixou o teste
+ * vencer sem escolher plano. Constante porque o laço de `fecharMes` decide por
+ * ela se a falha é esperada (aviso) ou inesperada (erro, que o alerta de log
+ * enxerga) — comparar com texto digitado em dois lugares é o jeito de um
+ * deixar de casar com o outro.
+ */
+const MOTIVO_SEM_PLANO = 'ainda não escolheu um plano';
+
 /** O mês de referência de uma data, 'AAAA-MM'. */
 function mesDe(data) {
   return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
@@ -143,7 +152,7 @@ async function fecharFaturaDe(db, { motorista, mes, config, ownerUid = null }) {
   // ⚠️ NÃO SE COBRA UM PLANO QUE ELE NUNCA ESCOLHEU. Fora do teste e sem
   // plano, a conta acima é a VITRINE — boa para mostrar e péssima para cobrar.
   if (!isento && !plano) {
-    throw new Error('ainda não escolheu um plano');
+    throw new Error(MOTIVO_SEM_PLANO);
   }
   if (!isento && conta.liquido === null) {
     throw new Error('plano desconhecido');
@@ -410,7 +419,7 @@ async function fecharMes(db, { mes, agora = new Date() }) {
     });
   }
 
-  const resultado = { mes: alvo, fechadas: 0, puladas: 0, erros: 0 };
+  const resultado = { mes: alvo, fechadas: 0, puladas: 0, erros: 0, inesperados: 0 };
 
   for (const doc of snap.docs) {
     const motorista = { uid: doc.id, ...doc.data() };
@@ -457,7 +466,14 @@ async function fecharMes(db, { mes, agora = new Date() }) {
       // escolheu um plano" é o caso comum de quem deixou o teste vencer, e
       // parar aqui deixaria todo mundo depois dele sem fatura naquele mês.
       resultado.erros += 1;
-      logger.warn('[fechamento] parceiro não fechou', {
+      // ⚠️ SÓ O QUE NÃO É O CASO COMUM SOBE PARA `error`. "Ainda não escolheu
+      // um plano" é esperado todo mês (quem deixou o teste vencer) e, se
+      // acordasse o alerta de log, ele aprenderia a ser ignorado no primeiro
+      // dia 1 — o mesmo vício das tarjas semanais. Qualquer outra falha é
+      // fatura que deveria ter saído e não saiu, e essa é `error`.
+      const esperado = err?.message === MOTIVO_SEM_PLANO;
+      if (!esperado) resultado.inesperados += 1;
+      (esperado ? logger.warn : logger.error)('[fechamento] parceiro não fechou', {
         uid: motorista.uid,
         mes: alvo,
         motivo: err?.message,
@@ -465,7 +481,11 @@ async function fecharMes(db, { mes, agora = new Date() }) {
     }
   }
 
-  logger.info('[fechamento] mês fechado', resultado);
+  if (resultado.inesperados > 0) {
+    logger.error('[fechamento] mês fechado COM FATURAS QUE NÃO SAÍRAM', resultado);
+  } else {
+    logger.info('[fechamento] mês fechado', resultado);
+  }
   return resultado;
 }
 

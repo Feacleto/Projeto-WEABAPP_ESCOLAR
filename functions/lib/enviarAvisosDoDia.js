@@ -593,14 +593,54 @@ function makeVarrerOfertas(db) {
   );
 }
 
-async function enviarAvisosDoDia(db, { agora = new Date() } = {}) {
-  const resultado = {
-    mensalidades: await varrerMensalidades(db, agora),
-    convites: await varrerConvites(db, agora),
-    faturas: await varrerFaturas(db, agora),
-    alvaras: await varrerAlvaras(db, agora),
-    encerramentos: await varrerEncerramentos(db, agora),
-  };
+/**
+ * AS CINCO VARREDURAS DO DIA, na ordem em que sempre rodaram.
+ *
+ * É um mapa (e não cinco linhas soltas) por dois motivos: o laço abaixo as
+ * protege uma a uma, e o teste (`testar:envio`) consegue trocar UMA delas por
+ * uma que lança, sem tocar nas outras quatro.
+ */
+const VARREDURAS = {
+  mensalidades: varrerMensalidades,
+  convites: varrerConvites,
+  faturas: varrerFaturas,
+  alvaras: varrerAlvaras,
+  encerramentos: varrerEncerramentos,
+};
+
+/**
+ * ⚠️ UMA VARREDURA QUE LANÇA NÃO PODE LEVAR AS OUTRAS JUNTO.
+ *
+ * Eram cinco `await` seguidos dentro de um literal: a primeira que lançasse
+ * (índice faltando, leitura que falha, documento que ninguém previu) abortava
+ * a função, e as outras quatro não rodavam NAQUELE DIA. Sem `retryCount` na
+ * agendada e sem alerta, o sintoma era "o aviso da mensalidade não saiu",
+ * descoberto por reclamação — e o motivo estava em outra varredura.
+ *
+ * A falha vira `logger.error` (é o que um alerta de log `severity>=ERROR`
+ * enxerga) e a varredura conta zero. O resultado só ganha a chave `falhas`
+ * quando houve alguma: no dia normal ele tem exatamente a forma de antes.
+ *
+ * Não relança: relançar faria o Scheduler tentar de novo as que JÁ deram
+ * certo. Elas são idempotentes pelos carimbos, mas não há por que depender
+ * disso para uma falha que não é delas.
+ */
+async function enviarAvisosDoDia(db, { agora = new Date(), varreduras = VARREDURAS } = {}) {
+  const resultado = {};
+  const falhas = [];
+  for (const [nome, varrer] of Object.entries(varreduras)) {
+    try {
+      resultado[nome] = await varrer(db, agora);
+    } catch (err) {
+      resultado[nome] = 0;
+      falhas.push(nome);
+      logger.error(`[enviarAvisosDoDia] a varredura "${nome}" falhou; as demais seguem`, {
+        varredura: nome,
+        motivo: err?.message,
+      });
+    }
+  }
+  if (falhas.length) resultado.falhas = falhas;
   logger.info('enviarAvisosDoDia concluído', resultado);
   return resultado;
 }
@@ -634,6 +674,7 @@ module.exports = {
   varrerOfertas,
   makeEnviarAvisosDoDia,
   enviarAvisosDoDia,
+  VARREDURAS,
   makeVarrerAtrasos,
   varrerAtrasos,
   varrerEncerramentos,
