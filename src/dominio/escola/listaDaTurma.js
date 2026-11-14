@@ -214,7 +214,9 @@ export function fraseDeEstado(crianca) {
 
 /** "Rua das Flores, 120, Centro, São Paulo" → "Rua das Flores, 120". */
 export function ruaCurta(endereco) {
-  const partes = String(endereco || '').split(',').map((p) => p.trim()).filter(Boolean);
+  // `montarEndereco` separa a rua do bairro com " — ": o que vem antes é a rua.
+  const antesDoBairro = String(endereco || '').split(' — ')[0];
+  const partes = antesDoBairro.split(',').map((p) => p.trim()).filter(Boolean);
   if (!partes.length) return '';
   if (partes.length >= 2 && /^\d|^s\/?n/i.test(partes[1])) return `${partes[0]}, ${partes[1]}`;
   return partes[0];

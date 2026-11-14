@@ -1,102 +1,93 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  Users,
-  Plus,
-  Search,
-  X,
-  School,
-  MoreHorizontal,
-  NotebookPen,
-  FileText,
-  CircleSlash,
-} from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Users, Search, X, School } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Header from '../../components/layout/Header';
-import BarraDaAcao from '../../components/layout/BarraDaAcao';
 import Skeleton from '../../components/common/Skeleton';
-import Button from '../../components/common/Button';
 import EmptyState from '../../components/common/EmptyState';
-import Avatar from '../../components/common/Avatar';
-import AppSheet from '../../components/common/AppSheet';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import RecadoDaRota from '../../components/route/RecadoDaRota';
-import PassarParaOutroTio from '../../components/transferencia/PassarParaOutroTio';
 import { ChildDetailSheet } from '../../pages/ChildDetail';
+import { ConviteEnxuto } from '../../components/children/InviteShare';
+import LinhaDaTurma from '../../components/children/LinhaDaTurma';
+import CabecalhoDaEscola from '../../components/children/CabecalhoDaEscola';
+import AdicionarCrianca from '../../components/children/AdicionarCrianca';
+import ACompletar from '../../components/children/ACompletar';
 import { useChildren } from '../../hooks/useChildren';
+import { useEscolas } from '../../hooks/useEscolas';
 import { useAuth } from '../../hooks/useAuth';
 import { deactivateChildAndParent } from '../../services/accountService';
-import { PERIOD_LABELS } from '../../compartilhado/formatters';
-import { ConviteEnxuto } from '../../components/children/InviteShare';
+import { salvarCampoDaLista } from '../../services/listaDaTurmaService';
 import { LINHAS_DO_VALOR } from '../../marca/valorDoConvite.js';
-import { contadorDeFamilias, ROTULOS, TODAS_CONVIDADAS } from '../../marca/textosDaLista.js';
-import { resumoDosConvites, proximaParaConvidar } from '../../dominio/escola/listaDaTurma.js';
+import {
+  contadorDeFamilias,
+  textoForaDaRota,
+  textoDeTirar,
+  ROTULOS,
+  TODAS_CONVIDADAS,
+  VAZIA_TEXTO,
+} from '../../marca/textosDaLista.js';
+import {
+  resumoDosConvites,
+  proximaParaConvidar,
+  agruparPorEscola,
+  foraDaRota,
+  completaParaARota,
+} from '../../dominio/escola/listaDaTurma.js';
 
 /**
- * MINHA TURMA — a tela de GERENCIAR a turma (05/10/2026, densidade aprovada
- * pelo dono).
+ * MINHA TURMA — A LISTA COMO SUPERFÍCIE DE TRABALHO (RC2, 14/11/2026;
+ * docs/analise/11-lista-da-turma.md e o protótipo A1 a A9 aprovado pelo dono).
  *
- * Aqui o tio não acompanha a rota: quem está em casa ou na perua ele vê na
- * tela da rota. Ele entra aqui para cuidar da turma — cadastrar criança,
- * mandar um recado a uma família, passar uma família para um tio parceiro ou
- * desativar quem saiu. Por isso cada criança é uma LINHA (nome, escola,
- * período) com um "···" que abre a folha dela com essas ações, e não mais um
- * cartão de 180 px com o status e o botão da rota ("Em casa", "EMBARQUEI").
- * Medido a 360×740: a primeira criança aparecia a 465 px do topo, cortada
- * atrás do "Cadastrar criança"; agora a turma de cinco cabe na primeira tela.
+ * Numa tela só, o motorista ADICIONA, VÊ, COMPLETA, CONVIDA e TIRA as
+ * crianças, sem entrar e sair de ficha. O passeio visual mediu 75 toques para
+ * cadastrar 4 crianças pelo formulário de 4 passos, e recarregar no passo 2
+ * perdia tudo. Aqui:
+ *   - o TOPO diz quantas famílias entraram e manda o convite de quem falta,
+ *     um toque por família (o WhatsApp não aceita envio automático);
+ *   - a caixa "A COMPLETAR" junta o que ele deixou para depois, por tipo;
+ *   - as crianças vêm AGRUPADAS POR ESCOLA, com a entrada da escola e a hora
+ *     de pegar PROPOSTA (nunca a mesma para todas);
+ *   - cada LINHA abre no lugar e salva campo a campo;
+ *   - a linha "+ Nome da criança" fica sempre aberta no fim.
  *
- * ⚠️ "Passar para outro tio" só aparece quando a passagem é possível (a
- * cobrança ligada, a criança ativa, a família no app, e tio parceiro): quem
- * decide é o próprio `PassarParaOutroTio`, a mesma peça da ficha.
+ * A FICHA (contrato, saúde, extrato) e o CADASTRO COMPLETO continuam: a lista
+ * é o dia a dia, a ficha é o fundo.
+ *
+ * ⚠️ "TIRAR DA TURMA" NÃO TEM DESFAZER, porque não existe reativar: a
+ * confirmação diz o que se perde (`textoDeTirar`). "Pausar" é RC3.
+ *
+ * O filtro por período saiu: o período virou cosmético (sai da hora), e cada
+ * linha de filtro empurrava a turma para baixo da dobra. A busca aparece só
+ * em turma grande.
  */
-const FILTERS = [
-  { value: 'all', label: 'Todos' },
-  { value: 'morning', label: PERIOD_LABELS.morning },
-  { value: 'afternoon', label: PERIOD_LABELS.afternoon },
-  { value: 'evening', label: PERIOD_LABELS.evening },
-];
+const ACIMA_DISSO_TEM_BUSCA = 12;
+
+function emMs(v) {
+  if (v == null) return Infinity; // carimbo do servidor a caminho: a mais nova
+  if (typeof v.toMillis === 'function') return v.toMillis();
+  if (v instanceof Date) return v.getTime();
+  return Number(v) || 0;
+}
 
 export default function TioChildren() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
   const { children, loading } = useChildren();
+  const { escolas, mapa: escolasPorId } = useEscolas();
 
-  // A ficha abre POR CIMA da lista. O filtro, a busca e a rolagem continuam
-  // exatamente onde estavam — que é a diferença entre consultar um telefone
-  // e perder o lugar numa lista de vinte crianças.
+  // A ficha abre POR CIMA da lista: a rolagem e a linha aberta ficam onde
+  // estavam.
   const [fichaDe, setFichaDe] = useState(null);
-  // A folha das ações de uma criança (o "···").
-  const [acoesDe, setAcoesDe] = useState(null);
-
-  const initialFilter = searchParams.get('period') || 'all';
-  const [filter, setFilter] = useState(initialFilter);
+  const [aberta, setAberta] = useState(null);
+  const [recadoDe, setRecadoDe] = useState(null);
+  const [tirarDe, setTirarDe] = useState(null);
+  const [tirando, setTirando] = useState(false);
   const [search, setSearch] = useState('');
 
-  // Quando navega vindo de outra tela com query param, atualiza o filtro
-  useEffect(() => {
-    const p = searchParams.get('period');
-    if (p && p !== filter) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setFilter(p);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-
-  const filtered = useMemo(() => {
-    let list = children;
-    if (filter !== 'all') list = list.filter((c) => c.period === filter);
-    if (search.trim()) {
-      const term = search.trim().toLowerCase();
-      list = list.filter((c) => c.name?.toLowerCase().includes(term));
-    }
-    return list;
-  }, [children, filter, search]);
-
-  const criancaDaFolha = acoesDe ? children.find((c) => c.id === acoesDe) || null : null;
-
-  // OS CONVITES (RC2, fila de convites). `tocados` guarda o toque desta
-  // abertura da tela até o carimbo do servidor chegar; `ultimoConvidado` faz o
-  // botão do topo andar para a próxima família depois de cada toque.
+  // OS CONVITES. `tocados` guarda o toque desta abertura da tela até o
+  // carimbo do servidor chegar; `ultimoConvidado` faz o botão do topo andar
+  // para a próxima família depois de cada toque.
   const [agora] = useState(() => Date.now());
   const [tocados, setTocados] = useState(() => new Set());
   const [ultimoConvidado, setUltimoConvidado] = useState(null);
@@ -116,12 +107,66 @@ export default function TioChildren() {
     [children, agora, ultimoConvidado, tocados]
   );
 
+  const filtradas = useMemo(() => {
+    const termo = search.trim().toLowerCase();
+    return termo ? children.filter((c) => c.name?.toLowerCase().includes(termo)) : children;
+  }, [children, search]);
+  const grupos = useMemo(() => agruparPorEscola(filtradas, escolas), [filtradas, escolas]);
+  const fora = useMemo(() => children.filter(foraDaRota).length, [children]);
+
+  // A ESCOLA DA PRÓXIMA CRIANÇA: a da criança cadastrada por último. Quem
+  // cadastra a turma cadastra várias da mesma escola em sequência.
+  const ultimaEscola = useMemo(() => {
+    const comEscola = children
+      .filter((c) => c.schoolId && escolasPorId?.[c.schoolId])
+      .sort((a, b) => emMs(b.createdAt) - emMs(a.createdAt));
+    return comEscola.length ? escolasPorId[comEscola[0].schoolId] : null;
+  }, [children, escolasPorId]);
+
+  // ⚠️ A CRIANÇA QUE FICOU COMPLETA SEM PERDER A MARCA. O fim do
+  // `cadastroRapido` vai no mesmo write que completa a rua ou a hora
+  // (`camposAoSalvar`); se dois campos foram salvos antes de a escuta trazer o
+  // primeiro, o segundo não sabia do primeiro. Aqui a lista confere o que o
+  // banco tem e fecha a conta — uma vez por criança por abertura da tela.
+  const reconciliadas = useRef(new Set());
+  useEffect(() => {
+    for (const c of children) {
+      if (foraDaRota(c) && completaParaARota(c) && !reconciliadas.current.has(c.id)) {
+        reconciliadas.current.add(c.id);
+        salvarCampoDaLista(c, {}).catch(() => {});
+      }
+    }
+  }, [children]);
+
+  const tirar = async () => {
+    if (!tirarDe) return;
+    setTirando(true);
+    try {
+      await deactivateChildAndParent({ childId: tirarDe.id });
+      toast.success(`${String(tirarDe.name || '').split(' ')[0]} saiu da turma.`);
+      if (aberta === tirarDe.id) setAberta(null);
+      setTirarDe(null);
+    } catch (err) {
+      console.error('[lista da turma] não tirou:', err?.code || 'erro');
+      toast.error('Não deu pra tirar da turma. Tente de novo.');
+    } finally {
+      setTirando(false);
+    }
+  };
+  const textoTirar = tirarDe
+    ? textoDeTirar({
+        nome: tirarDe.name,
+        temFamilia: !!tirarDe.parentUid,
+        temFoto: !!tirarDe.photoURL,
+        temAceite: !!tirarDe.contractAcceptedAt,
+      })
+    : null;
+  const criancaDoRecado = recadoDe ? children.find((c) => c.id === recadoDe) || null : null;
+
   return (
     <>
-      {/* O título conta a turma, e "Escolas" mora ao lado dele: era um
-        * cartão de 70 px e uma explicação de duas linhas antes da lista. */}
       <Header
-        title={children.length ? `Minha turma · ${children.length}` : 'Minha turma'}
+        title={children.length ? `${ROTULOS.titulo} · ${children.length}` : ROTULOS.titulo}
         showBack
         backLabel="Início"
         backTo="/tio"
@@ -137,64 +182,42 @@ export default function TioChildren() {
         }
       />
 
-      <div className="space-y-3 px-4 pt-3">
-        {/* Busca por nome. O RÓTULO É VISÍVEL: placeholder some no primeiro
-          * toque, e quem volta à tela com a busca preenchida não sabe mais o
-          * que aquele campo filtra (o exemplo dentro do campo é sempre
-          * "Digite aqui" — `testar:formularios`). */}
-        <label htmlFor="busca-da-turma" className="-mb-2 block text-sm font-semibold text-text">
-          Buscar pelo nome
-        </label>
-        <div className="relative">
-          <Search
-            size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-textMuted pointer-events-none"
-          />
-          <input
-            id="busca-da-turma"
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Digite aqui"
-            className="w-full h-12 pl-10 pr-14 rounded-2xl bg-card border border-border text-base text-text placeholder:text-textMuted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              aria-label="Limpar busca"
-              className="absolute right-0 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center text-textMuted tap"
-            >
-              <X size={18} />
-            </button>
-          )}
-        </div>
-
-        {/* Filtros por período */}
-        <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 -mb-1">
-          {FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setFilter(f.value)}
-              className={`shrink-0 h-12 px-5 rounded-full text-base font-semibold tap border ${
-                filter === f.value
-                  ? 'bg-text text-white border-text'
-                  : 'bg-card text-textMuted border-border'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
+      <div className="space-y-3 px-4 pb-8 pt-3">
         {!loading && children.length > 0 && (
           <ContadorDeConvites
             convites={convites}
             proxima={proxima}
+            fora={fora}
             onEnviado={marcarTocado}
             onLinkNovo={esquecerToque}
           />
+        )}
+
+        {!loading && <ACompletar criancas={children} />}
+
+        {children.length > ACIMA_DISSO_TEM_BUSCA && (
+          <div className="relative">
+            <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-textMuted" />
+            <input
+              id="busca-da-turma"
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Digite aqui"
+              aria-label="Buscar pelo nome"
+              className="h-12 w-full rounded-2xl border border-border bg-card pl-10 pr-14 text-base text-text placeholder:text-textMuted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                aria-label="Limpar busca"
+                className="tap absolute right-0 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center text-textMuted"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
         )}
 
         {loading ? (
@@ -203,74 +226,85 @@ export default function TioChildren() {
               <Skeleton key={i} className="h-16" />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title={
-              search
-                ? 'Nada encontrado'
-                : filter === 'all'
-                ? 'Nenhuma criança ainda'
-                : 'Sem crianças nesse período'
-            }
-            description={
-              search
-                ? `Não achei ninguém com "${search}".`
-                : filter === 'all'
-                ? 'Cadastre a primeira criança pra começar.'
-                : 'Tente outro filtro ou cadastre uma nova.'
-            }
-          />
+        ) : children.length === 0 ? (
+          <EmptyState icon={Users} title={ROTULOS.vaziaTitulo} description={VAZIA_TEXTO.texto} />
         ) : (
-          <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
-            {filtered.map((child) => (
-              <LinhaDaCrianca
-                key={child.id}
-                child={child}
-                tocou={tocados.has(child.id)}
-                onEnviado={marcarTocado}
-                onLinkNovo={esquecerToque}
-                onAbrir={() => setFichaDe(child.id)}
-                onAcoes={() => setAcoesDe(child.id)}
-              />
-            ))}
-          </ul>
+          grupos.map((g) => (
+            <section key={g.chave} className="space-y-1.5">
+              <CabecalhoDaEscola key={`${g.chave}:${g.horaEntrada || ''}`} grupo={g} />
+              <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+                {g.criancas.map((child) => (
+                  <LinhaDaTurma
+                    key={child.id}
+                    child={child}
+                    escolas={escolas}
+                    aberta={aberta === child.id}
+                    onAlternar={() => setAberta((a) => (a === child.id ? null : child.id))}
+                    tocou={tocados.has(child.id)}
+                    onEnviado={marcarTocado}
+                    onLinkNovo={esquecerToque}
+                    onAbrirFicha={() => setFichaDe(child.id)}
+                    onRecado={() => setRecadoDe(child.id)}
+                    onTirar={() => setTirarDe(child)}
+                  />
+                ))}
+              </ul>
+            </section>
+          ))
         )}
+
+        {!loading && <AdicionarCrianca escola={ultimaEscola} />}
+
+        <button
+          type="button"
+          onClick={() => navigate('/tio/children/new')}
+          className="tap min-h-12 w-full text-base font-semibold text-primary"
+        >
+          {ROTULOS.cadastroCompleto}
+        </button>
       </div>
 
-      {/* CADASTRAR CRIANÇA NA FAIXA COLADA NO MENU (05/10/2026). Era um botão
-        * redondo flutuando no canto, e ele cobria o botão do primeiro cartão
-        * da lista. Continua o único verde cheio da tela, perto do polegar. */}
-      <BarraDaAcao>
-        <Button onClick={() => navigate('/tio/children/new')} icon={Plus} data-tour="add-child">
-          Cadastrar criança
-        </Button>
-      </BarraDaAcao>
+      <ChildDetailSheet open={!!fichaDe} childId={fichaDe} onClose={() => setFichaDe(null)} />
 
-      <ChildDetailSheet
-        open={!!fichaDe}
-        childId={fichaDe}
-        onClose={() => setFichaDe(null)}
-      />
+      {criancaDoRecado && (
+        <RecadoDaRota
+          open={!!criancaDoRecado}
+          onClose={() => setRecadoDe(null)}
+          child={criancaDoRecado}
+          adminUid={user?.uid}
+          tipoInicial="other"
+        />
+      )}
 
-      <FolhaDaCrianca
-        child={criancaDaFolha}
-        onClose={() => setAcoesDe(null)}
-        onAbrirFicha={(id) => {
-          setAcoesDe(null);
-          setFichaDe(id);
-        }}
+      <ConfirmDialog
+        open={!!tirarDe}
+        title={textoTirar?.titulo || ''}
+        description={
+          textoTirar && (
+            <>
+              <span className="block">{textoTirar.corpo}</span>
+              <span className="mt-2 block text-textMuted">{textoTirar.pagamentos}</span>
+            </>
+          )
+        }
+        confirmLabel={ROTULOS.tirarDaTurma}
+        cancelLabel={ROTULOS.voltar}
+        variant="danger"
+        loading={tirando}
+        onConfirm={tirar}
+        onCancel={() => setTirarDe(null)}
       />
     </>
   );
 }
 
 /**
- * O CONTADOR DO TOPO (RC2): quantas famílias entraram, e um botão que manda o
- * convite da PRÓXIMA que falta — um toque por família, porque o WhatsApp não
- * aceita envio automático. Depois do toque o botão já aponta a seguinte.
+ * O CONTADOR DO TOPO: quantas famílias entraram, e um botão que manda o
+ * convite da PRÓXIMA que falta — um toque por família. Depois do toque o
+ * botão já aponta a seguinte. E, quando há, quantas crianças a rota ainda não
+ * leva (a frase da tela N3 do protótipo).
  */
-function ContadorDeConvites({ convites, proxima, onEnviado, onLinkNovo }) {
+function ContadorDeConvites({ convites, proxima, fora, onEnviado, onLinkNovo }) {
   const pct = convites.total ? Math.round((convites.entraram / convites.total) * 100) : 0;
   const primeiro = String(proxima?.name || '').trim().split(/\s+/)[0];
   return (
@@ -297,155 +331,7 @@ function ContadorDeConvites({ convites, proxima, onEnviado, onLinkNovo }) {
       ) : (
         convites.faltam > 0 && <p className="text-sm text-textMuted">{TODAS_CONVIDADAS.texto}</p>
       )}
+      {fora > 0 && <p className="text-sm text-textBody">{textoForaDaRota(fora)}</p>}
     </section>
-  );
-}
-
-/** Uma criança da turma: tocar no nome abre a ficha; o "···" abre as ações. */
-function LinhaDaCrianca({ child, tocou, onEnviado, onLinkNovo, onAbrir, onAcoes }) {
-  const primeiro = String(child.name || '').split(' ')[0];
-  return (
-    <li className="flex items-center gap-2 py-1.5 pl-3 pr-1.5">
-      <button
-        type="button"
-        onClick={onAbrir}
-        className="tap flex min-h-12 min-w-0 flex-1 items-center gap-3 text-left"
-      >
-        <Avatar photoURL={child.photoURL} gender={child.gender} seed={child.id} kind="child" size="sm" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-base font-bold text-text">{child.name}</span>
-          <span className={`block truncate text-base ${child.cadastroRapido ? 'font-semibold text-warningText' : 'text-textMuted'}`}>
-            {child.cadastroRapido ? 'Falta completar o cadastro' : [child.school || 'Escola não informada', child.period && PERIOD_LABELS[child.period]]
-              .filter(Boolean)
-              .join(' · ')}
-          </span>
-        </span>
-      </button>
-      <ConviteEnxuto crianca={child} tocou={tocou} onEnviado={onEnviado} onLinkNovo={onLinkNovo} />
-      <button
-        type="button"
-        onClick={onAcoes}
-        aria-label={`O que fazer com ${primeiro}`}
-        className="tap flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border text-textBody"
-      >
-        <MoreHorizontal size={22} />
-      </button>
-    </li>
-  );
-}
-
-/** Uma linha da folha: ícone, o verbo e, se precisar, uma linha de explicação. */
-function Opcao({ icone: Icone, titulo, detalhe, onClick, perigo = false }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`tap flex min-h-14 w-full items-center gap-3 border-t border-border py-2 text-left first:border-t-0 ${
-        perigo ? 'text-dangerText' : 'text-text'
-      }`}
-    >
-      <span
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-          perigo ? 'bg-dangerSoft text-dangerText' : 'bg-primarySoft text-primary'
-        }`}
-      >
-        <Icone size={20} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-base font-bold">{titulo}</span>
-        {detalhe && <span className="block text-base text-textMuted">{detalhe}</span>}
-      </span>
-    </button>
-  );
-}
-
-/**
- * A FOLHA DA CRIANÇA — o que o tio faz com ela, numa lista curta:
- * mandar recado, abrir a ficha, desativar e, quando der, passar para outro
- * tio. Desativar é o mesmo caminho do "Remover" da ficha, com a mesma
- * confirmação e as mesmas palavras.
- */
-function FolhaDaCrianca({ child, onClose, onAbrirFicha }) {
-  const { user } = useAuth();
-  const [recado, setRecado] = useState(false);
-  const [confirmando, setConfirmando] = useState(false);
-  const [desativando, setDesativando] = useState(false);
-  const primeiro = String(child?.name || '').split(' ')[0];
-
-  const desativar = async () => {
-    if (!child) return;
-    setDesativando(true);
-    try {
-      const { parentRemoved } = await deactivateChildAndParent({ childId: child.id });
-      toast.success(
-        parentRemoved
-          ? `${child.name} e o responsável foram removidos.`
-          : `${child.name} foi removido(a) da lista ativa.`
-      );
-      setConfirmando(false);
-      onClose();
-    } catch (err) {
-      console.error(err);
-      toast.error('Erro ao remover. Tente novamente.');
-    } finally {
-      setDesativando(false);
-    }
-  };
-
-  return (
-    <>
-      <AppSheet open={!!child && !recado && !confirmando} onClose={onClose} title={child?.name || ''} icon={Users}>
-        {child && (
-          <div className="space-y-3">
-            <div>
-              <Opcao
-                icone={NotebookPen}
-                titulo="Mandar recado"
-                detalhe={`Só para a família de ${primeiro}`}
-                onClick={() => setRecado(true)}
-              />
-              <Opcao icone={FileText} titulo="Abrir a ficha" onClick={() => onAbrirFicha(child.id)} />
-              <Opcao
-                icone={CircleSlash}
-                titulo="Desativar criança"
-                detalhe="Pede confirmação"
-                perigo
-                onClick={() => setConfirmando(true)}
-              />
-            </div>
-            {/* Só aparece quando a passagem é possível — a peça decide. */}
-            <PassarParaOutroTio child={child} />
-          </div>
-        )}
-      </AppSheet>
-
-      {child && recado && (
-        <RecadoDaRota
-          open={recado}
-          onClose={() => {
-            setRecado(false);
-            onClose();
-          }}
-          child={child}
-          adminUid={user?.uid}
-          tipoInicial="other"
-        />
-      )}
-
-      <ConfirmDialog
-        open={confirmando}
-        title={`Remover ${child?.name || ''}?`}
-        description={
-          child?.parentUid
-            ? `A criança sai da lista ativa e o responsável (${child.parentName || 'pai/mãe'}) é desvinculado do app. O histórico de pagamentos é preservado.`
-            : 'A criança vai sair da lista ativa. O histórico de pagamentos é preservado.'
-        }
-        confirmLabel="Sim, remover"
-        variant="danger"
-        loading={desativando}
-        onConfirm={desativar}
-        onCancel={() => setConfirmando(false)}
-      />
-    </>
   );
 }

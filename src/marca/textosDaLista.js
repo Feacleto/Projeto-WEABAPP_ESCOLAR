@@ -88,6 +88,7 @@ export const ROTULOS = {
   titulo: 'Minha turma',
   vaziaTitulo: 'Sua turma começa aqui',
   adicionar: '+ Nome da criança',
+  naEscola: (nome) => `Entra na escola ${nome}`,
   ok: 'OK',
   semEscola: 'Sem escola',
   entrada: 'Entrada',
@@ -128,6 +129,7 @@ export const ROTULOS = {
   aCompletar: 'A completar',
   salvarEProxima: 'Salvar e ir para a próxima',
   pularEProxima: 'Ainda não sei · próxima',
+  irParaProxima: 'Ir para a próxima',
   fimDaFila: 'Fim desta lista.',
   verDeNovo: 'Ver de novo quem ficou',
 };

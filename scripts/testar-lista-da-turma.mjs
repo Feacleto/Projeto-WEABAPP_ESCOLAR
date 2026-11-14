@@ -157,6 +157,7 @@ eq('frase: mais de duas viram "(+N)"', fraseDeEstado({ id: 'n', name: 'Nino' }),
 eq('frase de quem está completa: vazia', fraseDeEstado(completa), { faltaHora: false, texto: '' });
 eq('rua curta: rua e número', ruaCurta(completa.address), 'Rua das Flores, 120');
 eq('rua curta sem número: só a rua', ruaCurta('Rua das Flores, Centro, São Paulo'), 'Rua das Flores');
+eq('rua curta no formato dos Correios (montarEndereco)', ruaCurta('Rua das Trovas, 12, casa 2 — Socorro, São Paulo/SP'), 'Rua das Trovas, 12');
 eq('a segunda linha: escola · hora · rua', resumoDaLinha({ ...completa, school: 'Alvorada' }), 'Alvorada · 6h40 · Rua das Flores, 120');
 eq('a segunda linha não deixa buraco', resumoDaLinha({ name: 'X' }), '');
 
@@ -308,7 +309,8 @@ const share = semComentarios(ler('src/components/children/InviteShare.jsx'));
 eq('a lista conta pelo resumoDosConvites', /resumoDosConvites\(children, agora, tocados\)/.test(lista), true);
 eq('o botão do topo usa a próxima da fila', /proximaParaConvidar\(children, agora, ultimoConvidado, tocados\)/.test(lista), true);
 eq('o contador sai do catálogo', /contadorDeFamilias\(convites\.entraram, convites\.total\)/.test(lista), true);
-eq('cada linha tem o convite enxuto', /<ConviteEnxuto crianca=\{child\}/.test(lista), true);
+const linha = semComentarios(ler('src/components/children/LinhaDaTurma.jsx'));
+eq('cada linha tem o convite enxuto', /<ConviteEnxuto crianca=\{child\}/.test(linha), true);
 eq('o convite enxuto decide pelo estadoDoConvite', /estadoDoConvite\(crianca, agora, tocou\)/.test(share), true);
 eq('o convite enxuto grava conviteEnviadoEm no toque', /const tocar = \(\) => \{\s*marcarConviteEnviado\(crianca\.id\)/.test(share), true);
 eq('as três caras: Convidar, Enviado/Mandar de novo, Entrou',
@@ -316,6 +318,87 @@ eq('as três caras: Convidar, Enviado/Mandar de novo, Entrou',
 eq('o link vencido pede link novo antes', /estado === CONVITE\.VENCIDO[\s\S]{0,200}gerarLinkNovo\(crianca\.id\)/.test(share), true);
 eq('sem número, o WhatsApp abre a escolha de contato', /https:\/\/wa\.me\/\?text=/.test(share), true);
 eq('a trava dos dados do contrato vale no convite enxuto', /if \(faltaContrato\) \{/.test(share.slice(share.indexOf('export function ConviteEnxuto'))), true);
+
+bloco('9. A lista como superfície de trabalho (leitura de arquivo)');
+const servico = semComentarios(ler('src/services/listaDaTurmaService.js'));
+const hook = semComentarios(ler('src/hooks/useSalvarNaLista.js'));
+const campos = semComentarios(ler('src/components/children/CamposDaLinha.jsx'));
+const rua = semComentarios(ler('src/components/children/CampoDaRua.jsx'));
+const cabecalho = semComentarios(ler('src/components/children/CabecalhoDaEscola.jsx'));
+const adicionar = semComentarios(ler('src/components/children/AdicionarCrianca.jsx'));
+const completar = semComentarios(ler('src/components/children/ACompletar.jsx'));
+const form = semComentarios(ler('src/components/children/ChildForm.jsx'));
+
+// Campo a campo: cada gravação leva SÓ o campo mexido, pelo updateChild.
+eq('o serviço grava pelo updateChild, com o fim do cadastroRapido no mesmo write',
+  /await updateChild\(crianca\.id, camposAoSalvar\(crianca, m\)\)/.test(servico), true);
+const GRAVACOES = [
+  ["salvar('nome', { name: v })", 'nome'],
+  ["salvar('genero', { gender: v })", 'menino ou menina'],
+  ["salvar('escola', camposDaEscola(e))", 'escola'],
+  ["salvar('hora', { horaPega: v })", 'hora de pegar'],
+  ["salvar('mae', { parentName: v })", 'nome da mãe'],
+  ["salvar('fone', { parentPhone: v })", 'WhatsApp da mãe'],
+  ["salvar('mensalidade', { monthlyFee: n })", 'mensalidade'],
+];
+for (const [trecho, nome] of GRAVACOES) eq(`a linha grava ${nome} sozinho`, linha.includes(trecho), true);
+eq('a rua grava ao assentar (com número ou "não sei"), com numeroPendente e as partes',
+  /salvar\('rua', \{[\s\S]*?numeroPendente: false/.test(rua) && /salvar\('rua', \{[\s\S]*?numeroPendente: true,\s*enderecoPartes:/.test(rua), true);
+eq('nenhum botão "Salvar" na linha', /['>]\s*Salvar\s*['<]/.test(linha + campos + rua), false);
+eq('o campo grava ao sair (onBlur), não a cada tecla', /onBlur=\{sair\}/.test(campos) && !/onChange=\{[^}]*onSalvar/.test(campos), true);
+eq('"salvo ✓" só depois de o servidor responder (o await vem antes do estado salvo)',
+  /await salvarCampoDaLista\(atual\.current, mudanca\);[\s\S]*?\[campo\]: 'salvo'/.test(hook), true);
+eq('erro com "tentar de novo" que reenvia a mesma mudança',
+  /\[campo\]: \{ erro: true, mudanca \}/.test(hook) && /salvar\(campo, e\.mudanca\)/.test(hook) && /ROTULOS\.tentarDeNovo/.test(campos), true);
+eq('a hora de pegar avisa a família depois de gravar, só se mudou',
+  /await updateChild[\s\S]*?if \(antes !== mudanca\.horaPega\)[\s\S]*?notifyScheduleChanged/.test(servico), true);
+eq('nada de dado de criança no console (só o código do erro)',
+  [hook, adicionar, lista].every((f) => !/console\.(log|error|warn)\([^)]*(crianca|child|nome|name)[^)]*\)/.test(f.replace(/err\?\.code/g, ''))), true);
+eq('a linha abre no lugar (nunca navega)', /aria-expanded=\{aberta\}/.test(linha) && !/navigate\(/.test(linha), true);
+eq('com contrato, a mensalidade não se edita na linha (reajuste é pela ficha)', /contratoFeito \? \(/.test(linha), true);
+
+// "+ Nome" passa pela declaração, uma vez, e cria fora da rota.
+eq('"+ Nome": confere a declaração ANTES de criar',
+  adicionar.indexOf('declaracao.confirmar()') > -1 && adicionar.indexOf('declaracao.confirmar()') < adicionar.indexOf('addChild('), true);
+eq('"+ Nome": só lembra da declaração DEPOIS de salvar', adicionar.indexOf('declaracao.lembrar()') > adicionar.indexOf('addChild('), true);
+eq('"+ Nome": nasce cadastroRapido (fora da rota) e com autorizacaoDeclarada: true',
+  /autorizacaoDeclarada: true,\s*cadastroRapido: true/.test(adicionar), true);
+eq('"+ Nome": a caixa aparece só quando ainda não declarou na sessão',
+  /declaracao\.jaDeclarou \? \(\s*<DeclaracaoJaFeita \/>/.test(adicionar), true);
+
+// A hora proposta: nunca a mesma em todas.
+eq('o cabeçalho grava criança a criança, cada uma com a SUA hora da proposta',
+  /for \(const item of proposta\)[\s\S]*?salvarCampoDaLista\(item\.child, \{ horaPega: hora \}\)/.test(cabecalho), true);
+eq('a hora vem de proporHorasDePegar, pela entrada',
+  /proporHorasDePegar\(\{ criancas: grupo\.criancas, escola: grupo\.escola, entrada: entradaValida \}\)/.test(cabecalho), true);
+const MESMA_HORA = /grupo\.criancas\.(map|forEach)\([^)]*\)[\s\S]{0,200}horaPega: (entrada|entradaValida|h)\b/;
+eq('nenhuma gravação de horaPega igual para o grupo', MESMA_HORA.test(cabecalho), false);
+eq('sonda: o padrão pega o "aplicar a todas"',
+  MESMA_HORA.test('grupo.criancas.forEach((c) => salvar(c, { horaPega: entrada }))'), true);
+eq('a entrada mora na escola (updateEscola)', /updateEscola\(escolaId, \{ horaEntrada/.test(servico), true);
+
+// A caixa "a completar".
+eq('a caixa usa a régua gruposACompletar', /gruposACompletar\(criancas\)/.test(completar), true);
+eq('um campo por vez, com progresso e pular',
+  /progressoDaFila\(pos \+ 1, ids\.length\)/.test(completar) && /ROTULOS\.pularEProxima/.test(completar), true);
+eq('a fila de "sem valor" diz por quê', /SEM_VALOR\.texto/.test(completar), true);
+
+// Tirar da turma: a verdade, sem desfazer.
+eq('tirar usa deactivateChildAndParent e o texto honesto',
+  /deactivateChildAndParent\(\{ childId: tirarDe\.id \}\)/.test(lista) && /textoDeTirar\(\{/.test(lista), true);
+eq('tirar não oferece Desfazer', /Desfazer/.test(lista + linha), false);
+eq('N3: a lista diz quantas estão fora da rota', /textoForaDaRota\(fora\)/.test(lista), true);
+
+bloco('10. O cadastro completo: telefone opcional, herança e declaração da sessão');
+eq('o WhatsApp da mãe é opcional (o formato continua cobrado quando há)',
+  /if \(String\(form\.parentPhone \|\| ''\)\.trim\(\) && !isValidPhone\(form\.parentPhone\)\)/.test(form), true);
+eq('sonda: a exigência antiga não volta', /if \(!isValidPhone\(form\.parentPhone\)\)/.test(form), false);
+eq('"Cadastrar outra criança" herda valor e vencimento',
+  /const cadastrarOutra = \(\) => \{[\s\S]*?monthlyFee: form\.monthlyFee,\s*dueDay: form\.dueDay,/.test(form), true);
+eq('quem já declarou na sessão não é perguntado de novo no formulário',
+  /jaDeclarouNestaSessao\(user\?\.uid\)/.test(form) && /jaDeclarou \? \(\s*<DeclaracaoJaFeita \/>/.test(form), true);
+eq('o formulário lembra a declaração só depois de salvar',
+  form.indexOf('lembrarDaDeclaracao(user?.uid)') > form.indexOf('await addChild(payload)'), true);
 
 console.log(`\n${falhou ? '\x1b[31m' : '\x1b[32m'}${ok} ok, ${falhou} falharam\x1b[0m\n`);
 process.exit(falhou ? 1 : 0);

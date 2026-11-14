@@ -222,9 +222,10 @@ const chamadores = arquivosDe('src')
   .filter((f) => !f.endsWith('services/childrenService.js'))
   .filter((f) => /\baddChild\s*\(/.test(ler(f)))
   .sort();
-igual('exatamente três arquivos chamam addChild (um quarto reprova aqui até ser conferido)',
+igual('exatamente quatro arquivos chamam addChild (um quinto reprova aqui até ser conferido)',
   chamadores,
   [
+    'src/components/children/AdicionarCrianca.jsx',
     'src/components/children/CadastroRapidoDaCrianca.jsx',
     'src/components/children/ChildForm.jsx',
     'src/components/perua/FolhaDaVagaRapida.jsx',
@@ -250,6 +251,7 @@ const sem = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '
 for (const [nome, arq] of [
   ['via 2 (cadastro rápido do primeiro acesso)', 'src/components/children/CadastroRapidoDaCrianca.jsx'],
   ['via 3 (vaga rápida da perua)', 'src/components/perua/FolhaDaVagaRapida.jsx'],
+  ['via 4 (a linha "+ Nome" da Lista da turma)', 'src/components/children/AdicionarCrianca.jsx'],
 ]) {
   const f = sem(ler(arq));
   const iConfirma = f.indexOf('declaracao.confirmar()');

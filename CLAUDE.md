@@ -616,7 +616,9 @@ src/
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
 │   │                  authErrors, verificacao, indicacao, origem,
 │   │                  cadastroDoMotorista
-│   ├── escola/        nomeEscola
+│   ├── escola/        nomeEscola, listaDaTurma (o estado do convite, o que
+│   │                  falta, os grupos por escola e a hora de pegar
+│   │                  PROPOSTA pela entrada — `testar:lista-da-turma`)
 │   ├── suporte/       chamados
 │   └── vitrine/       frentes
 ├── marca/             a personalidade: avatarUrl, greeting, festivities,
@@ -3935,6 +3937,28 @@ fase da trilha. ⚠️ A única exceção ao "em dia" é a Platina nos últimos 
 dias. O `AvisoDoBronze` e o `CartaoPrazoPlatina` SAÍRAM do topo e moram aqui.
 ⚠️ Os 30 últimos dias do teste são do `AvisoDoTrial` (topo de toda tela),
 que desde 04/10/2026 é VERDE CALMO no verde da casa, não âmbar.
+
+**MINHA TURMA É A LISTA DA TURMA (RC2, 14/11/2026)** —
+[TioChildren](src/pages/tio/TioChildren.jsx), régua em
+[listaDaTurma.js](src/dominio/escola/listaDaTurma.js), textos em
+[textosDaLista.js](src/marca/textosDaLista.js), `npm run testar:lista-da-turma`.
+O motorista adiciona ("+ Nome da criança", sempre aberta no fim), completa
+(a linha abre NO LUGAR e grava campo a campo pelo `updateChild`; "salvo ✓" só
+depois de o servidor confirmar), convida (Convidar · Enviado · Entrou ✓, e o
+topo "N de M famílias entraram no app") e tira, sem trocar de tela. A ficha e
+o cadastro completo continuam para o que é fundo.
+⚠️ A criança do "+ Nome" nasce `cadastroRapido: true` — FORA da rota até ter
+rua e hora de pegar —, e a marca cai no MESMO write que a completa
+(`camposAoSalvar`).
+⚠️ A hora de pegar do grupo é PROPOSTA pela entrada da escola
+(`schools.horaEntrada`), uma por casa, nunca a mesma para todas: `horaPega` é a
+hora na PORTA e mudar avisa a família.
+⚠️ "Tirar da turma" não tem Desfazer: `deactivateChildAndParent` desvincula a
+família, zera o aceite e apaga a foto, e não existe reativar. "Pausar" é RC3.
+⚠️ O WhatsApp da mãe ficou OPCIONAL no cadastro. Sem ele o convite abre a
+escolha de contato; o custo é o irmão automático (`vincularIrmao` só roda na
+CRIAÇÃO da criança) e o pedido de acesso, que só acham a família quando o
+número existe.
 
 **O Início do motorista tem um ÍNDICE, não um bloco de cadastro.**
 [MeuTransporteSheet](src/components/tio/MeuTransporteSheet.jsx) — turma,

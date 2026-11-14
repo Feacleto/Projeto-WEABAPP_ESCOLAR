@@ -103,12 +103,16 @@ checar('o Início do tio não tem mais a linha Comunidade (está no menu)', fals
 // ── 4b. Minha turma é para gerenciar ─────────────────────────────────
 bloco('4b. Minha turma é para gerenciar, não para acompanhar a rota');
 const turma = semComentario(ler('src/pages/tio/TioChildren.jsx'));
+const linhaDaTurma = semComentario(ler('src/components/children/LinhaDaTurma.jsx'));
 checar('a turma não mostra mais o status da rota (ChildCard)', false, /<ChildCard/.test(turma));
-checar('cada criança tem o "···" das ações', true, /aria-label=\{`O que fazer com/.test(turma));
-checar('a folha tem mandar recado, abrir a ficha e desativar', true,
-  /Mandar recado/.test(turma) && /Abrir a ficha/.test(turma) && /Desativar criança/.test(turma));
-checar('passar para outro tio é a mesma peça da ficha (decide quando aparece)', true, /<PassarParaOutroTio child=\{child\} \/>/.test(turma));
-checar('cadastrar criança mora na barra colada no menu', true, /<BarraDaAcao>[\s\S]*Cadastrar criança[\s\S]*<\/BarraDaAcao>/.test(turma));
+// RC2 (Lista da turma): a linha abre NO LUGAR, e as ações moram nela — era um
+// "···" que abria uma folha por cima.
+checar('cada criança abre no lugar (acordeão)', true, /aria-expanded=\{aberta\}/.test(linhaDaTurma));
+checar('a linha aberta tem abrir a ficha, mandar recado e tirar da turma', true,
+  /ROTULOS\.abrirFicha/.test(linhaDaTurma) && /ROTULOS\.mandarRecado/.test(linhaDaTurma) && /ROTULOS\.tirarDaTurma/.test(linhaDaTurma));
+checar('passar para outro tio é a mesma peça da ficha (decide quando aparece)', true, /<PassarParaOutroTio child=\{child\} \/>/.test(linhaDaTurma));
+checar('adicionar criança mora no fim da lista, sem trocar de tela', true, /<AdicionarCrianca\b/.test(turma));
+checar('o cadastro completo continua a um toque', true, /navigate\('\/tio\/children\/new'\)/.test(turma));
 
 // ── 5. A saudação ───────────────────────────────────────────────────────
 bloco('5. O nome curto da saudação');
