@@ -143,7 +143,11 @@ export default function PaiLayout() {
         *
         * O lado sai do índice: 0 é o Início (mora à esquerda), e Novidades e
         * Mensalidade entram pela direita. Quem não é aba entra sem direção — inventar
-        * um lado ensinaria uma geografia que não existe. */}
+        * um lado ensinaria uma geografia que não existe.
+        *
+        * ⚠️ A animação preenche `backwards`, nunca `both`: preenchida para a
+        * frente, ela mantém este `div` como referência de todo `fixed` lá
+        * dentro e os painéis abrem no fim da página (ver o TioLayout). */}
       <div key={abaAtiva} className={entradaDaTela} >
         <Outlet context={{ openTutorial }} />
       </div>

@@ -18,7 +18,7 @@
   100% { scale: 1; }
 }
 .rota-estala {
-  animation: rota-estala var(--dur-festa) var(--curva-mola) both;
+  animation: rota-estala var(--dur-festa) var(--curva-mola) backwards;
 }
 
 /* O cartão da parada atual entra freando — dez pixels, não uma tela: quem lê
@@ -28,7 +28,7 @@
   to { opacity: 1; transform: none; }
 }
 .rota-entra {
-  animation: rota-entra var(--dur-entrada) var(--curva-freio) both;
+  animation: rota-entra var(--dur-entrada) var(--curva-freio) backwards;
 }
 
 /* O ponto do "ROTA ATIVA". É a única coisa que repete na tela, e é a exceção

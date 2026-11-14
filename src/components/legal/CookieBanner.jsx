@@ -75,8 +75,11 @@ export default function CookieBanner() {
  *     tela, porque o principal da tela é o que a pessoa veio fazer.
  *  2. Uma frase só, e o "Saiba mais" leva o resto.
  *  3. Enquanto ele está aberto, a página ganha um espaço do tamanho dele no
- *     fim (`padding-bottom` no body): o que estiver embaixo dá para rolar até
- *     acima do aviso, em vez de ficar escondido atrás dele.
+ *     fim (a variável `--reserva-do-aviso`, que vira um bloco no fim do
+ *     `#root`): o que estiver embaixo dá para rolar até acima do aviso, em
+ *     vez de ficar escondido atrás dele. A primeira versão disto usava
+ *     `padding-bottom` no body e não fazia nada em página longa — ver o
+ *     efeito abaixo.
  */
 function CaixaDeCookies({ showCustom, setShowCustom, analytics, setAnalytics, onAcceptAll, onEssentialsOnly, onSaveCustom }) {
   const ref = useRef(null);
@@ -84,16 +87,24 @@ function CaixaDeCookies({ showCustom, setShowCustom, analytics, setAnalytics, on
   useEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
-    const antes = document.body.style.paddingBottom;
+    // ⚠️ A RESERVA É UMA VARIÁVEL LIDA PELO `#root::after` (index.css), e NÃO
+    // `padding-bottom` no body (11/2026). Era padding no body, e ele nunca
+    // reservou nada numa página LONGA: `body` e `#root` têm `height: 100%`,
+    // o conteúdo que passa disso transborda a caixa, e o padding do pai não
+    // entra no transbordo (medido no navegador: scrollHeight 1200 com ou sem
+    // 200px de padding). Foi assim que o aviso seguiu cobrindo "Criar minha
+    // conta e entrar" mesmo com a reserva prometida na decisão 3 acima. Um
+    // bloco em fluxo no fim do `#root` entra no transbordo e dá a rolagem.
+    const raiz = document.documentElement;
     const ajustar = () => {
-      document.body.style.paddingBottom = `${el.offsetHeight + 12}px`;
+      raiz.style.setProperty('--reserva-do-aviso', `${el.offsetHeight + 12}px`);
     };
     ajustar();
     const obs = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(ajustar) : null;
     obs?.observe(el);
     return () => {
       obs?.disconnect();
-      document.body.style.paddingBottom = antes;
+      raiz.style.removeProperty('--reserva-do-aviso');
     };
   }, []);
 
