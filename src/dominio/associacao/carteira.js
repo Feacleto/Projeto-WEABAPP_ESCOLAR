@@ -39,7 +39,7 @@ import { diasRestantes } from './trial.js';
  *
  *   'bloqueado'   a conta parou: teste vencido sem contrato, ou atraso
  *   'contratado'  escolheu um plano e está operando
- *   'em_teste'    rodou a primeira rota e o relógio está correndo
+ *   'em_teste'    rodou ao menos uma rota (`trialInicio` ou `ultimaRota`)
  *   'nao_comecou' criou a conta e ainda não rodou rota nenhuma
  *
  * A ORDEM É PARTE DA REGRA. `bloqueado` vem primeiro porque quem contratou e
@@ -64,8 +64,33 @@ export function degrauDo(parceiro, agora) {
 
   if (!ativa) return 'bloqueado';
   if (planoValido(parceiro?.plano)) return 'contratado';
-  if (parceiro?.trialInicio) return 'em_teste';
+  if (jaRodou(parceiro)) return 'em_teste';
   return 'nao_comecou';
+}
+
+/**
+ * ELE JÁ RODOU ALGUMA ROTA? — `trialInicio` OU `ultimaRota`.
+ *
+ * ⚠️ SÓ `trialInicio` DIZIA "NUNCA RODOU" PARA QUEM RODA TODO DIA. Com a
+ * cobrança da plataforma desligada (o estado de todo o período de teste), o
+ * servidor NÃO grava `trialInicio` (`relogioDoTeste.js`) — então todo
+ * motorista ficava `nao_comecou`, e a tela do dono e a fila escreviam "não
+ * rodou" sobre quem rodava de segunda a sexta. Fila que mente deixa de ser lida.
+ *
+ * `ultimaRota` é gravada pelo PRÓPRIO motorista a cada rota
+ * (`trialService.registrarRota`), com a cobrança ligada ou não, e é a mesma
+ * evidência que `crmDoDono`, `retratoDaBase` e `vendasDoPainel` já usam.
+ *
+ * ⚠️ É SÓ O RÓTULO DA CARTEIRA. Quem decide se o app abre continua sendo
+ * `estadoDaConta`, que lê `trialInicio` e nada mais — um sinal que o cliente
+ * escreve não pode mexer em acesso nem em cobrança.
+ *
+ * Consequência a conhecer: `em_teste` agora pode ter `trialInicio` ausente.
+ * Quem calcula dias restantes já protege com `trialInicio ?` e mostra "teste"
+ * sem número — nunca inventa.
+ */
+export function jaRodou(parceiro) {
+  return Boolean(parceiro?.trialInicio || parceiro?.ultimaRota);
 }
 
 /**
