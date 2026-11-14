@@ -8,6 +8,47 @@ Projeto: `alobuzinou-be81f` · Região das functions: `southamerica-east1`
 
 ---
 
+## ⚠️ De ONDE se faz o deploy — e só de lá
+
+**Só de um checkout da branch de produção (`origin/webapp-alobuzinou`), que hoje
+é a pasta `restaura-prod`. Nunca da pasta principal do repositório
+(`WebApp-oficial-v1`).**
+
+Em 30/10/2026 a pasta principal estava ~170 commits atrás da produção. O deploy
+dela por cima do site tirou do ar o login novo, os níveis, a senha do Financeiro
+e a Comunidade — e, pior, **reabre furos de rules que a produção já fechou**:
+`firestore:rules` publicado de um checkout velho SOBRESCREVE as regras do
+console, sem aviso e sem diff. Em 14/11/2026 eram 198 commits de diferença.
+
+**Antes de qualquer `firebase deploy` (as três linhas são o portão):**
+
+```powershell
+# 1. Em que branch e commit estou?  Tem que ser a de produção.
+git branch --show-current ; git log -1 --format='%h %ad %s' --date=short
+
+# 2. Estou atrás da produção?  A saída TEM que ser vazia.
+git fetch --all
+git log --oneline HEAD..origin/webapp-alobuzinou
+
+# 3. O que está no ar bate com o que vou subir?  Anote este hash: é o seu
+#    ponto de volta se algo der errado (ver "Voltar atrás", mais abaixo).
+curl -s https://alobuzinou.com/ | Select-String -Pattern 'index-[^"]*\.js' -AllMatches |
+  ForEach-Object { $_.Matches.Value }
+```
+
+Se o passo 2 listar commits, **pare**: o que você ia publicar é mais antigo que o
+que está no ar. Traga a branch para a frente (ou troque de pasta) e recomece.
+Branch de trabalho (`feat/...`) só vai para produção depois de entrar em
+`webapp-alobuzinou` — o deploy sai de lá, não da branch da funcionalidade.
+
+⚠️ **O `.env` de produção só existe na pasta de produção.** Um worktree novo não
+tem `.env` (e não deve copiar o da produção para rodar teste: ele aponta para o
+Firebase de verdade). Sem ele o build de produção aborta de propósito — falta de
+variável do Firebase e, desde a Onda 1 da Operação, falta de `VITE_MAPTILER_KEY`
+(sem ela o mapa voltaria em silêncio para o servidor doado do OpenStreetMap).
+
+---
+
 ## Antes de tudo: dois cliques que só você pode dar
 
 ### 1. Plano Blaze (obrigatório, não tem contorno)
@@ -407,9 +448,14 @@ Deploy verde não é sistema funcionando. As 16 functions apareciam como
 respondia**. O que revelou foi o Logs Explorer com `severity>=ERROR`, aberto
 por outro motivo.
 
-Por isso o **alerta de erro por log** (a seção do console mais abaixo) não é
-capricho: cinco funções agendadas rodam sem plateia, e o sintoma de uma delas
-falhando é a fatura que não chegou, descoberta um mês depois. **Depois de
+Por isso o **alerta de erro por log** não é capricho: as funções agendadas
+rodam sem plateia, e o sintoma de uma delas falhando é a fatura que não chegou,
+descoberta um mês depois. ⚠️ **ESTE ARQUIVO PROMETEU UMA SEÇÃO DE CONSOLE "MAIS
+ABAIXO" PARA ESSE ALERTA, E ELA NUNCA FOI ESCRITA** — descoberto em 14/11/2026,
+quando se foi procurá-la. O passo a passo está em
+[passo-a-passo-do-console.md](passo-a-passo-do-console.md), e **enquanto o dono
+não o executar, o alerta NÃO existe**: o único alerta ligado é o de orçamento,
+que avisa de custo e não de falha. **Depois de
 qualquer deploy em projeto novo, chame uma callable pública com `curl` antes
 de dar por pronto:**
 
@@ -544,8 +590,15 @@ app?*. Os `maxInstances` das functions limitam o dano de quem passa; o App
 Check é quem impede de passar.
 
 **A ordem importa e não é opcional:** registre o app no console
-(App Check → reCAPTCHA v3 para web) ANTES de ligar `enforceAppCheck` em
-qualquer function. Ligado antes do registro, ele derruba o app inteiro.
+(App Check → **reCAPTCHA Enterprise** para web) ANTES de ligar `enforceAppCheck`
+em qualquer function. Ligado antes do registro, ele derruba o app inteiro.
+
+⚠️ **É Enterprise, e não v3.** Esta linha dizia "reCAPTCHA v3" enquanto
+`src/firebase/config.js` usa `ReCaptchaEnterpriseProvider` — são produtos
+diferentes, com chaves diferentes, e uma chave v3 colada em
+`VITE_APPCHECK_SITE_KEY` não gera token válido: com a imposição ligada, o app
+real seria recusado. O passo a passo da chave está em
+[passo-a-passo-do-console.md](passo-a-passo-do-console.md).
 
 ## O e-mail de cobrança: domínio próprio e custo
 
@@ -602,6 +655,85 @@ callables públicas. Por isso elas têm `maxInstances` apertado — ver
   ⚠️ Esta linha dizia "hoje `superAdmin` é campo em documento" — e o mesmo
   arquivo, 400 linhas acima, já diz que `superAdmin` não abre mais nada
   (saiu em 06/09/2026). O gate é o PAPEL.
+
+---
+
+## Voltar atrás (rollback) — da peça mais barata para a mais cara
+
+**Regra de ouro: desfaça na ordem INVERSA do deploy** (hosting → rules →
+functions), e desfaça **as peças que subiram juntas, juntas**. Rules que proíbem
+algo que o cliente velho faz exigem functions e hosting no mesmo minuto na ida
+(ver "RODADA DE SEGURANÇA" acima) — e exigem a mesma coisa na volta. Voltar só o
+hosting para um app que as rules novas já recusam troca um problema por outro.
+
+**Antes de subir, anote três coisas** (levam dois minutos e são o que torna a
+volta possível): o hash do bundle no ar (portão 3, acima), o commit publicado
+(`git log -1`) e a marca da versão (`npm run versao:ver`).
+
+### 1. Hosting (o site) — um clique, sem build
+
+> Console → **Hosting** → tabela **Release history** → passe o mouse na versão
+> anterior → ⋮ → **Roll back**.
+
+Cria uma publicação nova que serve o MESMO conteúdo da anterior (os dois
+registros mostram o mesmo identificador de versão). Vale para o canal `live`;
+preview channel não tem rollback. Confira com o portão 3: o hash do bundle tem
+que ser o anotado. Os dois sites (`app` e `landing`) têm histórico próprio —
+volte o que quebrou. *(Fonte: Firebase Hosting, "Manage live & preview channels,
+releases, and versions", consultada em 14/11/2026. Não encontrei comando de CLI
+equivalente na documentação; use o console.)*
+
+Se o histórico não alcança a versão (releases retidas são configuráveis por
+canal): faça checkout da marca (`git worktree add ..\rollback v1.12`), copie o
+`.env` de produção para lá, `npm ci --legacy-peer-deps`, `npm run build` e
+`firebase deploy --only hosting:app`. Mais lento — só como segunda opção.
+
+### 2. Rules do Firestore — pelo histórico do console
+
+> Console → **Firestore Database** → aba **Rules** → linha do tempo das versões
+> → escolha a anterior → **clonar/restaurar** → **Publish**.
+
+*(Fonte: Firebase, "Manage and deploy Firebase Security Rules", 14/11/2026. A
+documentação diz que o histórico com restauração existe para o Firestore.)*
+
+⚠️ **As rules do Storage NÃO têm essa volta no console.** Para elas e para
+qualquer caso em que o console não ajude: `git checkout <commit-anterior> --
+firestore.rules storage.rules` e `firebase deploy --only firestore:rules,storage`
+— **a partir do checkout de produção**, nunca da pasta velha (ver o topo). E
+lembre: o deploy pelo CLI SOBRESCREVE o que está no console.
+
+### 3. Functions — não há "desfazer", há "subir de novo o commit bom"
+
+```powershell
+git checkout <commit-anterior> -- functions
+.\deploy.ps1            # confere a lista de exports antes de gastar o deploy
+```
+
+Volta tudo o que mudou em `functions/`; é o caminho confiável, e leva alguns
+minutos. **Alternativa mais rápida para uma function HTTP/callable com defeito**
+(cada function v2 é um serviço do Cloud Run, com revisões guardadas):
+
+```powershell
+gcloud run services update-traffic <nome-da-function-em-minusculas> `
+  --region southamerica-east1 --to-revisions <revisao-anterior>=100
+```
+
+*(Fonte: Cloud Run, "Rollbacks, gradual rollouts, and traffic migration",
+14/11/2026. ⚠️ **NÃO TESTADO NESTE PROJETO**: o nome do serviço e a
+revisão se acham em Cloud Run → serviço → Revision history; além disso, o
+próximo `firebase deploy` passa por cima do que você fixou, então depois do
+alívio imediato reponha o commit bom com `deploy.ps1`.)*
+
+### 4. O que NÃO volta com nenhum dos passos acima
+
+- **Dados.** Fatura emitida, notificação enviada, documento apagado por uma
+  varredura: nenhum rollback de código desfaz. A recuperação de dados é por
+  PITR (7 dias) e pelos backups agendados — ver
+  [passo-a-passo-do-console.md](passo-a-passo-do-console.md). **Nada no
+  repositório liga nenhum dos dois** (são ajustes de console) — confira lá antes
+  de contar com eles.
+- **Índices do Firestore.** Não se "voltam"; um índice a mais não atrapalha.
+- **Push já enviado.** Não há como recolher.
 
 ---
 
