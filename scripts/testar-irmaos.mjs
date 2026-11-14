@@ -362,6 +362,16 @@ for (const [f, t] of comCallable) {
   const comAppCheck = (t.match(/onCall\(\s*\{\s*\.\.\.LIMITES\.APP_CHECK/g) || []).length;
   checar(`${f}: toda onCall espalha LIMITES.APP_CHECK`, chamadas, comAppCheck);
 }
+// O App Check vale para TODA callable, inclusive as que ficam fora da
+// varredura de ids acima: `fecharMesAgora` (fechamento.js) ficou sem ele, e
+// ligar `EXIGIR_APP_CHECK` a deixaria de fora sem ninguém perceber.
+for (const f of readdirSync(dirLib).filter((x) => x.endsWith('.js') && FORA_DA_VARREDURA.has(x))) {
+  const t = readFileSync(new URL(f, dirLib), 'utf8');
+  const chamadas = (t.match(/\bonCall\(/g) || []).length;
+  if (!chamadas) continue;
+  const comAppCheck = (t.match(/onCall\(\s*\{\s*\.\.\.LIMITES\.APP_CHECK/g) || []).length;
+  checar(`${f}: toda onCall espalha LIMITES.APP_CHECK (fora da varredura de ids)`, chamadas, comAppCheck);
+}
 const acompTxt = readFileSync(new URL('../functions/lib/acompanhamento.js', import.meta.url), 'utf8');
 const lerTokenTxt = acompTxt.slice(acompTxt.indexOf('function lerToken'), acompTxt.indexOf('function makeGerarAcessoDoDia'));
 checar('o token público do acompanhamento confere o childId com idValido', true,
