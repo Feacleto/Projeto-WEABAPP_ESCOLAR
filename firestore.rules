@@ -1822,11 +1822,14 @@ service cloud.firestore {
         // cliente, um motorista escreveria uma "fatura" com texto dele para a
         // família — phishing com a cara da plataforma.
         && !(request.resource.data.type in ['fatura_vence'])
-        // ⚠️ `push` É DO SERVIDOR (14/11/2026). É o registro do envio
-        // ({estado, em, ok, falhou, aparelhos}), gravado só pelo Admin SDK, e
-        // é ele que impede o REENVIO do aviso. Criado pelo cliente já com o
-        // campo, o aviso nunca tocaria. Alterar depois já é recusado pelo
-        // `hasOnly(['readAt'])` do update logo abaixo.
+        // ⚠️ `push` SERÁ DO SERVIDOR (14/11/2026) — HOJE ESTA CLÁUSULA É
+        // INERTE. É o contrato antecipado para o retry do envio, que vem numa
+        // versão seguinte: lá `push` ({estado, em, ok, falhou, aparelhos}) é
+        // o registro do envio, gravado só pelo Admin SDK, e é ele que vai
+        // impedir o reenvio. O `push.js` desta base NÃO grava nem lê o campo.
+        // Fechar a porta antes de o campo ganhar sentido evita que o cliente
+        // já tenha documentos com `push` forjado quando o retry chegar.
+        // Alterar depois já é recusado pelo `hasOnly(['readAt'])` do update.
         && !request.resource.data.keys().hasAny(['push'])
         && (
           // O motorista avisa o responsável DELE. Os dois campos: o

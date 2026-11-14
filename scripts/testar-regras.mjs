@@ -421,11 +421,13 @@ async function main() {
       userId: S(pai1.uid), type: S('info'), title: S('Pague neste PIX'),
       createdAt: { timestampValue: '2026-08-25T09:00:00Z' },
     }));
-  // ⚠️ `push` É DO SERVIDOR (14/11/2026). `notifications/{id}.push` é o
-  // registro do envio ({estado, em, ok, falhou, aparelhos}) que o Admin SDK
-  // grava e que IMPEDE O REENVIO do aviso. Criado pelo cliente já com `push`,
-  // o aviso nunca tocaria; alterado depois, tocaria de novo. Sonda positiva:
-  // o mesmo aviso sem `push` passa, e marcar como lida continua passando.
+  // ⚠️ `push` SERÁ DO SERVIDOR (14/11/2026). É o contrato antecipado para o
+  // retry do envio (versão seguinte), em que `notifications/{id}.push` vira
+  // o registro gravado pelo Admin SDK que impede o reenvio. O `push.js`
+  // desta base ainda não grava nem lê o campo: a cláusula é inerte hoje, e
+  // estes casos garantem que a porta já esteja fechada quando ele chegar.
+  // Sonda positiva: o mesmo aviso sem `push` passa, e marcar como lida
+  // continua passando.
   const avisoDoTio = (extra = {}) => ({
     userId: S(pai1.uid), type: S('info'), title: S('Chegamos'),
     createdAt: { timestampValue: '2026-08-25T09:00:00Z' }, ...extra,
