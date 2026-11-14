@@ -354,6 +354,26 @@ checar('a CSP do app continua report-only (sem endpoint, nao impor ainda)', true
   Boolean(cabecalho('Content-Security-Policy-Report-Only')) &&
   !cabecalho('Content-Security-Policy'));
 
+// ⚠️ TODO SERVIDOR DE FORA QUE O APP CHAMA TEM QUE ESTAR NO `connect-src`.
+// Hoje a CSP so REPORTA, entao um endereco faltando nao quebra nada — e e
+// justamente por isso que ele passa despercebido. O `viacep.com.br` ficou de
+// fora dela ate 14/11/2026, com o CEP e a busca de rua funcionando: no dia em
+// que a CSP fosse imposta, os dois morreriam sem erro na tela. A lista de
+// hosts sai do CODIGO (locationService + ruas), nao de uma lista escrita aqui.
+const connectSrc = (cabecalho('Content-Security-Policy-Report-Only') || '')
+  .split(';').map((x) => x.trim()).find((x) => x.startsWith('connect-src')) || '';
+const hostsChamados = [...new Set(
+  [ler('src/services/locationService.js'), ler('src/compartilhado/ruas.js')]
+    .flatMap((f) => f.split('\n'))
+    .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+    .flatMap((l) => l.match(/https:\/\/[a-z0-9.-]+/g) || [])
+)];
+checar('o codigo chama de fato algum servidor de fora (a sonda nao e vazia)', true,
+  hostsChamados.length >= 2);
+for (const h of hostsChamados) {
+  checar(`o connect-src libera ${h}`, true, connectSrc.includes(h));
+}
+
 // O Analytics recebia a URL inteira — convite, token de acompanhar e o
 // `oobCode` do link de senha. `caminhoSemSegredo` e o que sai.
 checar('o convite vira molde', '/convite/:codigo', caminhoSemSegredo('/convite/TNAB23CD'));

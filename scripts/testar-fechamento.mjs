@@ -212,8 +212,59 @@ async function main() {
 
   const r5 = await fecharMes(db, { mes: MES, agora: AGORA });
   checar('um deu erro', 1, r5.erros);
+  // "Ainda não escolheu um plano" é o caso comum e ESPERADO: conta como erro
+  // da varredura, mas não sobe para `error` (que acordaria o alerta de log
+  // todo dia 1 e ensinaria a ignorá-lo).
+  checar('e foi o caso esperado, não um erro inesperado', 0, r5.inesperados);
   checar('e o seguinte fechou assim mesmo', 1, r5.fechadas);
   checar('a fatura de quem estava em ordem existe', 59, (await fatura('zzz_ok', MES)).total);
+
+  bloco('5b. Fatura que NÃO saiu por motivo inesperado sobe como ERROR');
+  // O alerta de log (`severity>=ERROR`) é a única coisa que avisa o dono de
+  // que uma fatura deixou de nascer. O caso comum (sem plano) não pode
+  // acordá-lo todo dia 1; o resto precisa.
+  await limpar();
+  await semear('aaa_escrita_falha', { plano: 'mensal', criancasAtivas: 5, trialInicio: DIAS(-400) });
+  await semear('zzz_ok', { plano: 'mensal', criancasAtivas: 10, trialInicio: DIAS(-400) });
+  // A falha é de ESCRITA (o lote da fatura de um parceiro específico lança),
+  // que é o que de fato acontece em produção: rede, cota, documento recusado.
+  // Dados malformados são absorvidos pela régua e não servem de sonda.
+  const dbComFalhaDeEscrita = new Proxy(db, {
+    get(alvo, prop) {
+      if (prop === 'batch') {
+        return () => {
+          const lote = alvo.batch();
+          const setOriginal = lote.set.bind(lote);
+          lote.set = (ref, ...resto) => {
+            if (String(ref.path).includes('aaa_escrita_falha')) {
+              throw new Error('falha de escrita injetada pelo teste');
+            }
+            return setOriginal(ref, ...resto);
+          };
+          return lote;
+        };
+      }
+      const v = alvo[prop];
+      return typeof v === 'function' ? v.bind(alvo) : v;
+    },
+  });
+  const { logger: loggerDaLib } = createRequire(new URL('../functions/lib/x.js', import.meta.url))(
+    'firebase-functions/v2'
+  );
+  const errosLogados = [];
+  const erroOriginal = loggerDaLib.error;
+  loggerDaLib.error = (...a) => errosLogados.push(a);
+  let r5b;
+  try {
+    r5b = await fecharMes(dbComFalhaDeEscrita, { mes: MES, agora: AGORA });
+  } finally {
+    loggerDaLib.error = erroOriginal;
+  }
+  checar('um não fechou', 1, r5b.erros);
+  checar('e foi inesperado', 1, r5b.inesperados);
+  checar('o seguinte fechou assim mesmo', 1, r5b.fechadas);
+  // Uma linha do parceiro + o resumo do mês.
+  checar('subiram dois ERROR (o parceiro e o resumo)', 2, errosLogados.length);
 
   // ═════════════════════════════════════════════════════════════════════════
   // ⚠️ O BLOCO QUE JUSTIFICA O ARQUIVO INTEIRO.

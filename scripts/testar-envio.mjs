@@ -37,7 +37,15 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const admin = require('../functions/node_modules/firebase-admin/lib/index.js');
 const { enviarAvisos } = require('../functions/lib/enviarAvisos.js');
-const { enviarAvisosDoDia } = require('../functions/lib/enviarAvisosDoDia.js');
+const { enviarAvisosDoDia, VARREDURAS } = require('../functions/lib/enviarAvisosDoDia.js');
+// O MESMO objeto que a lib usa (as duas resolvem `firebase-functions` em
+// `functions/node_modules`), e é por isso que trocar `logger.error` aqui é
+// visto lá dentro.
+// Resolvido A PARTIR de `functions/lib`, como a lib faz: o caminho de arquivo
+// direto não passa pelo `exports` do pacote.
+const { logger } = createRequire(new URL('../functions/lib/x.js', import.meta.url))(
+  'firebase-functions/v2'
+);
 
 const PID = 'alobuzinou-be81f';
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
@@ -267,6 +275,68 @@ async function main() {
   const r9 = await enviarAvisos(db, { agora: AGORA });
   checar('quem estava em ordem recebeu', 1, r9.enviados);
   checar('e a caixa dele tem a peça', ['comercial_teste_comecou'], await tiposDe('zzz_ok'));
+
+  bloco('10. Uma varredura que lança não leva as outras quatro junto');
+  // Eram cinco `await` seguidos: a primeira que lançasse abortava a função e as
+  // outras quatro não rodavam naquele dia — sem retentativa e sem alerta. Aqui
+  // a PRIMEIRA é trocada por uma que lança e as outras quatro seguem sendo as
+  // REAIS, embrulhadas só para contar que foram chamadas.
+  await limpar();
+  const NOMES = Object.keys(VARREDURAS);
+  checar('são cinco varreduras', 5, NOMES.length);
+
+  const chamadas = [];
+  const comEspiao = (nome) => async (...args) => {
+    chamadas.push(nome);
+    return VARREDURAS[nome](...args);
+  };
+  const errosLogados = [];
+  const loggerErrorOriginal = logger.error;
+  logger.error = (...args) => errosLogados.push(args);
+
+  let r10;
+  try {
+    const varreduras = {};
+    for (const nome of NOMES) varreduras[nome] = comEspiao(nome);
+    varreduras[NOMES[0]] = async () => {
+      chamadas.push(NOMES[0]);
+      throw new Error('falha injetada pelo teste');
+    };
+    r10 = await enviarAvisosDoDia(db, { agora: AS_NOVE, varreduras });
+  } finally {
+    logger.error = loggerErrorOriginal;
+  }
+
+  checar('a função terminou, sem lançar', true, Boolean(r10));
+  checar('as cinco foram chamadas, na ordem de sempre', NOMES, chamadas);
+  checar('a que falhou conta zero', 0, r10[NOMES[0]]);
+  checar(
+    'as quatro seguintes devolveram número',
+    [true, true, true, true],
+    NOMES.slice(1).map((n) => typeof r10[n] === 'number')
+  );
+  checar('e o resultado nomeia quem falhou', [NOMES[0]], r10.falhas);
+  checar('a falha subiu como ERROR (é o que o alerta de log enxerga)', 1, errosLogados.length);
+
+  // O avesso, para a primeira não ter passado por acidente: sem falha, o
+  // resultado tem a forma de sempre, sem a chave `falhas`.
+  await limpar();
+  const r10b = await enviarAvisosDoDia(db, { agora: AS_NOVE });
+  checar('sem falha, não há chave `falhas`', false, 'falhas' in r10b);
+  checar('e as cinco chaves de sempre existem', NOMES, Object.keys(r10b));
+
+  // A falha na ÚLTIMA também não pode esconder o que as anteriores fizeram.
+  const r10c = await enviarAvisosDoDia(db, {
+    agora: AS_NOVE,
+    varreduras: {
+      ...VARREDURAS,
+      [NOMES[4]]: async () => {
+        throw new Error('falha injetada na última');
+      },
+    },
+  });
+  checar('falha na última: ela é nomeada', [NOMES[4]], r10c.falhas);
+  checar('e as anteriores seguem com número', true, typeof r10c[NOMES[3]] === 'number');
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);

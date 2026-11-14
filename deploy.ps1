@@ -207,6 +207,23 @@ if ($branch -ne 'webapp-alobuzinou') {
   if ($resp -ne 's') { Parar 'cancelado por causa da branch' }
 }
 
+# ── Guarda: NÃO ESTAR ATRÁS DA PRODUÇÃO ──────────────────────────────────
+# A guarda de branch acima deixa passar com um "s", e foi exatamente o que
+# aconteceu em 30/10/2026: o deploy saiu da pasta principal, ~170 commits atrás
+# do que estava no ar, e tirou login, níveis e Comunidade do site — além de
+# publicar rules velhas por cima das novas. Perguntar não impediu; conferir
+# impede. Este guarda não tem "s": estar atrás é parar.
+git fetch origin webapp-alobuzinou --quiet
+if ($LASTEXITCODE -ne 0) {
+  Parar "não consegui buscar origin/webapp-alobuzinou: sem isso não dá para saber se este checkout está atrás da produção"
+}
+$atras = [int](git rev-list --count HEAD..origin/webapp-alobuzinou)
+if ($atras -gt 0) {
+  Write-Host "Este checkout está $atras commit(s) ATRÁS de origin/webapp-alobuzinou:" -ForegroundColor Red
+  git log --oneline -n 5 HEAD..origin/webapp-alobuzinou
+  Parar 'o que você publicaria é mais antigo que o que está no ar. Deploy só do checkout de produção, atualizado (ver docs/deploy.md).'
+}
+
 # ── Guarda: nada sem commit ──────────────────────────────────────────────
 # Deployar com árvore suja publica algo que não existe no histórico: se der
 # problema, não há para onde voltar.
