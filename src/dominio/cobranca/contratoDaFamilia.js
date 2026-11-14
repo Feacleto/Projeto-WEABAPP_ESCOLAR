@@ -160,6 +160,18 @@ export function mudancasEntre(antes, depois) {
 }
 
 /**
+ * O NÚMERO DA PRÓXIMA VERSÃO: o maior que já existe, mais um — contando as
+ * retiradas e as substituídas, que continuam gravadas. Reusar um número
+ * apagaria a versão de antes (o caminho é `contratos/{numero}`), e as rules
+ * recusam a escrita sobre ela. Era `proximoNumero`, privado do service, e saiu
+ * para cá para a renovação provar que nasce no mesmo caminho
+ * (`npm run testar:renovacao`).
+ */
+export function proximoNumeroDoContrato(contratos) {
+  return (contratos || []).reduce((m, c) => Math.max(m, Number(c?.numero) || 0), 0) + 1;
+}
+
+/**
  * EM QUE PÉ ESTÁ O CONTRATO desta criança — a pergunta que a ficha, a tela do
  * contrato e o portão da família fazem.
  *

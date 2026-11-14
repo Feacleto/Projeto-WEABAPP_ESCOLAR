@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
@@ -17,7 +18,9 @@ import {
   estadoDoContrato,
   mesmoConteudo,
   mudancasEntre,
+  proximoNumeroDoContrato,
 } from '../dominio/cobranca/contratoDaFamilia.js';
+import { pedidoDeRenovacao } from '../dominio/cobranca/renovacaoDoContrato.js';
 
 /**
  * AS VERSÕES DO CONTRATO DE UMA CRIANÇA — `children/{id}/contratos/{numero}`
@@ -95,10 +98,6 @@ function versaoAguardando(contratos) {
   return contratos.find((c) => c.status === 'aguardando') || null;
 }
 
-function proximoNumero(contratos) {
-  return contratos.reduce((m, c) => Math.max(m, Number(c.numero) || 0), 0) + 1;
-}
-
 async function emitir({
   child,
   dados,
@@ -108,7 +107,7 @@ async function emitir({
   novosValores = null,
   naCrianca = {},
 }) {
-  const numero = proximoNumero(contratos);
+  const numero = proximoNumeroDoContrato(contratos);
   const pendente = versaoAguardando(contratos);
   const batch = writeBatch(db);
   batch.set(doc(db, 'children', child.id, 'contratos', String(numero)), {
@@ -222,6 +221,35 @@ export async function retirarMudanca({ child }) {
   });
   batch.update(doc(db, 'children', child.id), { contratoAguardando: null });
   await batch.commit();
+}
+
+/**
+ * RENOVAR O CONTRATO (14/11/2026) — a fila "Renovar contratos".
+ *
+ * ⚠️ NÃO É UM CAMINHO NOVO: é o `salvarCombinado` com a vigência nova. Depois
+ * do aceite, ele emite um ADITIVO (`emitir`, o mesmo `batch.set` em
+ * `children/{id}/contratos/{numero}`), e a vigência da criança — que é o que
+ * `generateMonthlyPayments` lê — só muda quando a família aceita, pela
+ * callable `aceitarContrato` (`valoresDoAditivo`). Antes disso a criança
+ * ganha apenas o ponteiro `contratoAguardando`.
+ *
+ * Só renova quem tem contrato ACEITO e nada esperando
+ * (`pedidoDeRenovacao`): sem aceite, `salvarCombinado` gravaria a vigência
+ * direto na criança, e isso seria estender sem a família. As versões são
+ * lidas UMA vez aqui, e não escutadas: a fila tem uma linha por família, e
+ * uma escuta por linha só para descobrir o próximo número seria leitura
+ * permanente da turma inteira.
+ *
+ * Devolve o que `salvarCombinado` devolve (`'aditivo'` ou `'nada'`).
+ */
+export async function renovarContrato({ child, admin, hoje = new Date() }) {
+  const pedido = pedidoDeRenovacao(child, hoje);
+  if (!pedido) return 'nada';
+  const snap = await getDocs(
+    query(collection(db, 'children', child.id, 'contratos'), orderBy('numero', 'desc'))
+  );
+  const contratos = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return salvarCombinado({ child, admin, contratos, novos: pedido.novos });
 }
 
 /** A família aceita — o servidor grava o aceite e o hash. */

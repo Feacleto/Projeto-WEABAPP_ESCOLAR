@@ -79,6 +79,7 @@ const TioBoletim = lazy(() => import('./pages/tio/TioBoletim'));
 const TioChildStatement = lazy(() => import('./pages/tio/TioChildStatement'));
 const TioExpenses = lazy(() => import('./pages/tio/TioExpenses'));
 const TioTurma = lazy(() => import('./pages/tio/TioTurma'));
+const TioRenovarContratos = lazy(() => import('./pages/tio/TioRenovarContratos'));
 // A CONTA DA AUXILIAR (05/10/2026): o convite, o app dela e a tela do tio.
 const ConviteAuxiliar = lazy(() => import('./pages/ConviteAuxiliar'));
 const AuxLayout = lazy(() => import('./pages/auxiliar/AuxLayout'));
@@ -772,6 +773,8 @@ export default function App() {
         <Route path="finance/boletim" element={<TioBoletim />} />
         <Route path="finance/expenses" element={<TioExpenses />} />
         <Route path="finance/turma" element={<TioTurma />} />
+        {/* RENOVAR CONTRATOS (14/11/2026): a fila N1b, ao lado da turma. */}
+        <Route path="finance/renovar" element={<TioRenovarContratos />} />
         {/* A AUXILIAR (05/10/2026) mudou para baixo de /tio/finance: o
           * pagamento dela põe valores ali, e o caminho já pede a senha. O
           * endereço velho responde para link salvo não cair no vazio. */}

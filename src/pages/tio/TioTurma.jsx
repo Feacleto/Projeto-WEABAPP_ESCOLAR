@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Eye, EyeOff, Plus, Send } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, EyeOff, FileSignature, Plus, Send } from 'lucide-react';
 import Button from '../../components/common/Button';
 import Skeleton from '../../components/common/Skeleton';
 import AppSheet from '../../components/common/AppSheet';
@@ -32,6 +32,8 @@ import {
 } from '../../compartilhado/formatters';
 import { inviteUrl } from '../../dominio/identidade/inviteUrl.js';
 import { linkDoLembreteDoContrato } from '../../marca/lembreteDoContrato.js';
+import { filaDeRenovacao } from '../../dominio/cobranca/renovacaoDoContrato.js';
+import { TITULO as TITULO_DA_RENOVACAO, textoDaPorta } from '../../marca/textosDaRenovacao.js';
 
 /**
  * TURMA E CONTRATOS — /tio/finance/turma (03/10/2026, protótipo aprovado).
@@ -123,6 +125,8 @@ export default function TioTurma() {
     () => ativas.filter((c) => !ESPERA.has(estadoDoContrato(c))).sort(porNome),
     [ativas]
   );
+  // A PORTA DA FILA "Renovar contratos": só aparece quando há o que renovar.
+  const renovacao = useMemo(() => filaDeRenovacao(criancas, new Date()), [criancas]);
   const porMes = ativas.reduce((s, c) => s + (Number(c.monthlyFee) || 0), 0);
   const valor = (v) => (visiveis ? formatCurrency(v) : VALOR_ESCONDIDO);
 
@@ -184,6 +188,20 @@ export default function TioTurma() {
             </p>
           ) : (
             <>
+              {renovacao.total > 0 && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/tio/finance/renovar')}
+                  className="tap flex min-h-14 w-full items-center gap-3 rounded-2xl border-2 border-warningBorder bg-warningSoft p-3.5 text-left"
+                >
+                  <FileSignature size={20} className="shrink-0 text-warningText" aria-hidden="true" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-base font-bold text-warningText">{TITULO_DA_RENOVACAO}</span>
+                    <span className="block text-sm text-warningText">{textoDaPorta(renovacao.total)}</span>
+                  </span>
+                  <ChevronRight size={20} className="shrink-0 text-warningText" aria-hidden="true" />
+                </button>
+              )}
               <PeruaDoMes criancas={criancas} mes={mesAtual} />
               <div className="flex flex-wrap gap-2" role="group" aria-label="Mostrar">
                 {[
