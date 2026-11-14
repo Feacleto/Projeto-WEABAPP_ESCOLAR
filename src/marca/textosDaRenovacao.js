@@ -105,5 +105,26 @@ export function todasAsAfirmacoes() {
     { id: 'nada', ...NADA_PARA_RENOVAR },
     { id: 'enviadoComNome', texto: textoDoEnviado('Ana Clara', '2027-12-31'), sustenta: SUSTENTA_DO_ENVIADO },
     { id: 'enviadoSemNome', texto: textoDoEnviado('', '2027-12-31'), sustenta: SUSTENTA_DO_ENVIADO },
+    { id: 'perguntaComNome', texto: perguntaDeMandar('Ana Clara'), sustenta: SUSTENTA_DA_CONFIRMACAO },
+    { id: 'perguntaSemNome', texto: perguntaDeMandar(''), sustenta: SUSTENTA_DA_CONFIRMACAO },
+    { id: 'consequencia', texto: consequenciaDeMandar('2027-12-31'), sustenta: SUSTENTA_DA_CONFIRMACAO },
   ];
 }
+
+/**
+ * A CONFIRMAÇÃO ANTES DE MANDAR (2ª rodada, 14/11/2026). O aviso chega no
+ * celular da família e NÃO volta — a versão pendente pode ser retirada, o push
+ * não. Regra do projeto para aviso irreversível: confirmar antes, dizendo o que
+ * acontece. O título é a pergunta, a descrição é a consequência, e o botão
+ * repete o verbo (`ConfirmDialog`).
+ */
+export function perguntaDeMandar(nomeDaCrianca) {
+  const n = primeiroNome(nomeDaCrianca);
+  return `Mandar o contrato novo para ${n ? `a família de ${n}` : 'a família'} assinar?`;
+}
+export function consequenciaDeMandar(novoFimISO) {
+  return `O aviso chega no celular dela e não volta. Quando ela assinar, vale até ${dataBR(novoFimISO)}.`;
+}
+export const SUSTENTA_DA_CONFIRMACAO = 'contrato-novo-no-app-da-familia';
+export const BOTAO_MANDAR = 'Mandar';
+export const BOTAO_AGORA_NAO = 'Agora não';

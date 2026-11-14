@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, FileSignature } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Avatar from '../../components/common/Avatar';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 import Skeleton from '../../components/common/Skeleton';
 import Spinner from '../../components/common/Spinner';
 import { useTurmaInteira } from '../../hooks/useTurmaInteira';
@@ -13,6 +14,8 @@ import {
   primeiroMesSemMensalidade,
 } from '../../dominio/cobranca/renovacaoDoContrato.js';
 import {
+  BOTAO_AGORA_NAO,
+  BOTAO_MANDAR,
   COMO_FUNCIONA,
   ESPERANDO,
   NADA_PARA_RENOVAR,
@@ -20,6 +23,8 @@ import {
   SEM_FAMILIA,
   TITULO,
   VER_CONTRATO,
+  consequenciaDeMandar,
+  perguntaDeMandar,
   nomeDaLinha,
   rotuloDoBotao,
   textoDoEnviado,
@@ -46,6 +51,9 @@ export default function TioRenovarContratos() {
   const { profile } = useAuth();
   const { criancas, loading } = useTurmaInteira();
   const [enviando, setEnviando] = useState(null);
+  // O AVISO À FAMÍLIA NÃO VOLTA: o toque na linha só abre a pergunta, e é o
+  // "Mandar" dela que envia. A versão pendente pode ser retirada; o push não.
+  const [confirmando, setConfirmando] = useState(null);
 
   const fila = useMemo(() => filaDeRenovacao(criancas, new Date()), [criancas]);
 
@@ -62,6 +70,7 @@ export default function TioRenovarContratos() {
       );
     } finally {
       setEnviando(null);
+      setConfirmando(null);
     }
   };
 
@@ -108,7 +117,7 @@ export default function TioRenovarContratos() {
                   <button
                     type="button"
                     disabled={!!enviando}
-                    onClick={() => renovar(linha)}
+                    onClick={() => setConfirmando(linha)}
                     className="tap inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-primary bg-card text-base font-bold text-primaryDark disabled:opacity-60"
                   >
                     {enviando === linha.child.id ? (
@@ -148,6 +157,17 @@ export default function TioRenovarContratos() {
           )}
         </div>
       </main>
+
+      <ConfirmDialog
+        open={!!confirmando}
+        title={confirmando ? perguntaDeMandar(confirmando.child.name) : ''}
+        description={confirmando ? consequenciaDeMandar(confirmando.nova?.fim) : ''}
+        confirmLabel={BOTAO_MANDAR}
+        cancelLabel={BOTAO_AGORA_NAO}
+        loading={!!enviando}
+        onConfirm={() => renovar(confirmando)}
+        onCancel={() => setConfirmando(null)}
+      />
     </div>
   );
 }

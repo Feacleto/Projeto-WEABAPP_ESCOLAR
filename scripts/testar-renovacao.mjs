@@ -329,6 +329,31 @@ eq('a tela usa o catálogo', /marca\/textosDaRenovacao\.js/.test(pagina), true);
 const frases = afirmacoes.map((a) => a.texto).concat([textos.TITULO]);
 eq('a tela não repete frase do catálogo à mão', frases.filter((f) => semComentarios(pagina).includes(f)), []);
 
+console.log('\n\x1b[1m7b. O aviso não volta: confirmar ANTES de mandar\x1b[0m');
+const codigo = semComentarios(pagina);
+/** O botão da linha só abre a pergunta; só o "Mandar" do diálogo envia. */
+const confirmaAntes = (fonte) =>
+  /onClick=\{\(\) => setConfirmando\(linha\)\}/.test(fonte) &&
+  !/onClick=\{\(\) => renovar\(/.test(fonte) &&
+  /<ConfirmDialog[\s\S]*?onConfirm=\{\(\) => renovar\(confirmando\)\}[\s\S]*?\/>/.test(fonte) &&
+  [...fonte.matchAll(/\brenovar\(/g)].length === 1 &&
+  [...fonte.matchAll(/renovarContrato\(/g)].length === 1 &&
+  /const renovar = async/.test(fonte);
+eq('o botão da linha abre a confirmação, e só o "Mandar" chama renovar', confirmaAntes(codigo), true);
+eq('MUTAÇÃO: ligar o botão direto a renovar() reprova',
+  confirmaAntes(codigo.replace('onClick={() => setConfirmando(linha)}', 'onClick={() => renovar(linha)}')), false);
+eq('o diálogo usa o componente que já existe', /from '\.\.\/\.\.\/components\/common\/ConfirmDialog'/.test(pagina), true);
+eq('com "Mandar" e "Agora não" do catálogo',
+  [textos.BOTAO_MANDAR, textos.BOTAO_AGORA_NAO, /confirmLabel=\{BOTAO_MANDAR\}/.test(codigo), /cancelLabel=\{BOTAO_AGORA_NAO\}/.test(codigo)],
+  ['Mandar', 'Agora não', true, true]);
+eq('a pergunta com nome', textos.perguntaDeMandar('Ana Clara Souza'), 'Mandar o contrato novo para a família de Ana assinar?');
+eq('sem nome cai para "a família"', [textos.perguntaDeMandar(''), textos.perguntaDeMandar(null)],
+  ['Mandar o contrato novo para a família assinar?', 'Mandar o contrato novo para a família assinar?']);
+eq('a consequência diz que não volta e até quando vale', textos.consequenciaDeMandar('2027-12-31'),
+  'O aviso chega no celular dela e não volta. Quando ela assinar, vale até 31/12/2027.');
+eq('nada de "renovado" na confirmação',
+  reprova(`${textos.perguntaDeMandar('Ana')} ${textos.consequenciaDeMandar('2027-12-31')}`), null);
+
 console.log('\n\x1b[1m8. Sonda positiva: as regras pegam o que devem\x1b[0m');
 eq('"renovado" é reprovado', reprova('Contrato renovado!') !== null, true);
 eq('"garantido" é reprovado', reprova('Janeiro garantido') !== null, true);
