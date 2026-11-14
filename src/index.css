@@ -123,6 +123,19 @@
     overflow-x: clip;
   }
 
+  /* A RESERVA DO AVISO DE COOKIES (11/2026). Enquanto o `CookieBanner` está
+   * aberto ele grava a própria altura em `--reserva-do-aviso`, e este bloco em
+   * FLUXO no fim do `#root` a transforma em rolagem: dá para levar o botão
+   * "Criar minha conta e entrar" até acima do aviso. Tem que ser um filho — o
+   * `padding-bottom` do body não conta: `body` e `#root` são `h-full`, o
+   * conteúdo longo transborda a caixa e o padding do pai fica de fora do
+   * transbordo. Sem aviso aberto a variável não existe e o bloco tem 0px. */
+  #root::after {
+    content: '';
+    display: block;
+    height: var(--reserva-do-aviso, 0px);
+  }
+
   /* AS EXCEÇÕES: as telas que usam o monitor inteiro.
    *
    * O teto de 480px acima é o que dá ao app a coluna de celular centralizada

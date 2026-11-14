@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldCheck, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -67,36 +67,20 @@ export default function TermsAcceptanceGate() {
             onChange={setAcceptedTerms}
             label={
               <>
-                Li e aceito os{' '}
-                <Link
-                  to="/termos"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary font-semibold underline inline-flex items-center gap-0.5"
-                >
-                  Termos de Uso
-                  <ExternalLink size={12} />
-                </Link>
+                Li e aceito os <strong className="font-semibold">Termos de Uso</strong>
               </>
             }
+            leitura={{ to: '/termos', nome: 'os Termos de Uso' }}
           />
           <CheckRow
             checked={acceptedPrivacy}
             onChange={setAcceptedPrivacy}
             label={
               <>
-                Li e aceito a{' '}
-                <Link
-                  to="/privacidade"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary font-semibold underline inline-flex items-center gap-0.5"
-                >
-                  Política de Privacidade
-                  <ExternalLink size={12} />
-                </Link>
+                Li e aceito a <strong className="font-semibold">Política de Privacidade</strong>
               </>
             }
+            leitura={{ to: '/privacidade', nome: 'a Política de Privacidade' }}
           />
         </div>
 
@@ -124,18 +108,49 @@ export default function TermsAcceptanceGate() {
   );
 }
 
-function CheckRow({ checked, onChange, label }) {
+/**
+ * UMA LINHA DO ACEITE: a caixa e a frase marcam, o link só LÊ.
+ *
+ * ⚠️ O LINK NÃO PODE MORAR DENTRO DO `<label>` (11/2026). Estava: a frase
+ * inteira era "Li e aceito os [Termos de Uso]" e o nome do documento era o link,
+ * então quem tocava no meio da frase — onde está o texto, e onde um dedo de
+ * quem tem 40+ cai — abria os Termos em outra aba e NÃO marcava nada. Link
+ * dentro de label não repassa o toque à caixa. Visto no navegador a 360x640:
+ * na linha da Política, a frase quase toda era link.
+ *
+ * Agora são dois alvos separados, cada um com 48px de altura (o piso do app,
+ * acima dos 44px): o `<label>` (caixa + frase, ligado ao campo por `htmlFor`,
+ * e a caixa continua dentro dele para o toque nela também marcar) e, ao lado,
+ * o link "Ler", com ícone, sublinhado e `target="_blank"`. O texto jurídico
+ * não mudou — só quem recebe o toque.
+ */
+function CheckRow({ checked, onChange, label, leitura }) {
+  const id = useId();
   return (
-    // A LINHA INTEIRA É TOCÁVEL, com 48px de altura: a caixa sozinha tinha
-    // 20×20, pequena demais para o dedo de quem tem 40+.
-    <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl px-1 py-1">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="h-6 w-6 shrink-0 accent-primary"
-      />
-      <span className="text-[15px] leading-snug text-text">{label}</span>
-    </label>
+    <div className="flex items-center gap-1">
+      <label
+        htmlFor={id}
+        className="flex min-h-12 min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl px-1 py-1"
+      >
+        <input
+          id={id}
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="h-6 w-6 shrink-0 accent-primary"
+        />
+        <span className="text-[15px] leading-snug text-text">{label}</span>
+      </label>
+      <Link
+        to={leitura.to}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="tap inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center gap-1 rounded-xl px-2 text-sm font-semibold text-primary underline"
+      >
+        Ler
+        <ExternalLink size={14} aria-hidden="true" />
+        <span className="sr-only"> {leitura.nome} (abre em outra aba)</span>
+      </Link>
+    </div>
   );
 }
