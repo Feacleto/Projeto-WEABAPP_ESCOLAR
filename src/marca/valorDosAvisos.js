@@ -16,6 +16,8 @@
  * traz número escrito à mão.
  */
 
+import { ROTA_INICIADA, ROTA_INICIADA_SEM_MAPA } from './valorDoConvite.js';
+
 function primeiroNome(nome) {
   return String(nome || '').trim().split(/\s+/)[0] || '';
 }
@@ -88,6 +90,26 @@ export function textoDoBotaoSemAulaTodas(numeroDeFamilias) {
 export const BOTAO_CONFIRMAR_SEM_AULA = 'Mandar';
 export const BOTAO_VOLTAR_SEM_AULA = 'Voltar';
 
+/**
+ * ── 3. A ROTA AVISOU N FAMÍLIAS
+ *
+ * O número é o de escritas que DERAM CERTO em `avisarSaidaDaRota` (as que
+ * falharam não contam). Zero ou desconhecido — a trava do dia já tinha
+ * avisado, ou a resposta não chegou — devolve a frase de sempre, sem número:
+ * "0 famílias avisadas" faria o tio achar que o aviso quebrou.
+ */
+export const ROTA_AVISOU = {
+  sustenta: 'rota-iniciada',
+  condicao: 'familia-com-conta',
+};
+
+export function textoDaRotaIniciada(avisadas, compartilha = true) {
+  const n = contagem(avisadas);
+  if (!n) return compartilha ? ROTA_INICIADA : ROTA_INICIADA_SEM_MAPA;
+  const avisou = `Rota iniciada. ${familias(n)} ${n === 1 ? 'avisada' : 'avisadas'}.`;
+  return compartilha ? avisou : `${avisou} A perua não aparece no mapa das famílias.`;
+}
+
 /** Todas as afirmações com a sua origem, para o teste varrer. */
 export function todasAsAfirmacoes() {
   return [
@@ -95,5 +117,7 @@ export function todasAsAfirmacoes() {
     { id: 'familiaEntrouSemValor', ...FAMILIA_ENTROU.semValor },
     { id: 'semAulaConfirma', texto: textoDaConfirmacaoSemAula(4), ...SEM_AULA_TODAS },
     { id: 'semAulaNinguem', texto: textoDaConfirmacaoSemAula(0), ...SEM_AULA_TODAS },
+    { id: 'rotaAvisou', texto: textoDaRotaIniciada(4, true), ...ROTA_AVISOU },
+    { id: 'rotaAvisouSemMapa', texto: textoDaRotaIniciada(4, false), ...ROTA_AVISOU },
   ];
 }

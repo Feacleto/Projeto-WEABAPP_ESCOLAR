@@ -14,6 +14,7 @@ import { encerrarChamadas } from '../../services/pendingCallService';
 import SegurarParaEncerrar from './SegurarParaEncerrar';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { ROTA_INICIADA, ROTA_INICIADA_SEM_MAPA } from '../../marca/valorDoConvite.js';
+import { textoDaRotaIniciada } from '../../marca/valorDosAvisos.js';
 
 /**
  * Iniciar e encerrar a rota — o interruptor do GPS.
@@ -128,7 +129,7 @@ export default function ControleDeRota({
       toast.error('Sessão expirada. Entre de novo.');
       return;
     }
-    start(user.uid, {
+    const avisadasPromessa = start(user.uid, {
       alvos,
       compartilha,
       // Quem recebe "a perua saiu": as famílias DESTA viagem, sem quem está
@@ -149,16 +150,25 @@ export default function ControleDeRota({
       ? ROTA_INICIADA
       : ROTA_INICIADA_SEM_MAPA;
     const uid = user.uid;
-    toast.custom(
+    // ⚠️ QUANTAS FAMÍLIAS O APP AVISOU (14/11/2026, RC2; 13b, fato 4). O
+    // número vem DEPOIS (as escritas do "a perua saiu" não seguram a rota), e
+    // o cartão é redesenhado no mesmo lugar quando ele chega. Só com número
+    // conhecido e maior que zero; sem ele, a frase de sempre, sem inventar.
+    // Não redesenha depois de "Cancelar" nem depois que o cartão sumiu: um
+    // cartão que volta sozinho seria pior que o número perdido.
+    const iniciouEm = Date.now();
+    let cancelou = false;
+    const mostrarCartao = (texto) => toast.custom(
       (t) => (
         <div
           role="status"
           className="flex w-[min(92vw,420px)] items-center gap-3 rounded-2xl border border-border bg-card p-3 shadow-float"
         >
-          <span className="min-w-0 flex-1 text-base font-semibold text-text">{frase}</span>
+          <span className="min-w-0 flex-1 text-base font-semibold text-text">{texto}</span>
           <button
             type="button"
             onClick={async () => {
+              cancelou = true;
               toast.dismiss(t.id);
               await stop(uid, []);
               encerrarChamadas({ adminUid: uid, motivo: 'fim_da_rota' });
@@ -170,8 +180,19 @@ export default function ControleDeRota({
           </button>
         </div>
       ),
-      { id: 'rota-comecou', duration: 10_000, position: 'top-center' }
+      // Redesenhar reinicia o relógio do toast: a duração é o que FALTA dos 10 s.
+      { id: 'rota-comecou', duration: 10_000 - Math.min(10_000, Date.now() - iniciouEm), position: 'top-center' }
     );
+    mostrarCartao(frase);
+    Promise.resolve(avisadasPromessa)
+      .then((avisadas) => {
+        if (cancelou || Date.now() - iniciouEm > 8_500) return;
+        const comNumero = textoDaRotaIniciada(avisadas, compartilha);
+        if (comNumero !== frase) mostrarCartao(comNumero);
+      })
+      .catch(() => {
+        /* sem número, o cartão fica como está */
+      });
     // Quem sabe a fila é a tela de rota, não este botão. Ela publica a posição
     // de cada criança no dia — o responsável não consegue calcular isso
     // sozinho, porque a fila é feita das outras crianças, que ele não lê.

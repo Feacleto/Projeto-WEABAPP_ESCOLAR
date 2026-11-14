@@ -12,7 +12,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { todasAsAfirmacoes, FAMILIA_ENTROU } from '../src/marca/valorDosAvisos.js';
+import { todasAsAfirmacoes, FAMILIA_ENTROU, textoDaRotaIniciada } from '../src/marca/valorDosAvisos.js';
+import { ROTA_INICIADA, ROTA_INICIADA_SEM_MAPA } from '../src/marca/valorDoConvite.js';
 import { promessaProibida } from '../src/marca/promessas.js';
 
 const require = createRequire(import.meta.url);
@@ -41,6 +42,12 @@ const FUNCIONALIDADES = {
     ['src/services/broadcastService.js', /type: 'school_no_class'/],
     ['src/services/broadcastService.js', /absenceDeclarations/],
   ],
+  // A rota avisa "a perua saiu" e devolve quantas escritas deram certo.
+  'rota-iniciada': [
+    ['src/services/routeStatusService.js', /type: 'rota_iniciada'/],
+    ['src/services/routeStatusService.js', /const avisadas = idas\.filter\(\(r\) => r\.status === 'fulfilled'\)\.length;/],
+    ['src/services/routeStatusService.js', /return avisadas;/],
+  ],
 };
 
 /** As condições de que uma frase depende, e a prova de cada uma. */
@@ -53,6 +60,8 @@ const CONDICOES = {
   // Só quem entrou no app (`parentUid`) recebe notificação.
   'familia-com-conta': [
     ['src/services/broadcastService.js', /if \(c\.parentUid\) \{/],
+    // A rota só avisa as contas da viagem (`saida.familias` são parentUid).
+    ['src/services/routeStatusService.js', /new Set\(\(saida\.familias \|\| \[\]\)\.filter\(Boolean\)\)/],
   ],
 };
 
@@ -113,7 +122,41 @@ for (const nome of ['Ana Clara', '', null, '  Pedro  ']) {
 eq('corpo com valor espelhado', regua.corpoDaFamiliaEntrou(true), FAMILIA_ENTROU.comValor.texto);
 eq('corpo sem valor espelhado', regua.corpoDaFamiliaEntrou(false), FAMILIA_ENTROU.semValor.texto);
 
+console.log('\n\x1b[1m4b. A rota diz quantas famílias avisou, só quando sabe\x1b[0m');
+eq('com número, com mapa', textoDaRotaIniciada(4, true), 'Rota iniciada. 4 famílias avisadas.');
+eq('uma família no singular', textoDaRotaIniciada(1, true), 'Rota iniciada. 1 família avisada.');
+eq('com número, sem mapa: diz também o que elas não veem',
+  textoDaRotaIniciada(3, false), 'Rota iniciada. 3 famílias avisadas. A perua não aparece no mapa das famílias.');
+eq('zero: a frase de sempre, sem número',
+  [textoDaRotaIniciada(0, true), textoDaRotaIniciada(0, false)], [ROTA_INICIADA, ROTA_INICIADA_SEM_MAPA]);
+eq('desconhecido (undefined, null, NaN, negativo, fração, texto): sem número',
+  [undefined, null, NaN, -2, 2.5, '4'].map((n) => textoDaRotaIniciada(n, true)), Array(6).fill(ROTA_INICIADA));
+eq('o padrão é com mapa', textoDaRotaIniciada(2), 'Rota iniciada. 2 famílias avisadas.');
+
+const tirarComentarios = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const controle = tirarComentarios(ler('src/components/route/ControleDeRota.jsx'));
+const geo = tirarComentarios(ler('src/hooks/useGeolocation.js'));
+const DEVOLVE_A_CONTAGEM = /return avisarSaidaDaRota\(driverUid, opcoes\.saida\);/;
+eq('o hook devolve a contagem do aviso de saída', DEVOLVE_A_CONTAGEM.test(geo), true);
+eq('o cartão usa a função do catálogo com o número e a escolha do mapa',
+  /textoDaRotaIniciada\(avisadas, compartilha\)/.test(controle), true);
+eq('o número vem do que o start devolveu',
+  /const avisadasPromessa = start\(/.test(controle) && /Promise\.resolve\(avisadasPromessa\)/.test(controle), true);
+eq('depois de "Cancelar" o cartão não volta', /cancelou = true;/.test(controle) && /if \(cancelou \|\|/.test(controle), true);
+eq('o cartão aparece antes do número chegar (a rota não espera)',
+  controle.indexOf('mostrarCartao(frase);') > 0 &&
+    controle.indexOf('mostrarCartao(frase);') < controle.indexOf('Promise.resolve(avisadasPromessa)'), true);
+eq('o cartão não tem número nem "avisadas" escrito à mão', /famílias avisadas/.test(controle), false);
+const rota = ler('src/services/routeStatusService.js');
+eq('o que as famílias recebem não mudou', [
+  rota.includes("title: 'A perua saiu',"),
+  rota.includes("'A rota começou. Você recebe o aviso quando ela estiver chegando.'"),
+  rota.includes("'A rota começou. Acompanhe pelo mapa.'"),
+], [true, true, true]);
+
 console.log('\n\x1b[1m5. Sonda positiva: a régua pega o que deve\x1b[0m');
+eq('o hook de antes (sem return) seria reprovado',
+  DEVOLVE_A_CONTAGEM.test('      avisarSaidaDaRota(driverUid, opcoes.saida);'), false);
 eq('"cobra por você" é reprovado', reprova('O app cobra por você.') !== null, true);
 eq('"já aparece" é absoluto', ABSOLUTOS.test(semAcento('A mensalidade já aparece na Carteira.')), true);
 eq('uma frase honesta passa', reprova('A mensalidade dela passa a aparecer na Carteira.'), null);
