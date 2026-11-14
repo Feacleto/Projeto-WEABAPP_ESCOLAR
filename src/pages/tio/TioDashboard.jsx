@@ -31,6 +31,7 @@ import AbsenceListSheet from '../../components/dashboard/AbsenceListSheet';
 import ControleDeRota from '../../components/route/ControleDeRota';
 import ConfirmeSeuEmail from '../../components/common/ConfirmeSeuEmail';
 import ParaVoce from '../../components/tio/ParaVoce';
+import AvisoDosContratos from '../../components/tio/AvisoDosContratos';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
 import { usePedidosDeAcesso } from '../../hooks/usePedidosDeAcesso';
@@ -626,6 +627,7 @@ export default function TioDashboard() {
             onAusentes={() => setListaAusentesOpen(true)}
           />
         )}
+        {estado !== 'dirigindo' && estado !== 'carregando' && <AvisoDosContratos criancas={children} hoje={agora} className="px-5 pt-2.5" />}
 
         {/* ⚠️ O PEDIDO DE TRANSFERÊNCIA NÃO PODE SUMIR COM A COMUNIDADE.
           * Ele mora na Comunidade, e ela só aparece no Ouro (30/10/2026). Um
