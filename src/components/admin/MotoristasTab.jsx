@@ -304,7 +304,8 @@ function Fundadores({ parceiros, mes }) {
 function Pastilha({ degrau, faltam }) {
   const mapa = {
     contratado: ['bg-primarySoft text-primary', 'ativo'],
-    em_teste: ['bg-warningSoft text-warningText', faltam !== null ? `${faltam}d` : 'teste'],
+    // Sem `trialInicio` o relógio não corre: não há prazo a avisar, e âmbar é só aviso.
+    em_teste: faltam !== null ? ['bg-warningSoft text-warningText', `${faltam}d`] : ['bg-primaryChip text-accentText', 'rodando'],
     nao_comecou: ['bg-neutro text-textMuted', 'não rodou'],
     bloqueado: ['bg-dangerSoft text-dangerText', 'parado'],
   };

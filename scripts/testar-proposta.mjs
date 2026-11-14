@@ -87,9 +87,10 @@ checar('faltando 60, o segundo', true, noDegrau(60).includes('20%'));
 checar('faltando 31, ainda o segundo', true, noDegrau(31).includes('20%'));
 checar('faltando 30, o terceiro', true, noDegrau(30).includes('10%'));
 checar('faltando 1, ainda o terceiro', true, noDegrau(1).includes('10%'));
-// Sem prazo conhecido, o degrau é o primeiro — quem não rodou rota não gastou
-// um dia do teste. Mesma escolha de `degrauDaDecisao`.
-checar('sem prazo, o primeiro degrau', true, noDegrau(null).includes('30%'));
+// ⚠️ Sem prazo conhecido NÃO há degrau a prometer: o texto é neutro, sem
+// porcentagem. (Era "30%", herdado de quando `em_teste` sempre tinha relógio;
+// hoje quem roda sem `trialInicio` cai aqui, e a promessa seria falsa.)
+checar('sem prazo, nenhum degrau é prometido', false, noDegrau(null).includes('%'));
 checar('e a régua bate com planos.js', 0.1, descontoDoFechamento(3));
 
 const bloqueado = mensagemDeProposta({ motorista: NINO, degrau: 'bloqueado' });
@@ -159,10 +160,19 @@ checar('uma criança, singular', true,
 checar('um dia, singular', true,
   mensagemDeProposta({ motorista: NINO, degrau: 'em_teste', conta: contaDe(20), diasRestantes: 1 })
     .texto.includes('em 1 dia'));
-// Sem prazo conhecido a frase não pode virar "termina em null dias".
-checar('sem prazo, a frase se ajusta', true,
-  mensagemDeProposta({ motorista: NINO, degrau: 'em_teste', conta: contaDe(20) })
-    .texto.includes('está acabando'));
+// ⚠️ SEM `trialInicio` (a cobrança desligada não o grava) não há prazo nem degrau
+// de fechamento: o texto é NEUTRO. Nada de "acabando", nada de porcentagem — o
+// preço, esse, continua o da régua. A sonda falha se qualquer um dos dois voltar.
+const semRelogio = mensagemDeProposta({ motorista: NINO, degrau: 'em_teste', conta: contaDe(14) });
+checar('sem prazo, não vira "termina em null dias"', false, /null|undefined|NaN/.test(semRelogio.texto));
+checar('sem relógio, não diz que o teste está acabando', false, /acabando|termina|fim do teste/i.test(semRelogio.texto));
+checar('sem relógio, não promete porcentagem', false, semRelogio.texto.includes('%'));
+checar('sem relógio, o assunto é o mesmo', 'Propor contratação', semRelogio.assunto);
+checar('e o preço continua o da régua', true, semRelogio.texto.includes('R$ 82,60'));
+// E com relógio o texto de conversão segue inteiro, prazo e % incluídos.
+const comRelogio = mensagemDeProposta({ motorista: NINO, degrau: 'em_teste', conta: contaDe(14), diasRestantes: 10 });
+checar('com relógio, o prazo e a porcentagem continuam', true,
+  comRelogio.texto.includes('termina em 10 dias') && comRelogio.texto.includes('%'));
 
 // ───────────────────────────── o link ──────────────────────────────────────
 

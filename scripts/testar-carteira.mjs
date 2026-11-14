@@ -15,6 +15,7 @@
  *   node scripts/testar-carteira.mjs      (ou: npm run testar:carteira)
  */
 
+import { readFileSync } from 'node:fs';
 import { degrauDo, mensalidadeDe, notasPorMotorista, resumirCarteira } from '../src/dominio/associacao/carteira.js';
 import { FUNDADOR, ORIGEM } from '../src/dominio/associacao/planos.js';
 
@@ -64,6 +65,48 @@ checar('teste acabou sem contrato', 'bloqueado', degrauDo(BLOQUEADO, HOJE));
 // mais — e é o jeito mais comum de um painel mentir para o próprio dono.
 checar('contratou e parou de pagar é BLOQUEADO, não contratado', 'bloqueado', degrauDo(DESISTENTE, HOJE));
 checar('suspenso pelo dono também', 'bloqueado', degrauDo({ ...CONTRATADO, suspenso: true }, HOJE));
+
+// ⚠️ A COBRANÇA DESLIGADA NÃO GRAVA `trialInicio` (functions/lib/relogioDoTeste.js),
+// e durante o teste ela está desligada: quem roda todo dia chegava aqui sem o
+// campo e o painel do dono escrevia "não rodou" sobre ele. `ultimaRota` é gravada
+// pelo próprio motorista, com a cobrança ligada ou não.
+const RODA_SEM_RELOGIO = { uid: 'g', ultimaRota: dia('2026-09-14') };
+checar('sem trialInicio e COM ultimaRota, rodou', 'em_teste', degrauDo(RODA_SEM_RELOGIO, HOJE));
+checar('ultimaRota como Timestamp do Firestore também vale', 'em_teste',
+  degrauDo({ uid: 'g', ultimaRota: { toDate: () => dia('2026-09-14'), seconds: 1 } }, HOJE));
+checar('sem os dois, não rodou', 'nao_comecou', degrauDo({ uid: 'h', createdAt: dia('2026-09-01') }, HOJE));
+checar('com plano, continua contratado', 'contratado',
+  degrauDo({ ...CONTRATADO, trialInicio: undefined, ultimaRota: dia('2026-09-14') }, HOJE));
+checar('suspenso continua bloqueado mesmo rodando', 'bloqueado',
+  degrauDo({ ...RODA_SEM_RELOGIO, suspenso: true }, HOJE));
+// O que NÃO mudou: quem decide o acesso lê `trialInicio` e só ele. Um sinal que o
+// cliente escreve não pode abrir nem fechar a conta.
+checar('teste vencido continua bloqueado, com ultimaRota recente', 'bloqueado',
+  degrauDo({ ...BLOQUEADO, ultimaRota: dia('2026-09-14') }, HOJE));
+
+// (d) `em_teste` SEM `trialInicio` não tem dias restantes — e a conta não inventa
+// nenhum: não entra em `acabandoEm7`, e conta como "em teste", não como "não começou".
+const semRelogio = resumirCarteira({
+  parceiros: [RODA_SEM_RELOGIO, NOVATO],
+  agora: HOJE,
+  mes: MES,
+});
+checar('quem roda sem relógio conta como em teste', 1, semRelogio.emTeste);
+checar('e não conta como "ainda não rodou"', 1, semRelogio.naoComecou);
+checar('sem trialInicio não inventa dias restantes', 0, semRelogio.acabandoEm7);
+
+// ⚠️ ÂMBAR É AVISO E NADA MAIS. A pastilha âmbar de `em_teste` existe para o
+// prazo ("12d"); sem `trialInicio` não há prazo, e pintar de âmbar todo motorista
+// que roda faria o painel inteiro parecer alerta. Lido do arquivo, porque a
+// pastilha mora atrás do JSX, onde o Node não chega.
+const PASTILHA_DO_TESTE = /em_teste:\s*faltam !== null\s*\?\s*\['bg-warning[^\]]*\]\s*:\s*\['(?!bg-warning)([^']*)'/;
+const veioDoArquivo = (caminho) => readFileSync(new URL(`../${caminho}`, import.meta.url), 'utf8');
+['src/components/admin/MotoristasTab.jsx', 'src/components/admin/FichaDoMotorista.jsx'].forEach((arq) => {
+  checar(`${arq}: sem trialInicio a pastilha não usa warning`, true, PASTILHA_DO_TESTE.test(veioDoArquivo(arq)));
+});
+// A sonda positiva: o padrão antigo (âmbar sempre) tem que ser reprovado.
+checar('sonda: a pastilha antiga, âmbar mesmo sem prazo, é reprovada', false, PASTILHA_DO_TESTE.test(
+  "em_teste: ['bg-warningSoft text-warningText', faltam !== null ? `${faltam}d` : 'teste'],"));
 
 // ───────────────────────────── a mensalidade ───────────────────────────────
 

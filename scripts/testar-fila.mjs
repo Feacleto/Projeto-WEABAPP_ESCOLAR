@@ -141,6 +141,34 @@ checar('com os dias dentro', true, naoComecou.titulo.includes('9 dias'));
 checar('sem data de cadastro, não inventa', null,
   pendencia({ uid: 'j', name: 'Sem Data' }));
 
+// A FRONTEIRA, medida nos dois lados: com 2 dias não entra, com 3 entra.
+checar('dois dias sem começar ainda não entra', null,
+  pendencia({ uid: 'k', name: 'Cedo', createdAt: atras(2) }));
+checar('três dias sem começar entra', true,
+  pendencia({ uid: 'l', name: 'Hora', createdAt: atras(DIAS_SEM_COMECAR) })?.titulo.includes('3 dias'));
+
+// ⚠️ A SONDA DO PAINEL QUE MENTIA. A cobrança desligada não grava `trialInicio`,
+// então quem roda todo dia chegava aqui sem o campo e a fila dizia "se cadastrou
+// há N dias e não rodou". `ultimaRota` é a prova de que rodou, e quem a tem NUNCA
+// pode voltar a ser listado como "não rodou".
+const RODA_SEM_RELOGIO = { uid: 'm', name: 'Marcos', createdAt: atras(30), ultimaRota: atras(1) };
+checar('com ultimaRota e sem trialInicio, não entra como "não rodou"', null, pendencia(RODA_SEM_RELOGIO));
+checar('nenhuma linha da fila diz "não rodou" para quem tem ultimaRota', false,
+  montarFila({ parceiros: [RODA_SEM_RELOGIO], agora: HOJE })
+    .some((i) => /não rodou/.test(i.titulo)));
+// (d) Sem `trialInicio` não há dias restantes — e a fila não inventa "o teste acaba em N".
+checar('sem trialInicio a fila não inventa fim de teste', false,
+  montarFila({ parceiros: [RODA_SEM_RELOGIO], agora: HOJE })
+    .some((i) => /teste/.test(i.titulo)));
+// Quem sumiu depois de rodar passa a aparecer — pelo termômetro, com o motivo
+// certo ("não roda há N dias"), e não pelo texto de quem nunca entrou.
+const parou = pendencia({ ...RODA_SEM_RELOGIO, ultimaRota: atras(20) });
+checar('quem rodou e parou entra pelo termômetro, não como "não rodou"', true,
+  parou !== null && /não roda há 20 dias/.test(parou.titulo) && !/não rodou/.test(parou.titulo));
+// Quem nunca rodou continua exatamente como antes.
+checar('sem ultimaRota e sem trialInicio, segue como "não rodou"', true,
+  /não rodou/.test(pendencia({ uid: 'n', name: 'Nunca', createdAt: atras(30) })?.titulo || ''));
+
 // ───────────────────────── a fila montada ──────────────────────────────────
 
 bloco('5. A fila inteira, na ordem');

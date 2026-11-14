@@ -589,7 +589,8 @@ const ROTULO_DO_MOTIVO = {
 function Estado({ degrau, motivo, faltam }) {
   const mapa = {
     contratado: ['bg-primarySoft text-primary', 'Ativo'],
-    em_teste: ['bg-warningSoft text-warningText', faltam !== null ? `Em teste · ${faltam}d` : 'Em teste'],
+    // Sem `trialInicio` o relógio não corre: não há prazo a avisar, e âmbar é só aviso.
+    em_teste: faltam !== null ? ['bg-warningSoft text-warningText', `Em teste · ${faltam}d`] : ['bg-primaryChip text-accentText', 'Rodando'],
     nao_comecou: ['bg-neutro text-textMuted', 'Não rodou ainda'],
     bloqueado: [
       'bg-dangerSoft text-dangerText',

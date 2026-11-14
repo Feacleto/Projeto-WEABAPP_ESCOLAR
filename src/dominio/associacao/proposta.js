@@ -125,11 +125,28 @@ export function mensagemDeProposta({
   }
 
   if (degrau === 'em_teste') {
+    // ⚠️ SEM RELÓGIO, SEM PRAZO E SEM PORCENTAGEM. `em_teste` também é quem
+    // rodou mas não tem `trialInicio` (a cobrança desligada não o grava), e
+    // para ele não existe "fim do teste" nem degrau de fechamento: dizer
+    // "está acabando" é inventar um prazo, e "garante 30%" prometer uma
+    // condição que o servidor não tem como conceder sem o relógio. O preço
+    // continua sendo o da régua — o que sai é a pressão que não existe.
+    if (diasRestantes == null) {
+      return {
+        assunto: 'Propor contratação',
+        texto:
+          `Oi ${nome}! Vi que você está usando o Alô Buzinou com ` +
+          `${plural(ativas, 'criança', 'crianças')}.\n\n` +
+          `Quando fizer sentido pra você, a assinatura fica em ` +
+          `${precoCheio} por mês no plano mensal` +
+          (precoDele && precoDele !== precoCheio ? ` (${precoDele} com os seus descontos)` : '') +
+          `, ou ${precoAnual} por mês no anual, com compromisso de 12 meses.\n\n` +
+          `É só abrir Planos no app. Qualquer dúvida, me chama por aqui.`,
+      };
+    }
+
     // CONVERSÃO. Aqui o preço é bem-vindo: ele está usando e o prazo aperta.
-    const prazo =
-      diasRestantes === null
-        ? 'Seu teste está acabando'
-        : `Seu teste termina em ${plural(diasRestantes, 'dia', 'dias')}`;
+    const prazo = `Seu teste termina em ${plural(diasRestantes, 'dia', 'dias')}`;
 
     // ⚠️ OS DOIS PLANOS VÃO NA MESMA MENSAGEM, e isso não é enfeite: se o dono
     // manda só o mensal, o motorista que quer economizar acha que o preço da
