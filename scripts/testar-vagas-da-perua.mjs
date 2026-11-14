@@ -251,9 +251,11 @@ igual('completar leva ao formulário em modo edição', caminhoDeCompletar('abc'
   const ficha = semComentarios(ler('src/pages/ChildDetail.jsx'));
   const lista = semComentarios(ler('src/pages/tio/TioChildren.jsx'));
   // RC2: a lista diz O QUE falta (régua `fraseDeEstado`) e quantas estão fora
-  // da rota, em vez do genérico "Falta completar o cadastro".
+  // da rota, em vez do genérico "Falta completar o cadastro". Desde a auditoria
+  // (M6) a contagem mora no grupo "Fora da rota" da folha "A completar".
   igual('a ficha mostra "Falta completar o cadastro"; a lista diz o que falta e quantas estão fora da rota', [true, true, true],
-    [ficha.includes('Falta completar o cadastro'), lista.includes('textoForaDaRota(fora)'),
+    [ficha.includes('Falta completar o cadastro'),
+      lista.includes('<ACompletar') && semComentarios(ler('src/components/children/ACompletar.jsx')).includes('textoForaDaRota(fora.length)'),
       semComentarios(ler('src/components/children/LinhaDaTurma.jsx')).includes('fraseDeEstado(child)')]);
   igual('convite escondido até completar', true, ficha.includes('faltaCompletarOCadastro(child) &&') && ficha.includes('Complete o cadastro para mandar o convite.'));
   const serv = semComentarios(ler('src/services/childrenService.js'));
