@@ -11,12 +11,13 @@ import { useAuth } from '../../hooks/useAuth';
 import { renovarContrato } from '../../services/contratosDaFamiliaService';
 import {
   filaDeRenovacao,
-  primeiroMesSemMensalidade,
+  primeiroMesSemParcela,
 } from '../../dominio/cobranca/renovacaoDoContrato.js';
 import {
   BOTAO_AGORA_NAO,
   BOTAO_MANDAR,
   COMO_FUNCIONA,
+  DIFERENCA,
   ESPERANDO,
   NADA_PARA_RENOVAR,
   SEM_ACEITE,
@@ -76,7 +77,9 @@ export default function TioRenovarContratos() {
 
   // O mês que deixa de nascer: o da linha que acaba primeiro.
   const primeira = fila.renovar[0] || fila.esperando[0] || fila.semAceite[0];
-  const mesSem = primeira ? primeiroMesSemMensalidade(primeira.fimAtual) : null;
+  const mesSem = primeira
+    ? primeiroMesSemParcela(primeira.child.vigenciaInicio, primeira.fimAtual, new Date())
+    : null;
 
   return (
     <div className="min-h-[100dvh] bg-bg">
@@ -111,6 +114,9 @@ export default function TioRenovarContratos() {
                 {COMO_FUNCIONA.texto}
                 {mesSem && <> {textoDoMesSemMensalidade(mesSem)}</>}
               </p>
+              {(fila.esperando.length > 0 || fila.semAceite.length > 0) && (
+                <p className="text-base leading-relaxed text-textBody">{DIFERENCA.texto}</p>
+              )}
 
               {fila.renovar.map((linha) => (
                 <Linha key={linha.child.id} child={linha.child} sub={textoDoFim(linha.fimAtual)}>

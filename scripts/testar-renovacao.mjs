@@ -22,7 +22,7 @@ import {
   filaDeRenovacao,
   mesDaqui,
   pedidoDeRenovacao,
-  primeiroMesSemMensalidade,
+  primeiroMesSemParcela,
   situacaoDaRenovacao,
   terminaAntesDoMes,
   vigenciaDaRenovacao,
@@ -123,7 +123,11 @@ for (let t = new Date(2026, 0, 3); t < new Date(2028, 0, 1); t.setDate(t.getDate
 eq(`nenhuma divergência em ${casos} combinações`, divergencias, 0);
 eq('janeiro depois de 31/12 termina', terminaAntesDoMes('2027-01', '2026-03-02', '2026-12-31'), true);
 eq('dezembro não termina', terminaAntesDoMes('2026-12', '2026-03-02', '2026-12-31'), false);
-eq('o mês sem mensalidade é o seguinte ao fim', primeiroMesSemMensalidade('2026-12-31'), '2027-01');
+eq('o mês sem mensalidade é o primeiro que o servidor recusa (fim em 31/12: janeiro)', primeiroMesSemParcela('2026-03-02', '2026-12-31', NOV), '2027-01');
+eq('mês começado conta inteiro: fim em 20/12 com início dia 10, dezembro AINDA tem parcela', primeiroMesSemParcela('2026-03-10', '2026-12-20', NOV), '2027-01');
+eq('fim em 05/12 com início dia 10: dezembro já fica sem', primeiroMesSemParcela('2026-03-10', '2026-12-05', NOV), '2026-12');
+eq('o mês achado é recusado pelo servidor e o anterior não', [servidor.mesDentroDaVigencia(primeiroMesSemParcela('2026-03-10', '2026-12-20', NOV), '2026-03-10', '2026-12-20'), servidor.mesDentroDaVigencia('2026-12', '2026-03-10', '2026-12-20')], [false, true]);
+eq('sem vigência não há mês sem parcela', primeiroMesSemParcela(undefined, undefined, NOV), null);
 
 /* ───────────────────────────────────────────────────────────────────────── */
 console.log('\n\x1b[1m3. A vigência nova não deixa buraco\x1b[0m');
@@ -282,6 +286,10 @@ const FUNCIONALIDADES = {
   ],
   'primeiro-contrato-espera-aceite': [
     ['src/App.jsx', /estadoDoContrato\(child\) === 'aguardando'/],
+  ],
+  'situacoes-da-fila': [
+    ['src/dominio/cobranca/renovacaoDoContrato.js', /estado === 'mudanca'\) return 'esperando';/],
+    ['src/dominio/cobranca/renovacaoDoContrato.js', /return 'sem-aceite';/],
   ],
   'aceite-pela-conta-da-familia': [
     ['functions/lib/aceitarContrato.js', /crianca\.parentUid !== uid/],

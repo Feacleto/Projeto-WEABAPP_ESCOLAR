@@ -70,6 +70,18 @@ export const SEM_ACEITE = {
 };
 export const VER_CONTRATO = 'Ver contrato';
 
+/**
+ * A DIFERENÇA ENTRE OS CASOS (14/11/2026). O aviso do Início conta os três —
+ * quem pode renovar, quem espera a família assinar e quem ainda não assinou o
+ * primeiro contrato —, porque os três ficam sem mensalidade se nada acontecer.
+ * Mas só o primeiro tem o botão: aqui se diz isso, uma vez, só quando há linha
+ * dos outros dois.
+ */
+export const DIFERENCA = {
+  texto: 'Renovar vale para quem já assinou o primeiro contrato. Os outros mostram o que falta.',
+  sustenta: 'situacoes-da-fila',
+};
+
 /** A nota de baixo, só quando há criança sem a família no app. */
 export const SEM_FAMILIA = {
   texto: 'A família que não está no app precisa entrar para assinar. Mande o convite antes.',
@@ -101,6 +113,7 @@ export function todasAsAfirmacoes() {
     { id: 'mesSemMensalidade', texto: textoDoMesSemMensalidade('2027-01'), sustenta: SUSTENTA_DO_MES_SEM_MENSALIDADE },
     { id: 'esperando', ...ESPERANDO },
     { id: 'semAceite', ...SEM_ACEITE },
+    { id: 'diferenca', ...DIFERENCA },
     { id: 'semFamilia', ...SEM_FAMILIA },
     { id: 'nada', ...NADA_PARA_RENOVAR },
     { id: 'enviadoComNome', texto: textoDoEnviado('Ana Clara', '2027-12-31'), sustenta: SUSTENTA_DO_ENVIADO },

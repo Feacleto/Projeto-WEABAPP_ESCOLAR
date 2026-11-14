@@ -79,11 +79,23 @@ export function terminaAntesDoMes(mes, inicio, fim) {
   return indice >= 0 && indice >= parcelasDaVigencia(inicio, fim);
 }
 
-/** O primeiro mês sem mensalidade depois do fim, em 'AAAA-MM'. */
-export function primeiroMesSemMensalidade(fim) {
-  const f = partes(fim);
-  if (!f) return null;
-  return dataISO(new Date(f.a, f.me - 1, f.d + 1)).slice(0, 7);
+/**
+ * O primeiro mês, de `hoje` em diante, em que o servidor NÃO gera a
+ * mensalidade (`terminaAntesDoMes`), em 'AAAA-MM' — ou `null` se o contrato
+ * não termina (sem vigência) ou termina além da busca.
+ *
+ * ⚠️ NÃO É "O MÊS SEGUINTE AO DIA DO FIM". Mês começado conta inteiro
+ * (`parcelasDaVigencia`): com início dia 10 e fim em 20/12 a parcela de
+ * dezembro EXISTE e a primeira que falta é a de janeiro; a conta antiga
+ * (`primeiroMesSemMensalidade`, o mês do dia seguinte ao fim) dizia
+ * dezembro. A tela da fila e o aviso do Início leem esta, a mesma do servidor.
+ */
+export function primeiroMesSemParcela(inicio, fim, hoje = new Date()) {
+  for (let k = 0; k < 36; k += 1) {
+    const mes = mesDaqui(hoje, k);
+    if (terminaAntesDoMes(mes, inicio, fim)) return mes;
+  }
+  return null;
 }
 
 /**
