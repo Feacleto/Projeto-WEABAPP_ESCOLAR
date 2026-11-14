@@ -8,6 +8,7 @@ import {
   ListOrdered,
   Megaphone,
   Notebook,
+  Printer,
   Receipt,
   School,
   TriangleAlert,
@@ -200,6 +201,16 @@ export default function MeuTransporteSheet({
             titulo="Avisos enviados"
             onClick={() => ir('/tio/agenda')}
           />
+          {/* A LISTA NO PAPEL (14/11/2026): discreta, no "Mais" — é de quem
+            * vai levar a folha no carro, não do uso de todo dia. Sem turma não
+            * há o que imprimir. */}
+          {criancas > 0 && (
+            <Linha
+              icon={Printer}
+              titulo="Imprimir a lista da turma"
+              onClick={() => ir('/tio/children/imprimir')}
+            />
+          )}
           {/* O PREÇO MORA AQUI, E É DE PROPÓSITO QUE ELE SEJA DISCRETO.
             *
             * Durante os três meses de teste o app fica calado sobre dinheiro —

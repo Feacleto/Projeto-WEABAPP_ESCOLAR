@@ -68,6 +68,7 @@ const AguardandoVinculo = lazy(() => import('./components/acesso/AguardandoVincu
 const TioDashboard = lazy(carregarTioDashboard);
 const TioChildren = lazy(() => import('./pages/tio/TioChildren'));
 const TioEscolas = lazy(() => import('./pages/tio/TioEscolas'));
+const TioListaImpressa = lazy(() => import('./pages/tio/TioListaImpressa'));
 const TioRouteNow = lazy(() => import('./pages/tio/TioRouteNow'));
 const TioHorarios = lazy(() => import('./pages/tio/TioHorarios'));
 const MinhaRota = lazy(() => import('./pages/tio/MinhaRota'));
@@ -744,6 +745,7 @@ export default function App() {
         <Route path="children/new" element={<ChildForm />} />
         <Route path="children/:id/completar" element={<ChildForm />} />
         <Route path="children/escolas" element={<TioEscolas />} />
+        <Route path="children/imprimir" element={<TioListaImpressa />} />
         <Route path="children/:id" element={<ChildDetail />} />
         <Route path="children/:id/contract" element={<TioContract />} />
         <Route

@@ -27,7 +27,19 @@ import {
   criarEscolaEVincular,
   definirTelefoneDaEscola,
   proporEscolasDasCriancas,
+  aplicarEnderecoDaEscolaNasCriancas,
 } from '../../services/escolasService';
+import { criancasQueMudam, primeiroNome } from '../../dominio/escola/propagarEscola.js';
+import {
+  APLICAR,
+  SO_A_ESCOLA,
+  SO_A_ESCOLA_MUDOU,
+  SEM_PONTO,
+  tituloDoResumo,
+  nomesDoResumo,
+  aplicado,
+  aplicadoPelaMetade,
+} from '../../marca/propagarEscola.js';
 import { searchAddress, buscarCep } from '../../services/locationService';
 import { maskCep, unmaskCep, isValidCep, maskPhone } from '../../compartilhado/masks';
 import { montarEndereco } from '../../compartilhado/formatters';
@@ -81,6 +93,11 @@ export default function TioEscolas() {
   const [cepConsultado, setCepConsultado] = useState('');
   const [paraApagar, setParaApagar] = useState(null);
   const [migrando, setMigrando] = useState(null);
+  // A PERGUNTA DEPOIS DE SALVAR (RC2): { escolaId, endereco, lat, lng, partes,
+  // criancas: [{ id, nome }] } — ou null. Guarda as crianças que a pergunta
+  // mostrou, e são exatamente essas que recebem a escrita.
+  const [paraPropagar, setParaPropagar] = useState(null);
+  const [aplicando, setAplicando] = useState(false);
 
   /** Quantas crianças ativas em cada escola — o número que dá sentido à lista. */
   const contagem = useMemo(() => {
@@ -239,7 +256,25 @@ export default function TioEscolas() {
     }
     setSalvando(true);
     try {
+      let pergunta = null;
       if (editando.id) {
+        // A PERGUNTA SAI DO QUE A ESCOLA DIZ AGORA CONTRA A CÓPIA DE CADA
+        // CRIANÇA, e não de "o endereço mudou nesta edição": a cópia também
+        // pode ter ficado para trás numa correção antiga, e salvar de novo é
+        // a chance de acertá-la.
+        const quem = criancasQueMudam(children, editando.id, editando);
+        if (quem.length) {
+          pergunta = {
+            escolaId: editando.id,
+            endereco: String(editando.endereco || '').trim(),
+            lat: editando.lat,
+            lng: editando.lng,
+            partes: editando.cepPartes
+              ? { ...editando.cepPartes, numero: editando.numero || '' }
+              : null,
+            criancas: quem.map((c) => ({ id: c.id, nome: primeiroNome(c.name) })),
+          };
+        }
         await updateEscola(editando.id, {
           nome: editando.nome,
           endereco: editando.endereco,
@@ -261,11 +296,62 @@ export default function TioEscolas() {
         toast.success('Escola cadastrada.');
       }
       setEditando(null);
+      if (pergunta) setParaPropagar(pergunta);
     } catch (err) {
       console.error(err);
       toast.error(err.message || 'Não deu pra salvar.');
     } finally {
       setSalvando(false);
+    }
+  }
+
+  // "Só a escola": fecha a pergunta e diz o que ficou como está.
+  function deixarAsCriancas() {
+    if (aplicando) return;
+    setParaPropagar(null);
+    toast(SO_A_ESCOLA_MUDOU);
+  }
+
+  async function aplicarNasCriancas() {
+    const p = paraPropagar;
+    if (!p) return;
+    setAplicando(true);
+    try {
+      let { lat, lng } = p;
+      const temPonto = lat != null && lng != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+      if (!temPonto) {
+        // UMA consulta para a escola, nunca uma por criança. Sem o ponto nada
+        // é gravado nas crianças: endereço novo com ponto velho seria a tela
+        // afirmando "a escola é aqui" sobre um alfinete em outro lugar.
+        try {
+          const r = await searchAddress(p.endereco, p.partes);
+          lat = r.lat;
+          lng = r.lng;
+        } catch {
+          toast.error(SEM_PONTO);
+          setParaPropagar(null);
+          return;
+        }
+        // O ponto achado vale também para a escola (ela ficou salva sem ele).
+        await updateEscola(p.escolaId, { lat, lng });
+      }
+      await aplicarEnderecoDaEscolaNasCriancas({
+        criancaIds: p.criancas.map((c) => c.id),
+        endereco: p.endereco,
+        lat,
+        lng,
+      });
+      toast.success(aplicado(p.criancas.length));
+      setParaPropagar(null);
+    } catch (err) {
+      console.error(err);
+      toast.error(
+        typeof err?.feitas === 'number'
+          ? aplicadoPelaMetade(err.feitas, p.criancas.length)
+          : 'Não deu pra aplicar agora. Tente de novo.'
+      );
+    } finally {
+      setAplicando(false);
     }
   }
 
@@ -614,6 +700,20 @@ export default function TioEscolas() {
             </div>
         )}
       </Sheet>
+
+      {/* A PERGUNTA DEPOIS DE SALVAR: quantas crianças mudam de ponto de rota. */}
+      <ConfirmDialog
+        open={!!paraPropagar}
+        title={paraPropagar ? tituloDoResumo(paraPropagar.criancas.length) : ''}
+        description={
+          paraPropagar ? nomesDoResumo(paraPropagar.criancas.map((c) => c.nome)) : ''
+        }
+        confirmLabel={APLICAR}
+        cancelLabel={SO_A_ESCOLA}
+        loading={aplicando}
+        onConfirm={aplicarNasCriancas}
+        onCancel={deixarAsCriancas}
+      />
 
       <ConfirmDialog
         open={!!paraApagar}

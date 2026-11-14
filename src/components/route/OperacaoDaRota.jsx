@@ -42,6 +42,8 @@ import {
   voltarPasso,
 } from '../../services/routeStatusService';
 import { passoAnterior, barraTravada, TRAVA_DA_PARADA_MS } from '../../dominio/rota/acaoDaParada.js';
+import { resumoDoDia } from '../../dominio/rota/diaFechado.js';
+import { linhaDoDia } from '../../marca/diaFechado.js';
 import BarraDaAcao from '../layout/BarraDaAcao';
 import AvisosDaViagem from './AvisosDaViagem';
 import MensalidadeNaPorta from './MensalidadeNaPorta';
@@ -339,6 +341,17 @@ export default function OperacaoDaRota({
     () => esperaAte(blocos, blocoAtual, new Date()),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [blocos, blocoAtual, tick]
+  );
+
+  // O DIA FECHADO (14/11/2026): "Hoje: 14 de 14 paradas marcadas." — só do que
+  // a rota já tem na mão (os blocos e o status de hoje), e só no fim do dia.
+  // Conta toque, não serviço: ver `dominio/rota/diaFechado.js`.
+  const linhaDoFimDoDia = useMemo(
+    () =>
+      linhaDoDia(
+        resumoDoDia(blocos, (child, dir) => statusNaDirecao(child, declaracoes?.[child.id], dir))
+      ),
+    [blocos, declaracoes]
   );
 
   /**
@@ -1367,7 +1380,12 @@ export default function OperacaoDaRota({
                 {espera.minutos > 0 && ` · daqui a ${formataEspera(espera.minutos)}`}
               </p>
             ) : (
-              <p className="text-sm text-textBody">Era a última viagem do dia.</p>
+              <>
+                {linhaDoFimDoDia && (
+                  <p data-dia-fechado className="text-base font-semibold text-text">{linhaDoFimDoDia}</p>
+                )}
+                <p className="text-sm text-textBody">Era a última viagem do dia.</p>
+              </>
             )}
           </div>
         )}
