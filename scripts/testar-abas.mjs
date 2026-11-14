@@ -117,6 +117,16 @@ checar('as duas rotas montam o mesmo ChildForm (por isso as duas escondem a barr
   /path="children\/new" element=\{<ChildForm \/>\}/.test(app)
   && /path="children\/:id\/completar" element=\{<ChildForm \/>\}/.test(app));
 
+bloco('7. Encerrar a rota leva ao Início, não à Carteira');
+const semComentario = layout.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+checar('encerrou com a tela da rota aberta: navega para /tio',
+  true,
+  /if \(!carregandoRota && !emRota && naTelaDaRota\) navigate\('\/tio', \{ replace: true \}\);/.test(semComentario));
+checar('nenhum navigate do layout manda a rota encerrada para /tio/finance',
+  false, /navigate\('\/tio\/finance'/.test(semComentario));
+checar('iniciar a rota ainda tranca o dinheiro (trancar ao ver emRota)',
+  true, /if \(emRota\) trancar\(\);/.test(semComentario));
+
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);
 if (falhas.length) {

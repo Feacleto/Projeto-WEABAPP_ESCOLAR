@@ -285,11 +285,16 @@ export default function TioLayout() {
     (i) => i !== ABA_DA_COMUNIDADE || comunidadeLiberada
   );
   const naTelaDaRota = location.pathname.startsWith('/tio/route/now');
-  // Encerrou com a tela da rota aberta: a Carteira volta a ser do motorista
-  // (`/tio/finance`, que pede a senha). Só depois de ler o documento — durante
-  // a leitura "sem rota" é desconhecido, não falso.
+  // ⚠️ ENCERRAR A ROTA LEVA AO INÍCIO (decisão do dono, 14/11/2026). Encerrou
+  // com a tela da rota aberta: o motorista termina a viagem no Início, onde a
+  // turma e o dia dele moram — e não diante do teclado de senha do dinheiro.
+  // Era `/tio/finance` porque a Carteira voltava a ser dele (a aba deixa de
+  // ser "Rota"), mas o primeiro que ele via ao fim da corrida era a tela de
+  // senha, como se tivesse feito algo errado. A Carteira continua a um toque,
+  // atrás da senha de sempre. Só depois de ler o documento — durante a
+  // leitura "sem rota" é desconhecido, não falso.
   useEffect(() => {
-    if (!carregandoRota && !emRota && naTelaDaRota) navigate('/tio/finance', { replace: true });
+    if (!carregandoRota && !emRota && naTelaDaRota) navigate('/tio', { replace: true });
   }, [carregandoRota, emRota, naTelaDaRota, navigate]);
 
   // ⚠️ A ROTA TRANCA O DINHEIRO. Com a rota rodando, quem segura o celular
