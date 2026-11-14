@@ -2597,6 +2597,17 @@ consentir de novo, apagar leva os dois campos (`salvarSaudeDaCrianca` /
 existe. ⚠️ **Os textos são o rascunho, e foram ao ar sem revisão jurídica**
 (decisão do dono, 05/10/2026). A revisão continua pendente.
 
+⚠️ **RENOVAR O CONTRATO DA FAMÍLIA É UM ADITIVO, E A VIGÊNCIA SÓ MUDA NO
+ACEITE** (14/11/2026). Fora da vigência a mensalidade não nasce, e quem fechou
+antes de novembro tem contrato até 31/12. A fila `/tio/finance/renovar`
+([TioRenovarContratos](src/pages/tio/TioRenovarContratos.jsx), porta em
+`/tio/finance/turma`) chama `renovarContrato`, que é o `salvarCombinado` com a
+vigência nova — o mesmo `emitir`, o mesmo `aceitarContrato`. A régua é
+[renovacaoDoContrato.js](src/dominio/cobranca/renovacaoDoContrato.js)
+(`npm run testar:renovacao`): entra quem termina antes do mês de hoje + 2, e a
+vigência nova MANTÉM O INÍCIO (prorrogação) — começar em 1º/01 tiraria
+dezembro da cobrança de quem assinasse em novembro.
+
 **Falta não gera desconto**, e a cláusula 7ª já dizia: o valor é pela VAGA,
 inclusive nas férias, `independentemente da quantidade de dias letivos`. A tela
 de faltas repete isso onde a dúvida nasce.
