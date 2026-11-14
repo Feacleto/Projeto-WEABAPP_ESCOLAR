@@ -14,7 +14,12 @@
  *   - `avisarParceiroIndicado` — escreve na caixa de outro motorista;
  *   - `publicarFotoDaTurma`    — só para `parceiros` e `comunidade`: a foto
  *                                para as FAMÍLIAS do próprio tio continua;
- *   - `pedirTransferencia`     — passa uma família a um "parceiro".
+ *   - `pedirTransferencia`     — passa uma família a um "parceiro";
+ *   - `responderTransferencia` e `aceitarTransferencia` — o pedido JÁ
+ *                                aberto (antes da chave) também para: o
+ *                                aceite copia a criança, com endereço, para
+ *                                a conta do parceiro. `cancelarTransferencia`
+ *                                fica aberta: só fecha o pedido do próprio tio.
  * As callables do próprio tio (apagar a foto, as da auxiliar, a nota das
  * famílias) não leem colega e ficam de fora.
  *

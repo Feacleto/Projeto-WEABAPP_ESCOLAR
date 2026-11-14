@@ -312,6 +312,11 @@ eq('meusParceiros fecha antes de ler indicações', fechaAntes(corpo(comunidadeS
 eq('fotosDaComunidade fecha antes de achar os tios', fechaAntes(corpo(comunidadeSrv, 'makeFotosDaComunidade'), 'parceirosDoTio('), true);
 eq('avisarParceiroIndicado fecha antes de ler indicações', fechaAntes(corpo(comunidadeSrv, 'makeAvisarParceiroIndicado'), "collection('indicacoes')"), true);
 eq('pedirTransferencia fecha antes de conferir a parceria', fechaAntes(corpo(transferencias, 'makePedirTransferencia'), 'saoParceiros('), true);
+// O pedido JÁ ABERTO antes da chave também para (auditoria, 14/11/2026):
+// o aceite copia a criança, com endereço, para a conta do "parceiro".
+eq('responderTransferencia fecha antes de ler o pedido', fechaAntes(corpo(transferencias, 'makeResponderTransferencia'), 'ref.get()'), true);
+eq('aceitarTransferencia fecha antes de ler o pedido', fechaAntes(corpo(transferencias, 'makeAceitarTransferencia'), 'ref.get()'), true);
+eq('cancelar fica aberta (só fecha o pedido do próprio tio)', /exigirComunidadeLigada/.test(corpo(transferencias, 'makeCancelarTransferencia')), false);
 const publicar = corpo(comunidadeSrv, 'makePublicarFotoDaTurma');
 eq('publicarFotoDaTurma fecha o que não é para as famílias', /if \(d\.publico !== PUBLICO\.FAMILIAS\) await exigirComunidadeLigada\(db\)/.test(publicar), true);
 eq('…antes de gravar a foto', publicar.indexOf('exigirComunidadeLigada') < publicar.indexOf('lote.commit()'), true);
