@@ -1822,6 +1822,12 @@ service cloud.firestore {
         // cliente, um motorista escreveria uma "fatura" com texto dele para a
         // família — phishing com a cara da plataforma.
         && !(request.resource.data.type in ['fatura_vence'])
+        // ⚠️ `push` É DO SERVIDOR (14/11/2026). É o registro do envio
+        // ({estado, em, ok, falhou, aparelhos}), gravado só pelo Admin SDK, e
+        // é ele que impede o REENVIO do aviso. Criado pelo cliente já com o
+        // campo, o aviso nunca tocaria. Alterar depois já é recusado pelo
+        // `hasOnly(['readAt'])` do update logo abaixo.
+        && !request.resource.data.keys().hasAny(['push'])
         && (
           // O motorista avisa o responsável DELE. Os dois campos: o
           // destinatário pode ter este motorista na lista sem ele ser o

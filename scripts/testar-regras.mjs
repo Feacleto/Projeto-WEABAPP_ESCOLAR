@@ -421,6 +421,39 @@ async function main() {
       userId: S(pai1.uid), type: S('info'), title: S('Pague neste PIX'),
       createdAt: { timestampValue: '2026-08-25T09:00:00Z' },
     }));
+  // ⚠️ `push` É DO SERVIDOR (14/11/2026). `notifications/{id}.push` é o
+  // registro do envio ({estado, em, ok, falhou, aparelhos}) que o Admin SDK
+  // grava e que IMPEDE O REENVIO do aviso. Criado pelo cliente já com `push`,
+  // o aviso nunca tocaria; alterado depois, tocaria de novo. Sonda positiva:
+  // o mesmo aviso sem `push` passa, e marcar como lida continua passando.
+  const avisoDoTio = (extra = {}) => ({
+    userId: S(pai1.uid), type: S('info'), title: S('Chegamos'),
+    createdAt: { timestampValue: '2026-08-25T09:00:00Z' }, ...extra,
+  });
+  const PUSH_FALSO = {
+    mapValue: { fields: { estado: S('enviado'), ok: N(1), falhou: N(0), aparelhos: N(1) } },
+  };
+  checar('push', 'tio1 avisa o pai dele (sem push) — sonda', 'PASSA',
+    await criar('notifications', `semPush_${Date.now()}`, tio1, avisoDoTio()));
+  checar('push', 'tio1 cria o aviso já com `push`', 'NEGA',
+    await criar('notifications', `comPush_${Date.now()}`, tio1, avisoDoTio({ push: PUSH_FALSO })));
+  checar('push', 'o pai cria aviso ao tio dele já com `push`', 'NEGA',
+    await criar('notifications', `paiPush_${Date.now()}`, pai1, {
+      userId: S(tio1.uid), type: S('payment'), title: S('Paguei'),
+      createdAt: { timestampValue: '2026-08-25T09:00:00Z' }, push: PUSH_FALSO,
+    }));
+  await semear('notifications/nPush', {
+    userId: S(pai1.uid), type: S('absence'), title: S('aviso'),
+    createdAt: { timestampValue: '2026-08-25T09:00:00Z' },
+    push: { mapValue: { fields: { estado: S('enviado'), ok: N(1) } } },
+  });
+  checar('push', 'o destinatário marca como lida', 'PASSA',
+    await escrever('notifications/nPush', pai1, { readAt: { timestampValue: '2026-08-25T10:00:00Z' } }, ['readAt']));
+  checar('push', 'o destinatário altera `push` (reenviaria)', 'NEGA',
+    await escrever('notifications/nPush', pai1, { push: { mapValue: { fields: { estado: S('pendente') } } } }, ['push']));
+  checar('push', 'o destinatário apaga `push`', 'NEGA',
+    await escrever('notifications/nPush', pai1, {}, ['push']));
+
   checar('corr', 'tio2 lê o chamado de suporte do pai do tio1', 'NEGA', await ler('supportTickets/t1', tio2));
   checar('corr', 'tio2 lê a buzina da família do tio1', 'NEGA', await ler('pendingCalls/pc1', tio2));
   // O recado plantado: tio2 grava com adminUid DELE e o uid do pai do tio1 na
