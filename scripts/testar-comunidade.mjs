@@ -325,6 +325,9 @@ eq('sonda: portão depois da leitura é pego', fechaAntes("x collection('indicac
 const chave = semComent(fs.readFileSync('functions/lib/comunidadeLigada.js', 'utf8'));
 eq('falha de leitura conta como desligada', /catch[\s\S]*?return false/.test(chave), true);
 eq('lê platformConfig/app, o mesmo doc da cobrança', /platformConfig\/app/.test(chave), true);
+// A família não lê a frase do período de teste do MOTORISTA (auditoria).
+eq('a tela da família troca a recusa por uma frase neutra', telaDaComunidade.includes("e.cause?.code === 'functions/failed-precondition' ? 'A Comunidade não está disponível agora.'"), true);
+eq('…e não fala de período de teste', /período de teste/.test(telaDaComunidade), false);
 // O programa de indicação NÃO depende da chave: o desconto continua.
 for (const f of ['functions/lib/casarNoCadastro.js', 'functions/lib/casarIndicacao.js', 'functions/lib/indicacao.js']) {
   eq(`${f} não passa pela chave da Comunidade`, /comunidadeLigada|exigirComunidadeLigada/.test(fs.readFileSync(f, 'utf8')), false);

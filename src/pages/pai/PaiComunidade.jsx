@@ -30,7 +30,11 @@ export default function PaiComunidade() {
     let vivo = true;
     fotosDaComunidade()
       .then((lista) => vivo && setFotos(lista))
-      .catch((e) => vivo && setErro(e.message));
+      // Com a Comunidade desligada no servidor, a frase dele fala do período
+      // de teste do MOTORISTA. A família recebe uma frase neutra.
+      .catch((e) => vivo && setErro(
+        e.cause?.code === 'functions/failed-precondition' ? 'A Comunidade não está disponível agora.' : e.message
+      ));
     return () => {
       vivo = false;
     };
