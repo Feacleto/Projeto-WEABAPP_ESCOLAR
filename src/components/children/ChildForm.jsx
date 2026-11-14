@@ -355,8 +355,7 @@ export default function ChildForm() {
         ...form,
         horaPega: horaPega || '',
         horaEntrega: horaEntrega || '',
-        // `period` alimenta o filtro da lista de crianças e os rótulos de
-        // ChildCard/ChildDetail. `pickupPeriod`/`dropoffPeriod` são ponte pro
+        // `period` alimenta o rótulo da ChildDetail. `pickupPeriod`/`dropoffPeriod` são ponte pro
         // cadastro anterior ao modelo de horários, lidos só por
         // `horariosCombinados`. Derivados da hora: o motorista informa uma
         // vez e o rótulo se acerta sozinho, em vez de virar mais dois botões.
