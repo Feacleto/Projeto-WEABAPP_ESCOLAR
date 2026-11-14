@@ -58,6 +58,7 @@ import { greet, nomeDaSaudacao } from '../../marca/greeting';
 import MeuTransporteSheet from '../../components/tio/MeuTransporteSheet';
 import LinhaDaPerua from '../../components/perua/LinhaDaPerua';
 import { useRelogio } from '../../hooks/useRelogio';
+import { contarConvitesAMandar } from '../../dominio/escola/listaDaTurma.js';
 import { diaSemRota, fraseDoDiaSemRota } from '../../dominio/rota/calendario.js';
 
 /**
@@ -262,9 +263,12 @@ export default function TioDashboard() {
   }, [payments]);
 
   const semHorario = useMemo(() => semHorarioCombinado(children), [children]);
+  // Só quem pede um toque hoje (nunca recebeu ou o link venceu), pela régua da
+  // Lista da turma — antes misturava enviado, vencido e sem telefone (RC2).
+  const [agoraDoConvite] = useState(() => Date.now());
   const convitesAbertos = useMemo(
-    () => children.filter((c) => c.inviteStatus === 'pending' && !c.cadastroRapido).length,
-    [children]
+    () => contarConvitesAMandar(children, agoraDoConvite),
+    [children, agoraDoConvite]
   );
 
   /**

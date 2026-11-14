@@ -13,11 +13,12 @@
  * Cobrar por ele, saber quando o PIX chega, reduzir atraso, segurança, preço,
  * "grátis", prazo de função nova e número solto. Número, só da régua.
  *
- * ⚠️ O MOMENTO 2 DIZ "o aviso 'Convite pendente' some", E NÃO "aparece Entrou ✓"
- * como a especificação propunha: não existe "Entrou ✓" em tela nenhuma. O que o
- * app faz é tirar a etiqueta "Convite pendente" do cartão da criança quando a
- * família entra (`inviteStatus` deixa de ser `pending`). Prometer um selo que
- * não aparece seria a primeira mentira do cartão que veio explicar o valor.
+ * ⚠️ O MOMENTO 2 DIZ "aparece Entrou ✓ na lista" DESDE A RC2 (14/11/2026).
+ * Na RC1 ele dizia "o 'Convite pendente' some", porque o selo não existia —
+ * e nem essa frase era verdade: o `ChildCard`, único lugar da etiqueta, não
+ * era mais montado por tela nenhuma. A Lista da turma (`ConviteEnxuto`, em
+ * InviteShare.jsx) passou a mostrar o selo quando a família entra
+ * (`parentUid`), e o teste confere que ele existe antes de a frase o citar.
  */
 
 /** O que o cartão chama o assunto. */
@@ -96,8 +97,8 @@ export const SUSTENTA_DO_ENVIADO = 'inviteUsedAt';
 export function textoDoEnviado(nome) {
   const primeiro = String(nome || '').trim().split(/\s+/)[0];
   return primeiro
-    ? `Enviado para ${primeiro}. Quando ela entrar, o “Convite pendente” some da lista.`
-    : 'Enviado. Quando a família entrar, o “Convite pendente” some da lista.';
+    ? `Enviado para ${primeiro}. Quando ela entrar, aparece Entrou ✓ na lista.`
+    : 'Enviado. Quando a família entrar, aparece Entrou ✓ na lista.';
 }
 
 /**

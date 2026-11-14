@@ -27,6 +27,10 @@ import { useChildren } from '../../hooks/useChildren';
 import { useAuth } from '../../hooks/useAuth';
 import { deactivateChildAndParent } from '../../services/accountService';
 import { PERIOD_LABELS } from '../../compartilhado/formatters';
+import { ConviteEnxuto } from '../../components/children/InviteShare';
+import { LINHAS_DO_VALOR } from '../../marca/valorDoConvite.js';
+import { contadorDeFamilias, ROTULOS, TODAS_CONVIDADAS } from '../../marca/textosDaLista.js';
+import { resumoDosConvites, proximaParaConvidar } from '../../dominio/escola/listaDaTurma.js';
 
 /**
  * MINHA TURMA — a tela de GERENCIAR a turma (05/10/2026, densidade aprovada
@@ -89,6 +93,28 @@ export default function TioChildren() {
   }, [children, filter, search]);
 
   const criancaDaFolha = acoesDe ? children.find((c) => c.id === acoesDe) || null : null;
+
+  // OS CONVITES (RC2, fila de convites). `tocados` guarda o toque desta
+  // abertura da tela até o carimbo do servidor chegar; `ultimoConvidado` faz o
+  // botão do topo andar para a próxima família depois de cada toque.
+  const [agora] = useState(() => Date.now());
+  const [tocados, setTocados] = useState(() => new Set());
+  const [ultimoConvidado, setUltimoConvidado] = useState(null);
+  const marcarTocado = (id) => {
+    setTocados((prev) => new Set(prev).add(id));
+    setUltimoConvidado(id);
+  };
+  const esquecerToque = (id) =>
+    setTocados((prev) => {
+      const n = new Set(prev);
+      n.delete(id);
+      return n;
+    });
+  const convites = useMemo(() => resumoDosConvites(children, agora, tocados), [children, agora, tocados]);
+  const proxima = useMemo(
+    () => proximaParaConvidar(children, agora, ultimoConvidado, tocados),
+    [children, agora, ultimoConvidado, tocados]
+  );
 
   return (
     <>
@@ -162,6 +188,15 @@ export default function TioChildren() {
           ))}
         </div>
 
+        {!loading && children.length > 0 && (
+          <ContadorDeConvites
+            convites={convites}
+            proxima={proxima}
+            onEnviado={marcarTocado}
+            onLinkNovo={esquecerToque}
+          />
+        )}
+
         {loading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
@@ -192,6 +227,9 @@ export default function TioChildren() {
               <LinhaDaCrianca
                 key={child.id}
                 child={child}
+                tocou={tocados.has(child.id)}
+                onEnviado={marcarTocado}
+                onLinkNovo={esquecerToque}
                 onAbrir={() => setFichaDe(child.id)}
                 onAcoes={() => setAcoesDe(child.id)}
               />
@@ -227,8 +265,44 @@ export default function TioChildren() {
   );
 }
 
+/**
+ * O CONTADOR DO TOPO (RC2): quantas famílias entraram, e um botão que manda o
+ * convite da PRÓXIMA que falta — um toque por família, porque o WhatsApp não
+ * aceita envio automático. Depois do toque o botão já aponta a seguinte.
+ */
+function ContadorDeConvites({ convites, proxima, onEnviado, onLinkNovo }) {
+  const pct = convites.total ? Math.round((convites.entraram / convites.total) * 100) : 0;
+  const primeiro = String(proxima?.name || '').trim().split(/\s+/)[0];
+  return (
+    <section className="space-y-2 rounded-2xl bg-card p-3.5 shadow-rest" aria-label="Famílias no app">
+      <p className="font-display text-lg font-extrabold leading-tight text-text">
+        {contadorDeFamilias(convites.entraram, convites.total)}
+      </p>
+      <div className="h-2 overflow-hidden rounded-full bg-neutro" aria-hidden="true">
+        <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+      </div>
+      {convites.faltam > 0 && <p className="text-sm text-textMuted">{LINHAS_DO_VALOR[0].texto}</p>}
+      {proxima ? (
+        <div className="space-y-1">
+          <ConviteEnxuto
+            key={proxima.id}
+            crianca={proxima}
+            forma="barra"
+            rotulo={ROTULOS.mandarParaQuemFalta}
+            onEnviado={onEnviado}
+            onLinkNovo={onLinkNovo}
+          />
+          {primeiro && <p className="text-center text-sm text-textMuted">{ROTULOS.proxima(primeiro)}</p>}
+        </div>
+      ) : (
+        convites.faltam > 0 && <p className="text-sm text-textMuted">{TODAS_CONVIDADAS.texto}</p>
+      )}
+    </section>
+  );
+}
+
 /** Uma criança da turma: tocar no nome abre a ficha; o "···" abre as ações. */
-function LinhaDaCrianca({ child, onAbrir, onAcoes }) {
+function LinhaDaCrianca({ child, tocou, onEnviado, onLinkNovo, onAbrir, onAcoes }) {
   const primeiro = String(child.name || '').split(' ')[0];
   return (
     <li className="flex items-center gap-2 py-1.5 pl-3 pr-1.5">
@@ -247,6 +321,7 @@ function LinhaDaCrianca({ child, onAbrir, onAcoes }) {
           </span>
         </span>
       </button>
+      <ConviteEnxuto crianca={child} tocou={tocou} onEnviado={onEnviado} onLinkNovo={onLinkNovo} />
       <button
         type="button"
         onClick={onAcoes}

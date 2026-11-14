@@ -1,0 +1,218 @@
+/**
+ * OS TEXTOS DA LISTA DA TURMA (RC2, 14/11/2026) — catálogo irmão de
+ * `valorDoConvite.js`. Puro, sem React (`npm run testar:lista-da-turma`).
+ *
+ * ── A MESMA REGRA DO IRMÃO: AFIRMAÇÃO CARREGA DE ONDE VEM
+ * Tudo o que AFIRMA algo ao motorista (o que acontece, o que se perde, o que
+ * o app faz depois) mora em `AFIRMACOES_DA_LISTA`, com `sustenta` — a chave de
+ * uma funcionalidade que o app cumpre hoje, provada no teste por leitura de
+ * arquivo — e, quando a frase só é verdade sob uma condição, `condicao`.
+ * Rótulo de botão e de campo não afirma nada: fica em `ROTULOS`, e o teste só
+ * confere que é curto e limpo.
+ *
+ * ── O QUE NÃO ENTRA
+ * Cobrar por ele, saber quando o PIX chega, segurança, "grátis", prazo de
+ * função nova e número solto (os números da tela saem da régua, por função).
+ * "Recebeu" também não: o app sabe que ELE tocou em mandar, não que a mensagem
+ * chegou.
+ */
+
+/** O contador do topo. O número vem de `resumoDosConvites`, nunca escrito. */
+export function contadorDeFamilias(entraram, total) {
+  const e = Math.max(0, Number(entraram) || 0);
+  const t = Math.max(0, Number(total) || 0);
+  if (t === 1) return e ? 'A família entrou no app' : 'A família ainda não entrou no app';
+  return `${e} de ${t} famílias entraram no app`;
+}
+
+/** As crianças que a rota ainda não leva. */
+export function textoForaDaRota(n) {
+  return n === 1
+    ? '1 criança fica fora da rota até ter rua e hora de pegar.'
+    : `${n} crianças ficam fora da rota até ter rua e hora de pegar.`;
+}
+
+/** O cabeçalho do grupo: "Escola Alvorada · 6 crianças". */
+export function cabecalhoDaEscola(nome, n) {
+  return `${nome || ROTULOS.semEscola} · ${n} ${n === 1 ? 'criança' : 'crianças'}`;
+}
+
+/** A posição na fila da caixa "A completar": "2 de 7". */
+export function progressoDaFila(posicao, total) {
+  return `${posicao} de ${total}`;
+}
+
+/**
+ * "TIRAR DA TURMA" DIZ O QUE SE PERDE (doc 11, seção corrigida).
+ *
+ * `deactivateChildAndParent` (services/accountService.js) faz, nesta ordem:
+ * apaga as faltas de hoje em diante, o "quem busca" e os recados da criança;
+ * desvincula a família (`desvincularResponsavel`: se era o único filho, a
+ * conta dela some); desativa a criança, zera o aceite do contrato e apaga a
+ * foto. E não existe reativar (`updateChild` recusa `active`). Por isso não há
+ * "Desfazer": seria mentira. Os pagamentos ficam (o histórico do Financeiro).
+ *
+ * A frase só cita o que esta criança TEM: dizer "apagar a foto" de quem nunca
+ * teve foto ensina que o aviso é genérico, e aviso genérico ninguém lê.
+ */
+export function textoDeTirar({ nome, temFamilia, temFoto, temAceite } = {}) {
+  const primeiro = String(nome || '').trim().split(/\s+/)[0] || 'a criança';
+  const perdas = [];
+  if (temFamilia) perdas.push('desfazer o vínculo da família');
+  if (temAceite) perdas.push('zerar o aceite do contrato');
+  if (temFoto) perdas.push('apagar a foto');
+  let corpo;
+  if (perdas.length === 0) corpo = `${primeiro} sai da turma e da rota. Não dá para voltar.`;
+  else if (perdas.length === 1) corpo = `Vai ${perdas[0]}. Não dá para voltar.`;
+  else corpo = `Vai ${perdas.slice(0, -1).join(', ')} e ${perdas[perdas.length - 1]}. Não dá para voltar.`;
+  return {
+    titulo: `Tirar ${primeiro} da turma?`,
+    corpo,
+    pagamentos: PAGAMENTOS_FICAM,
+  };
+}
+
+export const PAGAMENTOS_FICAM = 'Os pagamentos que já existem continuam no Financeiro.';
+
+/** Os rótulos: nomes de botão e de campo. Não afirmam nada. */
+export const ROTULOS = {
+  // Convite
+  convidar: 'Convidar',
+  enviado: 'Enviado',
+  mandarDeNovo: 'Mandar de novo',
+  entrou: 'Entrou',
+  linkNovo: 'Link novo',
+  mandarParaQuemFalta: 'Mandar convite para quem falta',
+  proxima: (nome) => `Próxima: família de ${nome}`,
+  // Lista
+  titulo: 'Minha turma',
+  vaziaTitulo: 'Sua turma começa aqui',
+  adicionar: '+ Nome da criança',
+  ok: 'OK',
+  semEscola: 'Sem escola',
+  entrada: 'Entrada',
+  cadastroCompleto: 'Cadastro completo, passo a passo',
+  // Campos, na ordem em que ele sabe
+  nome: 'Nome',
+  meninoOuMenina: 'Menino ou menina',
+  menino: 'Menino',
+  menina: 'Menina',
+  escola: 'Escola',
+  novaEscola: '+ Nova escola',
+  horaDePegar: 'Hora de pegar',
+  nomeDaMae: 'Nome da mãe',
+  rua: 'Rua',
+  trocarRua: 'Trocar a rua',
+  numeroDaCasa: 'Número da casa',
+  naoSeiONumero: 'Não sei o número',
+  whatsappDaMae: 'WhatsApp da mãe',
+  seSouber: '(se souber)',
+  mensalidade: 'Mensalidade',
+  seQuiser: '(se quiser)',
+  // Salvar sozinho
+  salvo: 'salvo ✓',
+  salvando: 'salvando…',
+  naoSalvou: 'Não salvou.',
+  tentarDeNovo: 'Tentar de novo',
+  // Ações da linha aberta
+  abrirFicha: 'Abrir a ficha',
+  mandarRecado: 'Mandar recado',
+  tirarDaTurma: 'Tirar da turma',
+  voltar: 'Voltar',
+  // Hora proposta
+  propor: 'Propor a hora de pegar de quem está sem',
+  propostaTitulo: 'Proposta do app',
+  confirmarHorarios: 'Confirmar estes horários',
+  agoraNao: 'Agora não',
+  // A completar
+  aCompletar: 'A completar',
+  salvarEProxima: 'Salvar e ir para a próxima',
+  pularEProxima: 'Ainda não sei · próxima',
+  fimDaFila: 'Fim desta lista.',
+  verDeNovo: 'Ver de novo quem ficou',
+};
+
+/** O nome de cada grupo da caixa "A completar" (chave = `FALTA`). */
+export const GRUPO_A_COMPLETAR = {
+  hora: 'Hora de pegar',
+  rua: 'Rua',
+  numero: 'Número da casa',
+  whatsapp: 'WhatsApp da mãe',
+  mensalidade: 'Mensalidade',
+};
+
+/**
+ * AS AFIRMAÇÕES, cada uma com a origem. O teste mantém a lista fechada das
+ * chaves de `sustenta` e de `condicao` e prova cada uma no código.
+ */
+export const VAZIA_TEXTO = {
+  texto: 'Digite o nome da primeira criança. O resto você completa depois.',
+  sustenta: 'crianca-so-com-nome',
+};
+
+export const TODAS_CONVIDADAS = {
+  texto: 'Você já mandou o convite para todas as famílias.',
+  sustenta: 'convite-enviado-no-toque',
+};
+
+export const DECLARACAO_UMA_VEZ = {
+  texto: 'Pedido uma vez. Vale para as crianças que você cadastrar agora.',
+  sustenta: 'declaracao-por-sessao',
+};
+
+export const FORA_DA_ROTA = {
+  // A frase com o número sai de `textoForaDaRota`; esta é a que a sustenta.
+  texto: textoForaDaRota(2),
+  sustenta: 'cadastro-rapido-fora-da-viagem',
+};
+
+export const NUMERO_PELA_FAMILIA = {
+  texto: 'A família completa o número no primeiro acesso dela.',
+  sustenta: 'numero-pela-familia',
+  condicao: 'mae-no-app',
+};
+
+export const SEM_VALOR = {
+  texto: 'Sem valor, a mensalidade não é gerada.',
+  sustenta: 'sem-valor-sem-mensalidade',
+};
+
+export const PROPOSTA_NOTA = {
+  texto: 'A hora de pegar é na porta de cada casa. Confira e mude o que precisar.',
+  sustenta: 'hora-pega-na-porta',
+};
+
+export const PROPOSTA_AVISO = {
+  texto: 'Ao confirmar, as famílias no app recebem o aviso do horário.',
+  sustenta: 'aviso-de-horario',
+  condicao: 'mae-no-app',
+};
+
+export const PONHA_A_ENTRADA = {
+  texto: 'Ponha a entrada da escola para o app propor a hora de pegar.',
+  sustenta: 'proposta-pela-entrada',
+};
+
+export const PULADOS_FICAM = {
+  texto: 'Quem você pulou continua aqui para depois.',
+  sustenta: 'a-completar-recalcula',
+};
+
+export function todasAsAfirmacoesDaLista() {
+  const tirar = textoDeTirar({ nome: 'Ana Clara', temFamilia: true, temFoto: true, temAceite: true });
+  return [
+    { id: 'vazia', ...VAZIA_TEXTO },
+    { id: 'todasConvidadas', ...TODAS_CONVIDADAS },
+    { id: 'declaracaoUmaVez', ...DECLARACAO_UMA_VEZ },
+    { id: 'foraDaRota', ...FORA_DA_ROTA },
+    { id: 'numeroPelaFamilia', ...NUMERO_PELA_FAMILIA },
+    { id: 'semValor', ...SEM_VALOR },
+    { id: 'propostaNota', ...PROPOSTA_NOTA },
+    { id: 'propostaAviso', ...PROPOSTA_AVISO },
+    { id: 'ponhaAEntrada', ...PONHA_A_ENTRADA },
+    { id: 'puladosFicam', ...PULADOS_FICAM },
+    { id: 'tirarComTudo', texto: tirar.corpo, sustenta: 'tirar-da-turma' },
+    { id: 'tirarSemNada', texto: textoDeTirar({ nome: 'Ana' }).corpo, sustenta: 'tirar-da-turma' },
+    { id: 'pagamentosFicam', texto: PAGAMENTOS_FICAM, sustenta: 'pagamentos-ficam' },
+  ];
+}

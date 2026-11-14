@@ -83,10 +83,14 @@ const FUNCIONALIDADES = {
   'link-sem-numero': [
     ['src/components/children/InviteShare.jsx', /https:\/\/wa\.me\/\?text=/],
   ],
+  // A família entra (o resgate grava `parentUid`) e a Lista da turma mostra o
+  // selo "Entrou ✓" (RC2). Era o `ChildCard` com "Convite pendente" — peça que
+  // nenhuma tela montava mais, o que deixava a frase da RC1 sem fonte.
   inviteUsedAt: [
     ['functions/lib/invites.js', /inviteUsedAt/],
-    ['src/components/children/ChildCard.jsx', /inviteStatus === 'pending'/],
-    ['src/components/children/ChildCard.jsx', /Convite pendente/],
+    ['src/dominio/escola/listaDaTurma.js', /if \(crianca\.parentUid\) return CONVITE\.ENTROU;/],
+    ['src/components/children/InviteShare.jsx', /if \(estado === CONVITE\.ENTROU\) \{[\s\S]{0,400}ROTULOS\.entrou/],
+    ['src/pages/tio/TioChildren.jsx', /<ConviteEnxuto\b/],
   ],
   'claimed-paid': [
     ['src/components/payments/AguardandoVoce.jsx', /Dar baixa/],
@@ -185,8 +189,11 @@ eq('sem nome: não deixa buraco nem "undefined"', /undefined|null|\{|\}|para \./
 eq('sem nome: fala da família', semNome.includes('família'), true);
 eq('nulo e espaços valem como sem nome', [textoDoEnviado(null), textoDoEnviado('   ')], [semNome, semNome]);
 eq('com nome cabe em 80 caracteres', comNome.length <= 80, true);
-eq('nenhuma das duas formas promete um "Entrou ✓" que a tela não tem',
-  /entrou ✓/i.test(comNome + semNome), false);
+eq('as duas formas citam o selo "Entrou ✓" da lista', [/Entrou ✓/.test(comNome), /Entrou ✓/.test(semNome)], [true, true]);
+eq('e o selo que elas citam existe na linha da lista (com o visto)',
+  /ROTULOS\.entrou/.test(ler('src/components/children/InviteShare.jsx')) &&
+    /<Check size=\{16\}[^>]*\/>\s*\{ROTULOS\.entrou\}/.test(ler('src/components/children/InviteShare.jsx')), true);
+eq('a frase antiga ("Convite pendente" some) não volta', /Convite pendente/.test(comNome + semNome), false);
 
 console.log('\n\x1b[1m5. Os componentes usam o catálogo\x1b[0m');
 const cartao = ler('src/components/children/PorQueConvidar.jsx');

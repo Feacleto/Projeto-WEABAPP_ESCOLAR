@@ -23,6 +23,21 @@ import { useContratos } from '../../hooks/useContratos';
 import { useGarantirContrato } from '../../hooks/useGarantirContrato';
 import { gerarLinkNovo } from '../../services/inviteCodeService';
 import { conviteValidoAteMs, conviteVencido } from '../../dominio/identidade/validadeDoConvite';
+import { estadoDoConvite, CONVITE } from '../../dominio/escola/listaDaTurma.js';
+import { ROTULOS } from '../../marca/textosDaLista.js';
+import AppSheet from '../common/AppSheet';
+
+/**
+ * O link do WhatsApp: com o número, abre a conversa certa; sem ele
+ * (`https://wa.me/?text=`), abre a escolha de contato — o convite funciona
+ * igual, e é por isso que o WhatsApp da mãe pode ser opcional no cadastro.
+ */
+function linkDoWhatsApp(telefone, textoCodificado) {
+  const fone = String(telefone || '').replace(/\D/g, '');
+  return fone
+    ? `https://wa.me/${fone.startsWith('55') ? fone : `55${fone}`}?text=${textoCodificado}`
+    : `https://wa.me/?text=${textoCodificado}`;
+}
 
 function diaMes(ms) {
   const d = new Date(ms);
@@ -231,9 +246,7 @@ export default function InviteShare({
           url,
         })
   );
-  const waHref = parentPhone
-    ? `https://wa.me/${parentPhone.startsWith('55') ? parentPhone : `55${parentPhone}`}?text=${waText}`
-    : `https://wa.me/?text=${waText}`;
+  const waHref = linkDoWhatsApp(parentPhone, waText);
 
   // ⚠️ O CONVITE SÓ SAI COM OS DADOS DO CONTRATO (02/10/2026, decisão do
   // dono). Sem nome, CPF/CNPJ e endereço do motorista o contrato não é gerado,
@@ -367,5 +380,168 @@ export default function InviteShare({
       </>
       )}
     </div>
+  );
+}
+
+/**
+ * O CONTRATO DE UMA LINHA DA LISTA — o mesmo `useGarantirContrato`, com a
+ * criança AO VIVO que a lista já escuta (sem abrir outra escuta dela).
+ */
+function GarantirContratoDe({ crianca }) {
+  const { contratos } = useContratos(crianca);
+  useGarantirContrato(crianca, contratos);
+  return null;
+}
+
+/**
+ * O CONVITE EM UM TOQUE, NA LINHA DA LISTA DA TURMA (RC2, 14/11/2026).
+ *
+ * O mesmo convite do `InviteShare` — a mesma mensagem, o mesmo link, a mesma
+ * marca `conviteEnviadoEm`, o mesmo contrato garantido antes de o link sair e
+ * a mesma trava dos dados do contrato —, num botão que cabe à direita da
+ * linha. Três caras, que saem de `estadoDoConvite` (dominio/escola):
+ *   - Convidar (verde, com a palavra) — nunca mandou;
+ *   - Enviado / Mandar de novo (contorno) — ele tocou, ela ainda não entrou;
+ *   - Entrou ✓ (selo) — a família está no app.
+ * E uma quarta, que é passo e não estado: o link VENCIDO (15 dias) vira
+ * "Link novo", porque mandar o antigo seria mandar um link que não abre.
+ *
+ * `forma="barra"` é o botão largo do topo ("Mandar convite para quem falta"):
+ * a mesma peça, com o rótulo de fora.
+ *
+ * `tocou` vem da lista: o toque desta abertura da tela, antes de o carimbo do
+ * servidor chegar. `onEnviado(id)` avisa o toque; `onLinkNovo(id)` avisa que o
+ * link mudou (o toque antigo deixa de valer).
+ */
+export function ConviteEnxuto({
+  crianca,
+  tocou = false,
+  forma = 'linha',
+  rotulo,
+  onEnviado,
+  onLinkNovo,
+}) {
+  const { profile } = useAuth();
+  const [agora] = useState(() => Date.now());
+  const [gerando, setGerando] = useState(false);
+  const [pedindoDados, setPedindoDados] = useState(false);
+  const faltaContrato = dadosDaContratadaFaltando(profile).length > 0;
+  if (!crianca) return null;
+
+  const estado = estadoDoConvite(crianca, agora, tocou);
+  const firstName = String(crianca.name || '').trim().split(/\s+/)[0] || '';
+  const url = inviteUrl(crianca.inviteCode);
+  const waHref = linkDoWhatsApp(
+    crianca.parentPhone,
+    encodeURIComponent(
+      mensagemDoConvite({ marca: profile?.marcaNome, nomeCrianca: firstName, generoCrianca: crianca.gender, url })
+    )
+  );
+  const barra = forma === 'barra';
+  const garantir =
+    estado !== CONVITE.ENTROU && Number(crianca.monthlyFee) > 0 ? <GarantirContratoDe crianca={crianca} /> : null;
+
+  if (estado === CONVITE.ENTROU) {
+    if (barra) return null;
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primaryChip px-3 py-1.5 text-base font-bold text-accentText">
+        <Check size={16} aria-hidden="true" />
+        {ROTULOS.entrou}
+      </span>
+    );
+  }
+
+  const classeCheia = barra
+    ? 'tap inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-whatsapp px-4 py-3 text-center text-base font-bold leading-tight text-onAccent shadow-focus'
+    : 'tap inline-flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-whatsapp px-3 text-base font-bold text-onAccent';
+
+  if (estado === CONVITE.VENCIDO) {
+    const gerar = async () => {
+      setGerando(true);
+      try {
+        await gerarLinkNovo(crianca.id);
+        onLinkNovo?.(crianca.id);
+        toast.success('Link novo pronto. O anterior não abre mais.');
+      } catch (err) {
+        toast.error(err.message || 'Não deu pra gerar o link novo.');
+      } finally {
+        setGerando(false);
+      }
+    };
+    return (
+      <button type="button" onClick={gerar} disabled={gerando} className={`${classeCheia} disabled:opacity-60`}>
+        <RefreshCw size={18} aria-hidden="true" className="shrink-0" />
+        {barra ? `${ROTULOS.linkNovo} para ${firstName || 'a família'}` : ROTULOS.linkNovo}
+      </button>
+    );
+  }
+
+  if (faltaContrato) {
+    return (
+      <>
+        <button type="button" onClick={() => setPedindoDados(true)} className={classeCheia}>
+          {barra ? rotulo || ROTULOS.mandarParaQuemFalta : ROTULOS.convidar}
+        </button>
+        <AppSheet
+          open={pedindoDados}
+          onClose={() => setPedindoDados(false)}
+          title="Antes do convite: seus dados para o contrato"
+          icon={FileSignature}
+        >
+          <div className="space-y-3">
+            <p className="text-base leading-relaxed text-textBody">
+              A família recebe o contrato para assinar junto com o convite. Ele
+              precisa do seu nome, CPF ou CNPJ e endereço — é uma vez só.
+            </p>
+            <DadosDoContratoForm textoDoBotao="Salvar e liberar o convite" onSalvo={() => setPedindoDados(false)} />
+          </div>
+        </AppSheet>
+      </>
+    );
+  }
+
+  const tocar = () => {
+    marcarConviteEnviado(crianca.id).catch(() => {});
+    lembrar(CHAVE_CONVITE_ENVIADO);
+    window.dispatchEvent(new Event(EVENTO_CONVITE_ENVIADO));
+    onEnviado?.(crianca.id);
+  };
+
+  if (estado === CONVITE.ENVIADO && !barra) {
+    return (
+      <>
+        {garantir}
+        <a
+          href={waHref}
+          target="_blank"
+          rel="noreferrer"
+          data-convite-whatsapp
+          onClick={tocar}
+          aria-label={`${ROTULOS.enviado}. ${ROTULOS.mandarDeNovo} para a família de ${firstName}`}
+          className="tap inline-flex min-h-12 shrink-0 flex-col items-center justify-center rounded-xl border-2 border-borderStrong bg-card px-2.5 py-1 text-sm font-semibold leading-tight text-text"
+        >
+          {ROTULOS.enviado}
+          <span className="text-primary">{ROTULOS.mandarDeNovo}</span>
+        </a>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {garantir}
+      <a
+        href={waHref}
+        target="_blank"
+        rel="noreferrer"
+        data-convite-whatsapp
+        onClick={tocar}
+        aria-label={barra ? undefined : `${ROTULOS.convidar} a família de ${firstName}`}
+        className={classeCheia}
+      >
+        <span className="inline-flex shrink-0"><WhatsAppIcon size={20} colored={false} /></span>
+        {barra ? rotulo || ROTULOS.mandarParaQuemFalta : ROTULOS.convidar}
+      </a>
+    </>
   );
 }
