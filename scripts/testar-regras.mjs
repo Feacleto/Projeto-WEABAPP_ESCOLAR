@@ -2300,6 +2300,15 @@ async function vagaContratada(tio1, tio2) {
       statusUpdatedAt: T(0), active: B(true), createdAt: T(0),
     }));
 
+  // 4b. A DECLARAÇÃO DE AUTORIZAÇÃO (decisão 29, 14/11/2026): toda criança
+  // nasce com os três campos, por qualquer caminho de cadastro. O `create` é
+  // lista de PROIBIDOS e nenhum dos três está nela — este caso existe para que
+  // acrescentá-los lá falhe aqui, e não no primeiro cadastro real.
+  checar('vaga', 'a criança nasce com a declaração de autorização', 'PASSA',
+    await criarCrianca(tio1, tio1.uid, `vaga_autoriza_${Date.now()}`, {
+      autorizacaoDeclarada: B(true), autorizacaoDeclaradaEm: T(0), autorizacaoDeclaradaPor: S(tio1.uid),
+    }));
+
   // 5. ⚠️ O QUE O `update` RECUSA, O `create` TAMBÉM. Cada um destes nascia.
   checar('vaga', 'a criança nasce com o contrato "aceito"', 'NEGA',
     await criarCrianca(tio1, tio1.uid, `vaga_aceite_${Date.now()}`, {
