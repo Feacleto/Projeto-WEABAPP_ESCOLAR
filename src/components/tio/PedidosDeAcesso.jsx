@@ -82,10 +82,18 @@ export default function PedidosDeAcesso({ pedidos = [], criancas = [] }) {
         const filho = primeiro(crianca?.name) || 'uma criança';
         // O número que ELE cadastrou na ficha — nunca o do pedido, que pode
         // ter vindo do que a conta digitou.
-        const cadastrado = String(crianca?.parentPhone || '').replace(/\D/g, '');
+        // A MESMA conta do `linkDoZap`: "55" na frente (12 ou 13 dígitos) é
+        // o número com o país, e vale.
+        const cadastrado = String(crianca?.parentPhone || '')
+          .replace(/\D/g, '')
+          .replace(/^55(?=\d{10,11}$)/, '');
         const numeroValido = cadastrado.length === 10 || cadastrado.length === 11;
         const vencido = crianca ? conviteVencido(crianca, agora) : false;
-        const semResponsavel = Boolean(crianca) && !crianca.parentUid;
+        // O `redeemInvite` só aceita convite `pending`: com outro estado, o
+        // link sairia e seria recusado na mão da família.
+        const familiaJaEntrou = Boolean(crianca?.parentUid);
+        const conviteUsado = Boolean(crianca) && !familiaJaEntrou && crianca.inviteStatus !== 'pending';
+        const semResponsavel = Boolean(crianca) && !familiaJaEntrou && !conviteUsado;
         const podeMandar = semResponsavel && Boolean(crianca.inviteCode) && numeroValido && !vencido;
         const waHref = podeMandar
           ? linkDoZap(
@@ -111,13 +119,23 @@ export default function PedidosDeAcesso({ pedidos = [], criancas = [] }) {
                   O link vai para o WhatsApp que você cadastrou. Só entra quem
                   abrir por ele.
                 </p>
-                {numeroValido ? (
+                {familiaJaEntrou && (
+                  <p className="mt-0.5 text-sm text-textMuted">
+                    A família de {filho} já entrou no app. Pode descartar este pedido.
+                  </p>
+                )}
+                {conviteUsado && (
+                  <p className="mt-0.5 text-sm text-textMuted">
+                    O convite de {filho} já foi usado. Fale com a família antes de mandar outro.
+                  </p>
+                )}
+                {!familiaJaEntrou && !conviteUsado && (numeroValido ? (
                   <p className="mt-0.5 text-sm text-textMuted">{formatPhone(cadastrado)}</p>
                 ) : (
                   <p className="mt-0.5 text-sm text-textMuted">
                     O WhatsApp da ficha está incompleto. Corrija na ficha de {filho}.
                   </p>
-                )}
+                ))}
               </div>
             </div>
             <div className="mt-3 flex gap-2">

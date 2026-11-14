@@ -226,6 +226,29 @@ checar('quem responde é o motorista dono da criança', true,
   checar('o link sai do gerador do convite (inviteUrl + mensagemDoConvite)', true,
     card.includes('inviteUrl(crianca.inviteCode)') && card.includes('mensagemDoConvite('));
   checar('o card nunca pede `aprovar`', false, /responderPedidoDeAcesso\([^)]*(true|false)\)/.test(card));
+
+  // O número com "55" na frente vale no card como vale no `linkDoZap`
+  // (auditoria, 14/11/2026): a mesma limpeza, aplicada aos mesmos casos.
+  const { linkDoZap } = await import('../src/dominio/identidade/auxiliar.js');
+  const limpezaDoCard = card.match(/String\(crianca\?\.parentPhone \|\| ''\)\s*\.replace\(\/\\D\/g, ''\)\s*\.replace\((\/[^\n]+?\/), ''\)/);
+  checar('o card limpa o número como o linkDoZap', true, Boolean(limpezaDoCard));
+  if (limpezaDoCard) {
+    const re = new RegExp(limpezaDoCard[1].slice(1, -1));
+    const doCard = (t) => {
+      const d = String(t).replace(/\D/g, '').replace(re, '');
+      return d.length === 10 || d.length === 11;
+    };
+    for (const t of ['11987654321', '5511987654321', '+55 (11) 98765-4321', '551133334444', '1133334444', '987654321', '55119876543210']) {
+      checar(`card e linkDoZap concordam sobre ${t}`, linkDoZap(t) !== 'https://wa.me/', doCard(t));
+    }
+  }
+  // Convite que não está `pending` é recusado pelo `redeemInvite`: o botão
+  // não aparece, e o card diz por quê.
+  checar('o card só manda o link com o convite pendente', true,
+    /inviteStatus !== 'pending'/.test(card) && /semResponsavel = Boolean\(crianca\) && !familiaJaEntrou && !conviteUsado/.test(card));
+  checar('…e diz quando a família já entrou', true, card.includes('já entrou no app'));
+  checar('o servidor exige o convite pendente (a razão do card)', true,
+    readFileSync(new URL('../functions/lib/invites.js', import.meta.url), 'utf8').includes("child.inviteStatus !== 'pending'"));
 }
 /* ⚠️ A RESPOSTA ERA `{ encontrou: N }` E PASSOU A SER `{ ok: true }`
    (03/10/2026). Ela não dizia o nome da criança, mas dizia SE havia criança
