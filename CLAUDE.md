@@ -19,7 +19,7 @@ npm run dev                      # localhost:5173
 npm run tokens                   # depois de mudar cor/fonte/raio no tailwind.config.js:
                                  # regera src/design/tokens.css e landing/tokens.css
 npm run lint
-npm run testar                   # 101 scripts. O PRIMEIRO é
+npm run testar                   # 108 scripts. O PRIMEIRO é
                                  # `testar:imports`, e ele existe porque a
                                  # bateria já esteve partida no meio — ver a
                                  # nota abaixo. Depois, na ordem da cadeia:
@@ -2093,15 +2093,15 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
 - **Acesso sem link:** `pedirAcessoPeloTelefone` e `responderPedidoDeAcesso`
   ([pedidosDeAcesso.js](functions/lib/pedidosDeAcesso.js)). Quem entra sem o
   link informa o WhatsApp; crianças SEM responsável com esse número viram um
-  pedido em `pedidosDeVinculo` para o motorista de cada uma, que aprova com
-  um toque no topo do Início. ⚠️ **O número sozinho não vincula nada** —
-  telefone não é segredo, e o dono preferiu a aprovação do motorista ao SMS.
+  pedido em `pedidosDeVinculo` para o motorista de cada uma, que MANDA O LINK
+  ao WHATSAPP QUE ELE CADASTROU na ficha (topo do Início). ⚠️ **O número sozinho não vincula nada** —
+  telefone não é segredo, e desde 14/11/2026 NÃO EXISTE MAIS "Aprovar" (decisão 28): a conta que pediu nunca é vinculada por aprovação, quem entra é a mãe real, pelo link no WhatsApp dela.
   A conta dela nasce `role: 'parent'` sem filho, e o `/pai` aparece borrado
   com o card de espera (`SemVinculoGate` no App). Sem criança com o número, o
   card pede para ela mandar o app ao motorista; quando ele cadastrar o filho
   com esse número, o gatilho do irmão abre o pedido. `telefoneAguardandoChave`
   (o número digitado, não comprovado) só gera pedido; `phoneChave` só nasce
-  de link ou aprovação. A resposta ao pedido não diz o nome da criança.
+  de link. A resposta ao pedido não diz o nome da criança, e o aviso ao motorista não leva o nome que a conta escolheu; o estado `link_enviado` é invisível a quem pediu (régua em [reguaDoPedidoDeAcesso.js](functions/lib/reguaDoPedidoDeAcesso.js), `testar:pedido-nao-vincula`). ⚠️ Vínculos feitos pela aprovação ANTIGA continuam valendo e o gatilho do irmão ainda os alimenta: antes do deploy, conferir no console `children` com `vinculadoPor == 'aprovacao'` e `pedidosDeVinculo` com `status == 'aprovado'`.
 - **Contato de investidor (site):** `registrarInteresseInvestidor` (HTTP
   público). O formulário de `alobuzinou.com.br/investidores` posta em
   `/api/interesse-investidor`, que o hosting da landing repassa para ela
@@ -3216,7 +3216,7 @@ celular continua sendo o desenho principal das duas.
 ⚠️ **ATUALIZAÇÃO 02/10/2026: O LINK CONTINUA SENDO A PORTA PRINCIPAL, MAS
 NÃO A ÚNICA.** Quem já entrou (Google ou e-mail) e não tem conta no app vê,
 no `/first-access`, "Qual o seu WhatsApp?" — e daí sai o pedido de acesso que
-o motorista aprova (ver "Acesso sem link" nas Cloud Functions). Quem chega
+o motorista manda o link ao WhatsApp da ficha (ver "Acesso sem link" nas Cloud Functions). Quem chega
 deslogado continua vendo a página de sempre. O texto abaixo descreve a
 decisão de 09/09/2026 e segue valendo para ela.
 
@@ -3700,14 +3700,14 @@ motivo de cada um.
 
 **Segurança mora nas rules, não na interface.** Esconder botão é UX; o que
 impede é [firestore.rules](firestore.rules). Toda mudança de permissão precisa
-passar por lá — e `npm run testar:regras` cobre o payload real (422 casos, com
+passar por lá — e `npm run testar:regras` cobre o payload real (1015 casos, com
 atores **anônimo**, **`novato`** (motorista recém-cadastrado e sem vínculo) e um
 **recém-inscrito**, que exercita o payload de `inscreverAssociado` como
 cliente). Ele roda fora do CI porque precisa do emulador, então rode à mão antes
 de publicar rule:
 `firebase emulators:exec --only auth,firestore "node scripts/testar-regras.mjs"`.
 
-`testar:storage` são **49 casos** e precisa dos TRÊS emuladores (o upload do
+`testar:storage` são **65 casos** e precisa dos TRÊS emuladores (o upload do
 teste é `multipart`: o emulador do firebase-tools 15 recusa o `media`, e por
 isso 17 casos falhavam sem ninguém mexer nas rules):
 `firebase emulators:exec --only auth,firestore,storage "node scripts/testar-storage.mjs"`.
@@ -4035,6 +4035,22 @@ pra largura — `max-w-6xl`, abas numa fileira em `sm`, kanban em cinco colunas
 em `lg` — e o celular é o que precisa continuar funcionando, não o que manda.
 
 **Nada de `git add -A`** — o repositório recebe várias sessões ao mesmo tempo.
+
+---
+
+## O lote do teste com motoristas conhecidos (14/11/2026)
+
+Saiu de uma análise com cinco especialistas e um passeio visual em 360×640 (relatórios em `docs/analise/`, fora do repositório). As decisões 24 a 31 de [docs/decisoes.md](docs/decisoes.md) registram o que ficou normativo; as marcadas "em implementação" dizem no próprio texto o que ainda falta.
+
+- ⚠️ **A COMUNIDADE É DESLIGADA NO SERVIDOR.** `platformConfig/app.comunidadeLigada` (ausente = desligada; só `true` liga; falha de leitura = desligada), em [comunidadeLigada.js](functions/lib/comunidadeLigada.js). Fecham `meusParceiros`, `fotosDaComunidade`, `avisarParceiroIndicado`, `publicarFotoDaTurma` (público parceiros ou comunidade), `pedirTransferencia`, `responderTransferencia` e `aceitarTransferencia`; `cancelarTransferencia` fica aberta. Não há botão no painel: religar é editar o campo no console, e ⚠️ **religar devolve as parcerias forjadas** (`casarNoCadastro` continua gravando `indicadoUid`): antes é preciso confirmação do indicado, teto por conta e limpeza. Gravar `platformConfig/app` com `set` sem merge APAGA a chave. `testar:comunidade-fechada`; as jornadas semeiam a chave ligada.
+- ⚠️ **A DECLARAÇÃO DE AUTORIZAÇÃO É GRAVADA** (decisão 29). `addChild` recusa sem `autorizacaoDeclarada === true` e grava `autorizacaoDeclarada`, `autorizacaoDeclaradaEm` (carimbo do servidor) e `autorizacaoDeclaradaPor` (uid). Régua em [autorizacaoDeclarada.js](src/dominio/identidade/autorizacaoDeclarada.js); as vias rápidas perguntam uma vez por sessão (`useDeclaracaoDaSessao`). ⚠️ As rules NÃO conferem `Em` nem `Por` e o motorista pode reescrever a declaração no update. `testar:declaracao-por-crianca`.
+- ⚠️ **`degrauDo` RECONHECE `ultimaRota`** (`jaRodou`, [carteira.js](src/dominio/associacao/carteira.js)). Com a cobrança desligada o servidor não grava `trialInicio`, e antes todo motorista aparecia como "nunca rodou" e a fila do dono o listava depois de 3 dias. Sem relógio, a pastilha é neutra e a proposta usa texto sem prazo nem porcentagem.
+- ⚠️ **ANIMAÇÃO DE TELA NUNCA COM FILL-MODE `both` OU `forwards`** ([tailwind.config.js](tailwind.config.js)): o `transform` preso mantém o contêiner como referência dos painéis `fixed` (`Sheet` e `ConfirmDialog`, sem portal), que passam a medir a PÁGINA e abrem fora da tela no celular pequeno. Vale `backwards`. `testar:preenchimento`.
+- Barra `sticky` de pé precisa de `var(--altura-do-menu)` mais a área segura (`testar:barra-da-rota`). O aviso de cookies grava `--reserva-do-aviso` e o `#root::after` reserva o espaço (padding no `body` nunca funcionou em página longa). No aceite legal o texto marca a caixa e o link do documento é separado (`testar:primeiro-dia`). Encerrar a rota leva ao Início, e "completar" a criança esconde a barra de baixo (`semBarraDeBaixo`, `testar:abas`).
+- **Operação.** O build de produção aborta sem `VITE_MAPTILER_KEY` (saída nomeada `SEM_CHAVE_DO_MAPA=1`, usada só no CI); `deploy.ps1` PARA se o checkout está atrás de `origin/webapp-alobuzinou`; `enviarAvisosDoDia` isola cada varredura e o fechamento sobe erro inesperado como ERROR; a CSP lista `viacep.com.br`. Docs novos: [deploy.md](docs/deploy.md) (rollback), [passo-a-passo-do-console.md](docs/passo-a-passo-do-console.md) (alerta, backup, mapa, App Check; cada item marca o que NÃO foi confirmado) e [roteiro-do-cadastro-assistido.md](docs/roteiro-do-cadastro-assistido.md).
+- **Testes que precisam de emulador e ficam fora da cadeia:** `testar:regras`, `testar:storage`, `testar:fechamento`, `testar:envio`, `testar:limpeza`, `testar:comunidade-fechada`, `testar:pedido-nao-vincula` e as três jornadas. ⚠️ Importam o Admin SDK de `functions/node_modules` (rode `npm ci` em `functions/`); com a porta 8085 ocupada por outra sessão, use um config temporário em outras portas.
+- ⚠️ **FORA desta versão:** o retry dos avisos de chegada e da buzina (branch `feat/operacao`, três auditorias), com a fumaça de produção já escrita no `deploy.md`.
+- ⚠️ **ESTA VERSÃO NÃO É SEGURA PARA DIVULGAR O ENDEREÇO DO APP.** Restam: o indicador ainda lê `indicadoUid` e o Storage entrega `profilePhotos` e `marcaLogos` a qualquer conta logada (oráculo de "quem virou motorista" mais a foto dele), não há teto de indicações por conta, e o consentimento não tem integridade nas rules. É uma versão para motoristas conhecidos.
 
 ---
 

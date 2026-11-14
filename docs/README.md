@@ -43,6 +43,8 @@
 |---|---|---|
 | [`deploy.md`](deploy.md) | pessoa | Antes de publicar. A ordem importa, há dois pré-requisitos de console, e a CSP está em Report-Only esperando uma passada de navegador. |
 | [`testes.md`](testes.md) | pessoa | Para entrar como motorista, dono ou responsável. Os três acessos são diferentes por natureza. |
+| [`passo-a-passo-do-console.md`](passo-a-passo-do-console.md) | pessoa (o dono) | Antes de abrir o teste. As ações que só o console faz: alerta de erro, backup do banco, plano e restrição do mapa, chave do App Check. Cada item marca o que NÃO foi confirmado em documentação oficial. |
+| [`roteiro-do-cadastro-assistido.md`](roteiro-do-cadastro-assistido.md) | pessoa (o consultor) | No primeiro encontro com o motorista. Quinze minutos no aparelho dele: ele toca, o consultor guia. |
 
 Versões longas e navegáveis (mesmo conteúdo, mais contexto e diagramas) estão publicadas como páginas privadas no Claude. `decisoes.md` é a fonte normativa: se algo divergir, vale ele.
 
