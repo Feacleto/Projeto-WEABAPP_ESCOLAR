@@ -432,7 +432,30 @@ function postParaLeitura(post, { id, url, marca, logoURL, minha }) {
   };
 }
 
+/* ── A CHAVE DA COMUNIDADE (14/11/2026, decisão 26) ────────────────────
+ *
+ * ⚠️ A COMUNIDADE FICA DESLIGADA NO SERVIDOR DURANTE O TESTE. A parceria é
+ * derivada da indicação (`parceirosDe`), e a indicação aceita qualquer
+ * telefone, de qualquer conta, sem teto: um estranho indicava os números de
+ * colegas e, quando eles se cadastravam, virava "parceiro" e lia o WhatsApp,
+ * as escolas e as fotos deles. A tela só some abaixo do Ouro — trava visual.
+ *
+ * `platformConfig/app.comunidadeLigada`, no padrão de `cobrancaLigada`:
+ * AUSENTE É DESLIGADA, e só o `true` explícito liga. Religar exige antes a
+ * confirmação do indicado e um teto de indicações por conta (decisão 26).
+ * A indicação continua existindo para o DESCONTO: esta chave não toca em
+ * `indicacoes` nem em `casarNoCadastro`.
+ */
+function comunidadeEstaLigada(config) {
+  return config?.comunidadeLigada === true;
+}
+
+/** A frase de quem chama uma callable da Comunidade com ela desligada. */
+const FRASE_DA_COMUNIDADE_FECHADA = 'A Comunidade está fechada durante o período de teste.';
+
 module.exports = {
+  comunidadeEstaLigada,
+  FRASE_DA_COMUNIDADE_FECHADA,
   DIAS_DA_FOTO,
   PUBLICO,
   ALCANCE_COMUNIDADE,

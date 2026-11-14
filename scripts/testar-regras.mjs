@@ -603,6 +603,7 @@ async function main() {
   await oUsoDoApp({ novato, dono, anon });
   await aSegurancaDoApp({ novato, dono, anon });
   await oBloqueioDaFamilia({ novato, dono, anon });
+  await aComunidadeFechada({ dono, anon });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -4840,4 +4841,74 @@ async function aSegurancaDoApp({ novato, dono, anon }) {
   checar(BL, 'o dono não altera', 'NEGA', await escrever(P, dono, dia(99), ['senhaBloqueios']));
   checar(BL, 'o dono não apaga', 'NEGA', await apagar(P, dono));
   checar(BL, 'motorista não cria', 'NEGA', await criar('segurancaDoApp', '2026-10-07', moto, dia(1)));
+}
+
+/**
+ * A COMUNIDADE FECHADA (14/11/2026, decisão 26). O ataque: um estranho cria
+ * conta de motorista, indica o telefone de um colega (a rule aceita qualquer
+ * `chave`) e, quando o colega se cadastra, vira "parceiro" dele pela
+ * indicação. A porta que entregava o WhatsApp e as fotos era a CALLABLE
+ * (`meusParceiros`, `fotosDaComunidade`), fechada pela chave
+ * `platformConfig/app.comunidadeLigada` e medida com as callables de verdade
+ * em `npm run testar:comunidade-fechada`. Aqui se mede o resto: pelas rules,
+ * nem a parceria casada abre dado do colega, e só o dono vira a chave.
+ */
+async function aComunidadeFechada({ dono, anon }) {
+  console.log('\n=== A COMUNIDADE FECHADA (decisão 26, 14/11/2026) ===');
+  const BL = 'comunidadeFechada';
+  const agora = Date.now();
+  const estranho = await criarLogin(`cf.estranho.${agora}@teste.local`);
+  const colega = await criarLogin(`cf.colega.${agora}@teste.local`);
+  const TEL = `119${String(agora).slice(-8)}`;
+  await semear(`users/${estranho.uid}`, { role: S('admin'), name: S('Estranho') });
+  await semear(`users/${colega.uid}`, {
+    role: S('admin'), name: S('Colega Real'), phone: S(TEL), marcaNome: S('Tio do Colega'),
+  });
+
+  // A indicação continua existindo para o DESCONTO — a chave da Comunidade
+  // não fecha esta porta, e o caso diz isso em voz alta.
+  checar(BL, 'o estranho ainda indica o telefone de um colega (desconto)', 'PASSA',
+    await criarComHoraDoServidor(`indicacoes/${estranho.uid}_${TEL}`, estranho, {
+      indicadorUid: S(estranho.uid), chave: S(TEL), nome: S('Colega'), estado: S('pendente'),
+    }, 'em'));
+  // O gatilho `casarNoCadastro` casou (Admin SDK): a "parceria" existe.
+  await semear(`indicacoes/${estranho.uid}_${TEL}`, {
+    indicadorUid: S(estranho.uid), chave: S(TEL), nome: S('Colega'),
+    estado: S('cadastrado'), indicadoUid: S(colega.uid), em: T(0),
+  });
+  const expira = T(1);
+  await semear(`fotosDaTurma/cfParceiros${agora}`, {
+    adminUid: S(colega.uid), publico: S('parceiros'), url: S('https://foto-do-colega'), expiraEm: expira,
+  });
+  await semear(`fotosDaTurma/cfComunidade${agora}`, {
+    adminUid: S(colega.uid), publico: S('comunidade'), caminho: S(`fotosDaTurma/${colega.uid}/c.jpg`), expiraEm: expira,
+  });
+
+  checar(BL, 'o "parceiro" estranho não lê o doc do colega (WhatsApp)', 'NEGA',
+    await ler(`users/${colega.uid}`, estranho));
+  checar(BL, 'o estranho não lê a foto dos parceiros do colega', 'NEGA',
+    await ler(`fotosDaTurma/cfParceiros${agora}`, estranho));
+  checar(BL, 'o estranho não lê a foto da comunidade do colega', 'NEGA',
+    await ler(`fotosDaTurma/cfComunidade${agora}`, estranho));
+  checar(BL, 'o estranho não consulta indicações pelo indicado', 'NEGA',
+    await consultar('indicacoes', 'indicadoUid', colega.uid, estranho));
+  checar(BL, 'o estranho lê a PRÓPRIA indicação (sonda)', 'PASSA',
+    await ler(`indicacoes/${estranho.uid}_${TEL}`, estranho));
+  checar(BL, 'o estranho não promove a própria indicação', 'NEGA',
+    await escrever(`indicacoes/${estranho.uid}_${TEL}`, estranho, { estado: S('ativa') }, ['estado']));
+  checar(BL, 'o colega lê a própria foto (sonda)', 'PASSA',
+    await ler(`fotosDaTurma/cfParceiros${agora}`, colega));
+
+  // A chave: só o dono a vira. Motorista que a ligasse abriria a porta.
+  const LIGA = { comunidadeLigada: B(true) };
+  checar(BL, 'motorista não liga a Comunidade', 'NEGA',
+    await escrever('platformConfig/app', estranho, LIGA, ['comunidadeLigada']));
+  checar(BL, 'anônimo não liga a Comunidade', 'NEGA',
+    await escrever('platformConfig/app', anon, LIGA, ['comunidadeLigada']));
+  checar(BL, 'o dono liga a Comunidade', 'PASSA',
+    await escrever('platformConfig/app', dono, LIGA, ['comunidadeLigada']));
+  checar(BL, 'ligada, as rules continuam negando o doc do colega', 'NEGA',
+    await ler(`users/${colega.uid}`, estranho));
+  checar(BL, 'o dono desliga a Comunidade', 'PASSA',
+    await escrever('platformConfig/app', dono, { comunidadeLigada: B(false) }, ['comunidadeLigada']));
 }

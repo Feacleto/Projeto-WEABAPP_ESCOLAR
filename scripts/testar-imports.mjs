@@ -212,6 +212,8 @@ console.log('\n─── todo scripts/testar-*.mjs está na bateria ───');
       'precisa dos emuladores auth+firestore+storage e importa o Admin SDK de propósito — chama as functions da auxiliar de verdade e ESCREVE',
     'testar-jornada-motorista.mjs':
       'precisa dos emuladores auth+firestore+storage e importa o Admin SDK — chama as functions de verdade e ESCREVE',
+    'testar-comunidade-fechada.mjs':
+      'precisa do emulador do Firestore e importa o Admin SDK — chama as callables da Comunidade de verdade',
     'testar-avatar.mjs': 'bate na API do DiceBear — precisa de rede',
     'testar-navegador.mjs': 'precisa de navegador',
     'testar-imports.mjs': 'é este arquivo',

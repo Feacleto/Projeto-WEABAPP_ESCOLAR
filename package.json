@@ -14,6 +14,7 @@
     "testar:fechamento": "firebase emulators:exec --only firestore \"node scripts/testar-fechamento.mjs\"",
     "testar:jornada-responsavel": "firebase emulators:exec --only auth,firestore,storage \"node scripts/testar-jornada-responsavel.mjs\"",
     "testar:envio": "firebase emulators:exec --only firestore \"node scripts/testar-envio.mjs\"",
+    "testar:comunidade-fechada": "firebase emulators:exec --only firestore \"node scripts/testar-comunidade-fechada.mjs\"",
     "testar:jornada-auxiliar": "firebase emulators:exec --only auth,firestore,storage \"node scripts/testar-jornada-auxiliar.mjs\"",
     "testar:limpeza": "node scripts/testar-limpeza-checkpoint.mjs",
     "emu": "firebase emulators:start --only auth,firestore",

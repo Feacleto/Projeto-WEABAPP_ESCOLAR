@@ -21,6 +21,7 @@ const LIMITES = require('./limites');
 const { exigirMotorista } = require('./papeis');
 const { idValido } = require('./reguaDosIds');
 const { cobrancaLigada } = require('./cobrancaLigada');
+const { exigirComunidadeLigada } = require('./comunidadeLigada');
 const { parceirosDe } = require('./reguaDaComunidade');
 const R = require('./reguaDaTransferencia');
 
@@ -49,6 +50,8 @@ function aviso(userId, dados, extra = {}) {
 function makePedirTransferencia(db) {
   return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = await exigirMotorista(db, request);
+    // A parceria vem da indicação (decisão 26): fechada com a Comunidade.
+    await exigirComunidadeLigada(db);
     const { childId, parceiroUid } = request.data || {};
     if (!idValido(childId) || !idValido(parceiroUid)) throw new HttpsError('invalid-argument', 'Escolha um dos seus tios parceiros.');
 
