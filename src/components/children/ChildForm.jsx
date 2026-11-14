@@ -50,6 +50,8 @@ import {
 import { montarEndereco } from '../../compartilhado/formatters';
 import CampoVigencia from '../contract/CampoVigencia';
 import { vigenciaPadrao, erroDaVigencia } from '../../dominio/cobranca/contratoDaFamilia.js';
+import { valorDoCampoFalta, valorDaMensalidadeFalta } from '../../dominio/cobranca/valorDaMensalidade.js';
+import { DIGA_O_VALOR } from '../../marca/valorDoConvite.js';
 import BotaoDeFalar from '../common/BotaoDeFalar';
 import PerguntaDasVagas from '../perua/PerguntaDasVagas';
 import DeclaracaoDeAutorizacao from './DeclaracaoDeAutorizacao';
@@ -255,16 +257,17 @@ export default function ChildForm() {
         errs.horaEntrega = 'Hora inválida. Ex: 12:35';
       }
     }
-    // Responsável e financeiro: só o telefone é indispensável — é por ele
-    // que o convite chega. Email e mensalidade podem vir depois.
+    // Responsável e financeiro: o telefone (é por ele que o convite chega) e
+    // o VALOR DA MENSALIDADE são obrigatórios — valor zero não (decisão do
+    // dono, 14/11/2026): sem ele o contrato não é emitido e a mensalidade não
+    // é gerada. Quem não tem o valor agora usa "Salvar e completar depois"
+    // (passos 2 e 3): a criança fica sem valor, e a trava do contrato a segura.
     if (s === 4) {
       if (!isValidPhone(form.parentPhone))
         errs.parentPhone = 'Telefone com DDD — é por aqui que o convite vai.';
       if (form.parent2Phone && !isValidPhone(form.parent2Phone))
         errs.parent2Phone = 'Telefone inválido.';
-      const fee = parseFloat(form.monthlyFee);
-      if (String(form.monthlyFee).trim() && (!fee || fee <= 0))
-        errs.monthlyFee = 'Valor precisa ser maior que zero.';
+      if (valorDoCampoFalta(form.monthlyFee)) errs.monthlyFee = DIGA_O_VALOR;
       const day = parseInt(form.dueDay, 10);
       if (form.dueDay && (!day || day < 1 || day > 28))
         errs.dueDay = 'Dia entre 1 e 28.';
@@ -1517,26 +1520,11 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
           value={form.monthlyFee}
           onChange={(v) => setForm((p) => ({ ...p, monthlyFee: v }))}
           error={errors.monthlyFee}
-          /* O `required` daqui foi REMOVIDO porque era inerte e mentia.
-           *
-           * Este formulário é um assistente por etapas: o botão chama
-           * onSubmit() direto, sem <form> nativo, então a validação do
-           * navegador nunca roda e o atributo não bloqueava nada. E deixar
-           * sem valor é DELIBERADO — a validação da etapa diz, com todas as
-           * letras, que "email e mensalidade podem vir depois", porque nem
-           * sempre o valor está combinado no dia do cadastro.
-           *
-           * O problema não era permitir vazio: era não contar o preço disso.
-           * Mensalidade zerada faz a criança ser PULADA na geração de
-           * cobrança do mês (billing.js ignora fee <= 0), sem erro nenhum na
-           * hora. Quem cadastra trinta crianças e deixa dez sem valor
-           * descobre no dia do fechamento, contando dez cobranças que não
-           * nasceram. */
-          hint={
-            String(form.monthlyFee).trim()
-              ? undefined
-              : 'Sem valor, esta criança não entra na cobrança do mês. Dá pra preencher depois na ficha dela.'
-          }
+          /* OBRIGATÓRIO (14/11/2026): "valor zero não". O que impede o 350 de
+           * virar R$ 3,50 sem ninguém ver é o próprio campo: a máscara escreve
+           * "R$ 3,50" enquanto ele digita e o extenso fica embaixo ("três
+           * reais e cinquenta centavos"), com o "Ouvir". O validador do passo
+           * (`valorDoCampoFalta`) é a mesma régua da emissão do contrato. */
         />
         <div data-erro={errors.dueDay ? true : undefined}>
           <p id="rotulo-vencimento" className="mb-2 block text-sm font-semibold text-text">
@@ -1831,7 +1819,7 @@ function InviteCodeSuccess({
               ? 'Convite enviado'
               : 'Convite para a família'}
           </span>
-          {!jaEntrou && !conviteFeito && (
+          {!jaEntrou && !conviteFeito && !(aoVivo && valorDaMensalidadeFalta(aoVivo)) && (
             <button
               type="button"
               onClick={mandarConvite}

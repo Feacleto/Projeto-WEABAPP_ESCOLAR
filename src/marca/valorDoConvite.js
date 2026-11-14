@@ -185,3 +185,13 @@ export const ROTA_INICIADA_SEM_MAPA = 'Rota iniciada. A perua não aparece no ma
 export const CHAVE_CONVITE_ENVIADO = 'alobuzinou:valorDoConvite:enviado';
 export const EVENTO_CONVITE_ENVIADO = 'alobuzinou:convite-enviado';
 export const CHAVE_AVISO_DO_BANCO = 'alobuzinou:valorDoConvite:bancoVisto';
+
+/**
+ * ── 4ª RODADA: o valor da mensalidade é obrigatório (decisão do dono) ──
+ * Sem ele o contrato não é emitido e o servidor não gera a mensalidade.
+ * A frase diz só isso: não promete cobrança, prazo nem o que acontece depois.
+ */
+export const FALTA_O_VALOR =
+  'Falta o valor da mensalidade. Sem ele, o contrato não pode ser emitido e a mensalidade não é gerada.';
+export const DIGA_O_VALOR = 'Diga o valor da mensalidade.';
+export const ATALHO_DO_VALOR = 'Preencher o valor';

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useAuth } from './useAuth';
 import { garantirContrato } from '../services/contratosDaFamiliaService';
 import { dadosDaContratadaFaltando } from '../services/contractService';
+import { valorDaMensalidadeFalta } from '../dominio/cobranca/valorDaMensalidade.js';
 
 /**
  * O PRIMEIRO CONTRATO SE EMITE SOZINHO, NO LADO DO MOTORISTA (02/10/2026).
@@ -23,7 +24,7 @@ export function useGarantirContrato(child, contratos) {
     // ⚠️ SEM MENSALIDADE, SEM CONTRATO (04/10/2026): o cadastro rápido do
     // primeiro acesso salva a criança só com o nome, e o contrato sairia
     // "R$ 0,00" para a família assinar. Ele nasce quando a ficha ganha o valor.
-    Number(child?.monthlyFee) > 0 &&
+    !valorDaMensalidadeFalta(child) &&
     dadosDaContratadaFaltando(profile).length === 0;
 
   useEffect(() => {
