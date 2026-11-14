@@ -33,7 +33,7 @@ import ConfirmeSeuEmail from '../../components/common/ConfirmeSeuEmail';
 import ParaVoce from '../../components/tio/ParaVoce';
 import AvisoDosContratos from '../../components/tio/AvisoDosContratos';
 import { resumoDoDia } from '../../dominio/rota/diaFechado.js';
-import { linhaDoDia } from '../../marca/diaFechado.js';
+import { cartaoDoFimDoDia } from '../../marca/diaFechado.js';
 import { useAuth } from '../../hooks/useAuth';
 import { useChildren } from '../../hooks/useChildren';
 import { usePedidosDeAcesso } from '../../hooks/usePedidosDeAcesso';
@@ -354,10 +354,10 @@ export default function TioDashboard() {
   const diaConcluido = estado === 'entre' && !temViagem && blocos.length > 0;
   // "Hoje: 14 de 14 paradas marcadas." — só com o dia concluído, e só do que o
   // Início já tem na mão (`dominio/rota/diaFechado.js`). Conta toque, não serviço.
-  const linhaDoFimDoDia = useMemo(
+  const cartaoDoFimDoDiaPronto = useMemo(
     () =>
       diaConcluido
-        ? linhaDoDia(
+        ? cartaoDoFimDoDia(
             resumoDoDia(blocos, (child, dir) => statusNaDirecao(child, declaracoes?.[child.id], dir))
           )
         : null,
@@ -382,7 +382,7 @@ export default function TioDashboard() {
         titulo: `${bloco.direcao === 'ida' ? 'Ida' : 'Volta'} às ${horaCurta(deMinutos(bloco.inicio))} · ${vao} ${vao === 1 ? 'criança' : 'crianças'}`,
       };
     }
-    if (diaConcluido) return { rotulo: 'Hoje', titulo: 'Tudo entregue hoje.', linha: linhaDoFimDoDia };
+    if (diaConcluido) return cartaoDoFimDoDiaPronto;
     return { rotulo: 'Hoje', titulo: 'Nenhuma viagem pendente.' };
   })();
 

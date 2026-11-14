@@ -11,8 +11,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { diaCompleto } from '../src/dominio/rota/horarios.js';
-import { paradaMarcada, resumoDoDia } from '../src/dominio/rota/diaFechado.js';
-import { linhaDoDia, todasAsAfirmacoes, SUSTENTA, CONDICAO } from '../src/marca/diaFechado.js';
+import { paradaMarcada, resumoDoDia, todasMarcadas } from '../src/dominio/rota/diaFechado.js';
+import { linhaDoDia, cartaoDoFimDoDia, TUDO_ENTREGUE, todasAsAfirmacoes, SUSTENTA, CONDICAO } from '../src/marca/diaFechado.js';
 import { promessaProibida } from '../src/marca/promessas.js';
 
 const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -137,16 +137,35 @@ const inicioSem = semComentarios(inicio);
 eq('a rota calcula com resumoDoDia e o texto do catálogo',
   /linhaDoDia\(\s*resumoDoDia\(blocos, \(child, dir\) => statusNaDirecao\(child, declaracoes\?\.\[child\.id\], dir\)\)/.test(rotaSem), true);
 eq('o Início calcula com resumoDoDia e o texto do catálogo',
-  /linhaDoDia\(\s*resumoDoDia\(blocos, \(child, dir\) => statusNaDirecao\(child, declaracoes\?\.\[child\.id\], dir\)\)/.test(inicioSem), true);
+  /cartaoDoFimDoDia\(\s*resumoDoDia\(blocos, \(child, dir\) => statusNaDirecao\(child, declaracoes\?\.\[child\.id\], dir\)\)/.test(inicioSem), true);
 eq('na rota a linha só sai na ÚLTIMA viagem (depois do "Próxima parada só às…")',
   /espera \? \([\s\S]*?\) : \(\s*<>\s*\{linhaDoFimDoDia &&/.test(rotaSem), true);
-eq('no Início a linha só existe com o dia concluído', /diaConcluido\s*\?\s*linhaDoDia\(/.test(inicioSem), true);
+eq('no Início a linha só existe com o dia concluído', /diaConcluido\s*\?\s*cartaoDoFimDoDia\(/.test(inicioSem), true);
 eq('nenhuma das duas escreve a frase à mão', !/paradas marcadas|parada marcada/.test(rotaSem) && !/paradas marcadas|parada marcada/.test(inicioSem), true);
 eq('nenhuma das duas lê `rides` por causa disto (nada novo do banco)',
   [rotaSem, inicioSem].every((f) => !/useRide\b|getRide|watchRide|collection\(db, 'children'\)/.test(f)), true);
 eq('o domínio e o catálogo não importam React nem Firebase',
   [ler('src/dominio/rota/diaFechado.js'), ler('src/marca/diaFechado.js')].every((f) => !/from '(react|firebase)/.test(semComentarios(f))), true);
-eq('"Viagem concluída." continua (a linha é acréscimo, não troca)', /Viagem concluída/.test(rota) && /Tudo entregue hoje\./.test(inicio), true);
+eq('"Viagem concluída." continua (a linha é acréscimo, não troca)', /Viagem concluída/.test(rota) && TUDO_ENTREGUE === 'Tudo entregue hoje.', true);
+eq('o Início não escreve "Tudo entregue hoje." à mão: o título vem do catálogo, só com tudo marcado',
+  !/Tudo entregue hoje/.test(inicioSem) && /if \(diaConcluido\) return cartaoDoFimDoDiaPronto;/.test(inicioSem), true);
+
+console.log('\n\x1b[1m7. NÃO CONTRADIZER: "Tudo entregue hoje." só com tudo marcado\x1b[0m');
+eq('14 de 14: todas marcadas', todasMarcadas({ marcadas: 14, total: 14 }), true);
+eq('13 de 14: nem todas', todasMarcadas({ marcadas: 13, total: 14 }), false);
+eq('0 de 3: nem todas', todasMarcadas({ marcadas: 0, total: 3 }), false);
+eq('sem parada na conta (0 de 0): como antes, nada a faltar', todasMarcadas({ marcadas: 0, total: 0 }), true);
+eq('resumo nulo: como antes', todasMarcadas(null), true);
+eq('14 de 14: o cartão tem o título e a linha',
+  cartaoDoFimDoDia({ marcadas: 14, total: 14 }), { rotulo: 'Hoje', titulo: 'Tudo entregue hoje.', linha: 'Hoje: 14 de 14 paradas marcadas.' });
+eq('13 de 14: SÓ a linha, sem o título "Tudo entregue"',
+  cartaoDoFimDoDia({ marcadas: 13, total: 14 }), { rotulo: 'Fim do dia', titulo: 'Hoje: 13 de 14 paradas marcadas.', linha: null });
+eq('13 de 14: "Tudo entregue" não aparece em lugar nenhum do cartão', /tudo entregue/i.test(JSON.stringify(cartaoDoFimDoDia({ marcadas: 13, total: 14 }))), false);
+eq('0 de 3: só a linha', cartaoDoFimDoDia({ marcadas: 0, total: 3 }).titulo, 'Hoje: 0 de 3 paradas marcadas.');
+eq('sem parada (0 de 0): o cartão de sempre, sem linha', cartaoDoFimDoDia({ marcadas: 0, total: 0 }), { rotulo: 'Hoje', titulo: 'Tudo entregue hoje.', linha: null });
+eq('de ponta a ponta: uma parada sem registro tira o título',
+  (() => { const t = turma(); t[3].status = 'home'; return cartaoDoFimDoDia(dia(t)).titulo; })(), 'Hoje: 12 de 14 paradas marcadas.');
+eq('de ponta a ponta: tudo marcado mantém o título', cartaoDoFimDoDia(dia(turma())).titulo, 'Tudo entregue hoje.');
 eq('a linha da rota tem letra de 16 px', /data-dia-fechado className="text-base font-semibold text-text"/.test(rota), true);
 
 console.log(`\n${falhou ? '\x1b[31m' : '\x1b[32m'}${ok} ok, ${falhou} falharam\x1b[0m\n`);

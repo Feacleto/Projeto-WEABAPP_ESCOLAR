@@ -14,6 +14,7 @@
  * ver o teste. Sem festa, sem exclamação, sem comparar com outro dia, sem
  * número além dos dois da conta.
  */
+import { todasMarcadas } from '../dominio/rota/diaFechado.js';
 
 export const SUSTENTA = 'status-da-crianca-no-dia';
 export const CONDICAO = 'paradas-que-precisavam-da-perua';
@@ -31,6 +32,25 @@ export function linhaDoDia(resumo) {
   return `Hoje: ${marcadas} de ${total} ${total === 1 ? 'parada marcada' : 'paradas marcadas'}.`;
 }
 
+/** O título do cartão do Início quando está tudo marcado. */
+export const TUDO_ENTREGUE = 'Tudo entregue hoje.';
+
+/**
+ * O cartão do Início no fim do dia: `{ rotulo, titulo, linha }`.
+ *
+ *   - tudo marcado: "Hoje / Tudo entregue hoje." e, embaixo, a linha da conta;
+ *   - faltou marcar: SÓ a linha ("Fim do dia / Hoje: 13 de 14 paradas
+ *     marcadas."), sem o título. "Tudo entregue" ao lado de "13 de 14" seria o
+ *     app se contradizendo, e ele só levanta a voz quando está mentindo.
+ *
+ * @param {{ marcadas: number, total: number }} resumo  o que devolve `resumoDoDia`
+ */
+export function cartaoDoFimDoDia(resumo) {
+  const linha = linhaDoDia(resumo);
+  if (!linha || todasMarcadas(resumo)) return { rotulo: 'Hoje', titulo: TUDO_ENTREGUE, linha };
+  return { rotulo: 'Fim do dia', titulo: linha, linha: null };
+}
+
 /** As formas do texto que o teste varre, com a origem de cada uma. */
 export function todasAsAfirmacoes() {
   return [
@@ -38,5 +58,6 @@ export function todasAsAfirmacoes() {
     { id: 'faltou', texto: linhaDoDia({ marcadas: 13, total: 14 }), sustenta: SUSTENTA, condicao: CONDICAO },
     { id: 'uma', texto: linhaDoDia({ marcadas: 1, total: 1 }), sustenta: SUSTENTA, condicao: CONDICAO },
     { id: 'nenhuma', texto: linhaDoDia({ marcadas: 0, total: 3 }), sustenta: SUSTENTA, condicao: CONDICAO },
+    { id: 'cartaoIncompleto', texto: cartaoDoFimDoDia({ marcadas: 13, total: 14 }).titulo, sustenta: SUSTENTA, condicao: CONDICAO },
   ];
 }

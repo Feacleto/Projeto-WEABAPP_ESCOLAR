@@ -52,6 +52,20 @@ export function paradaMarcada(direcao, status) {
 }
 
 /**
+ * TODAS as paradas que precisavam da perua foram marcadas? É o que autoriza o
+ * título "Tudo entregue hoje." do Início: o app só levanta a voz quando MENTE, e
+ * esse título ao lado de "13 de 14 marcadas" seria ele se contradizendo. Sem
+ * nenhuma parada na conta (`total` 0) vale como antes — não há o que faltar.
+ *
+ * @param {{ marcadas: number, total: number }} resumo
+ */
+export function todasMarcadas(resumo) {
+  const total = Number(resumo?.total) || 0;
+  const marcadas = Number(resumo?.marcadas) || 0;
+  return marcadas >= total;
+}
+
+/**
  * Quantas paradas do dia foram marcadas, entre as que precisavam da perua.
  *
  * @param {Array<{direcao: 'ida'|'volta', paradas: Array<{child: object, estado: string}>}>} blocos
