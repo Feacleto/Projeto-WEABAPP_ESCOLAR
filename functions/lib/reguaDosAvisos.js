@@ -272,8 +272,11 @@ function avisoDoConvite({ crianca, agora = new Date() } = {}) {
   const nome = primeiroNome(c.name) || 'a criança';
   return {
     tipo: TIPO.CONVITE_PARADO,
-    titulo: `O convite de ${nome} não foi usado`,
-    corpo: `A família recebeu há ${DIAS_DO_CONVITE} dias e não entrou. Toque para reenviar.`,
+    // ⚠️ NÃO AFIRMA QUE A FAMÍLIA RECEBEU: a conta parte da criação da criança,
+    // e ele pode nem ter mandado o convite. O que é verdade é o tempo que passou
+    // e que a família ainda não entrou.
+    titulo: `O convite de ${nome} está parado`,
+    corpo: `Já faz ${DIAS_DO_CONVITE} dias e a família ainda não entrou. Toque para mandar de novo.`,
     destino: '/tio/children',
   };
 }
