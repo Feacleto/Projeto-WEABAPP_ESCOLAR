@@ -49,6 +49,7 @@ import Header from '../components/layout/Header';
 import Card from '../components/common/Card';
 import AppSheet from '../components/common/AppSheet';
 import InviteShare from '../components/children/InviteShare';
+import PorQueConvidar from '../components/children/PorQueConvidar';
 import ChildPaymentHistory from '../components/payments/ChildPaymentHistory';
 import Avatar from '../components/common/Avatar';
 import { STORAGE_ENABLED } from '../config/capabilities';
@@ -731,6 +732,7 @@ function LinkDoResponsavel({ child }) {
             Mande o link — a conta dele se cria por lá, sem digitar código.
           </p>
         </div>
+        <PorQueConvidar semNumero={!child.parentPhone} />
         <InviteShare
           code={child.inviteCode}
           crianca={child}

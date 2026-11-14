@@ -24,6 +24,7 @@ import Card from '../common/Card';
 import MapPicker from '../map/MapPicker';
 import LiveMap from '../map/LiveMap';
 import InviteShare from './InviteShare';
+import PorQueConvidar from './PorQueConvidar';
 import NovaEscolaSheet from './NovaEscolaSheet';
 import BuscaDeRua from '../endereco/BuscaDeRua';
 import Input from '../common/Input';
@@ -1858,6 +1859,9 @@ function InviteCodeSuccess({
       </ul>
 
       <div className="space-y-2">
+        {/* Para que serve o convite (docs/analise/12): em destaque até o primeiro
+          * convite sair deste aparelho, depois uma linha que abre. */}
+        {!jaEntrou && <PorQueConvidar semNumero={!parentPhone} enviado={enviado} />}
         {!jaEntrou && (
         <InviteShare
           code={code}
@@ -1865,6 +1869,7 @@ function InviteCodeSuccess({
           childName={childName}
           gender={gender}
           parentPhone={parentPhone}
+          nomeDoResponsavel={responsavel}
           recolhido
           onEnviado={() => {
             setEnviado(true);

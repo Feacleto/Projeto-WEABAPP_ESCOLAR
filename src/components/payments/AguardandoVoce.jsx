@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { FileText, Paperclip, TriangleAlert, Hourglass } from 'lucide-react';
 import Button from '../common/Button';
 import {
@@ -6,6 +7,8 @@ import {
   formatMonthLabel,
   primeiroNome,
 } from '../../compartilhado/formatters';
+import { jaLembrou, lembrar } from '../../compartilhado/lembreteDoAparelho';
+import { AVISO_DO_BANCO, CHAVE_AVISO_DO_BANCO } from '../../marca/valorDoConvite.js';
 
 const METODO = { cash: 'Dinheiro', card: 'Cartão', pix: 'PIX' };
 
@@ -25,9 +28,23 @@ const METODO = { cash: 'Dinheiro', card: 'Cartão', pix: 'PIX' };
  * avisa a família de algo que nenhum registro guarda.
  *
  * Some quando não há ninguém: cartão âmbar vazio ensinaria a ignorar âmbar.
+ *
+ * ⚠️ A FRASE DO BANCO APARECE UMA VEZ NESTE APARELHO (docs/analise/12, momento
+ * 4): "O app não vê o seu banco…" explica por que a conferência é dele. Lida a
+ * primeira vez que há alguém na lista, a marca fica no aparelho e ela não volta
+ * — repetida em toda abertura, vira ruído. Este é o ÚNICO lugar que renderiza
+ * a lista de quem avisou que pagou (`TioFinance`).
  */
 export default function AguardandoVoce({ pagamentos, alertas = {}, onDarBaixa, onAnexar }) {
-  if (!pagamentos.length) return null;
+  // Decidido na montagem: a frase fica à vista enquanto esta tela existir e só
+  // na PRÓXIMA abertura é que some.
+  const [explicar] = useState(() => !jaLembrou(CHAVE_AVISO_DO_BANCO));
+  const temGente = pagamentos.length > 0;
+  useEffect(() => {
+    if (temGente && explicar) lembrar(CHAVE_AVISO_DO_BANCO);
+  }, [temGente, explicar]);
+
+  if (!temGente) return null;
 
   return (
     <section className="rounded-2xl border border-warningBorder bg-warningSoft p-4">
@@ -42,6 +59,10 @@ export default function AguardandoVoce({ pagamentos, alertas = {}, onDarBaixa, o
           </p>
         )}
       </div>
+
+      {explicar && (
+        <p className="mt-2 text-sm leading-snug text-textBody">{AVISO_DO_BANCO.texto}</p>
+      )}
 
       <div className="mt-1 divide-y divide-warningBorder">
         {pagamentos.map((p) => {
