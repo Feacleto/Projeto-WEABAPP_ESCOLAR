@@ -21,6 +21,7 @@ const LIMITES = require('./limites');
 const { exigirMotorista } = require('./papeis');
 const { idValido } = require('./reguaDosIds');
 const { cobrancaLigada } = require('./cobrancaLigada');
+const { exigirComunidadeLigada } = require('./comunidadeLigada');
 const { parceirosDe } = require('./reguaDaComunidade');
 const R = require('./reguaDaTransferencia');
 
@@ -49,6 +50,8 @@ function aviso(userId, dados, extra = {}) {
 function makePedirTransferencia(db) {
   return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = await exigirMotorista(db, request);
+    // A parceria vem da indicação (decisão 26): fechada com a Comunidade.
+    await exigirComunidadeLigada(db);
     const { childId, parceiroUid } = request.data || {};
     if (!idValido(childId) || !idValido(parceiroUid)) throw new HttpsError('invalid-argument', 'Escolha um dos seus tios parceiros.');
 
@@ -129,6 +132,10 @@ function makePedirTransferencia(db) {
 function makeResponderTransferencia(db) {
   return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = await exigirMotorista(db, request);
+    // ⚠️ O PEDIDO JÁ ABERTO TAMBÉM PASSA PELO PORTÃO (auditoria, 14/11/2026):
+    // um pedido feito antes da chave, para um "parceiro" forjado pela
+    // indicação, seria aceito aqui e a criança nova nasceria na conta dele.
+    await exigirComunidadeLigada(db);
     const { id, aceito } = request.data || {};
     if (!idValido(id)) throw new HttpsError('invalid-argument', 'Pedido não encontrado.');
     const ref = db.doc(`${COLECAO}/${id}`);
@@ -171,6 +178,9 @@ function makeResponderTransferencia(db) {
   });
 }
 
+// Cancelar NÃO passa pelo portão da Comunidade, de propósito: só fecha o
+// pedido do próprio tio e não entrega nada a outro motorista — e é o jeito de
+// ele encerrar um pedido aberto antes de a chave existir.
 function makeCancelarTransferencia(db) {
   return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = await exigirMotorista(db, request);
@@ -198,6 +208,9 @@ function makeAceitarTransferencia(db) {
   return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'Login obrigatório.');
+    // O aceite da família copia a criança (com endereço) para o parceiro:
+    // fechado com a Comunidade, como o pedido e a resposta do parceiro.
+    await exigirComunidadeLigada(db);
     const id = request.data?.id;
     if (!idValido(id)) throw new HttpsError('invalid-argument', 'Pedido não encontrado.');
     const ref = db.doc(`${COLECAO}/${id}`);

@@ -98,7 +98,8 @@ function responsavelDoIrmao({ telefone, motorista = null, contas = [], criancas 
  * Quem chega sem o link informa o WhatsApp. As crianças ainda SEM
  * responsável cadastradas com esse número viram um PEDIDO ao motorista de
  * cada uma — nunca um vínculo. O número não é segredo (o ex-marido sabe), e
- * quem conhece a família é o motorista: ele aprova com um toque.
+ * quem conhece a família é o motorista: ele manda o link ao WhatsApp
+ * que cadastrou (desde 14/11/2026 o pedido não vincula — decisão 28).
  *
  *   telefone — o que a pessoa digitou
  *   criancas — [{ id, parentUid, parentPhone, adminUid, name }]

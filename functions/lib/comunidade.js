@@ -51,6 +51,7 @@ const { getStorage } = require('firebase-admin/storage');
 const LIMITES = require('./limites');
 const { carregarUsuario, exigirAuxiliar, exigirMotorista } = require('./papeis');
 const { exigirContaDoMotoristaOperando } = require('./auxiliares');
+const { exigirComunidadeLigada } = require('./comunidadeLigada');
 const { idDoVinculo } = require('./reguaDoAuxiliar');
 const { idValido } = require('./reguaDosIds');
 const { palavrasDosNomes } = require('./reguaDoTextoLivre');
@@ -102,6 +103,10 @@ function makePublicarFotoDaTurma(db) {
     const autor = quemPublica({ papel: quem?.role, uid, tioUid: d.tioUid, publico: d.publico });
     if (!autor.ok) throw new HttpsError('permission-denied', autor.erro);
     const { tioUid, pastaUid, pelaAuxiliar } = autor;
+    // ⚠️ Para os parceiros e para a comunidade, a foto sai da turma para
+    // outros motoristas: fechada com a Comunidade (comunidadeLigada.js). A
+    // foto para as FAMÍLIAS do próprio tio não passa por colega nenhum.
+    if (d.publico !== PUBLICO.FAMILIAS) await exigirComunidadeLigada(db);
     if (pelaAuxiliar) {
       // O id vira caminho de documento: passa pela régua antes.
       if (!idValido(tioUid)) throw new HttpsError('invalid-argument', 'De qual perua é a foto?');
@@ -317,6 +322,8 @@ function makeMinhasFotosDaTurma(db) {
 function makeMeusParceiros(db) {
   return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = await exigirMotorista(db, request);
+    // ⚠️ Antes de ler qualquer indicação: desligada, nada de colega sai daqui.
+    await exigirComunidadeLigada(db);
     const [feitas, recebidas] = await Promise.all([
       db.collection('indicacoes').where('indicadorUid', '==', uid).limit(200).get(),
       db.collection('indicacoes').where('indicadoUid', '==', uid).limit(50).get(),
@@ -385,6 +392,7 @@ function makeMeusParceiros(db) {
 function makeAvisarParceiroIndicado(db) {
   return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const uid = await exigirMotorista(db, request);
+    await exigirComunidadeLigada(db);
     const parceiroUid = request.data?.parceiroUid;
     if (!idValido(parceiroUid) || parceiroUid === uid) throw new HttpsError('invalid-argument', 'Parceiro não encontrado.');
     const [feitas, recebidas] = await Promise.all([
@@ -440,6 +448,7 @@ async function parceirosDoTio(db, uid) {
 function makeFotosDaComunidade(db) {
   return onCall({ ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO }, async (request) => {
     const { uid, dados: eu } = await carregarUsuario(db, request);
+    await exigirComunidadeLigada(db);
     let tios;
     if (eu?.role === 'admin') {
       tios = [uid, ...(await parceirosDoTio(db, uid))];

@@ -22,11 +22,38 @@ const MAX_AUXILIARES_ATIVAS = 2;
 const ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TAMANHO_DO_CODIGO = 10;
 
-/** `aleatorio` (0 ≤ x < 1) é injetado para o teste ser determinístico. */
-function gerarCodigoDoConvite(aleatorio = Math.random) {
+/**
+ * Um inteiro uniforme em [0, n), de gerador CRIPTOGRÁFICO.
+ *
+ * ⚠️ O CÓDIGO É UM SEGREDO: quem o tem vira auxiliar do motorista e lê a
+ * turma dele. Era `Math.random`, o único segredo do projeto sem gerador
+ * criptográfico — previsível por quem observa saídas suficientes do mesmo
+ * processo. O padrão agora é o `crypto` global do Node (Web Crypto), e não
+ * um `require` do módulo: esta régua não requer nada (`testar:imports`,
+ * `testar:auxiliar`). A callable injeta `crypto.randomInt`, que tem a mesma
+ * assinatura.
+ *
+ * Rejeição em vez de `% n` puro: o resto de um inteiro de 32 bits favoreceria
+ * os primeiros símbolos sempre que n não dividir 2^32.
+ */
+function sortearCriptografico(n) {
+  const limite = Math.floor(0x100000000 / n) * n;
+  const caixa = new Uint32Array(1);
+  for (;;) {
+    globalThis.crypto.getRandomValues(caixa);
+    if (caixa[0] < limite) return caixa[0] % n;
+  }
+}
+
+/**
+ * `sortear(n)` devolve um inteiro em [0, n) — a assinatura de
+ * `crypto.randomInt`. É injetado para o teste ser determinístico; o padrão é
+ * criptográfico, nunca o gerador comum do JavaScript.
+ */
+function gerarCodigoDoConvite(sortear = sortearCriptografico) {
   let s = '';
   for (let i = 0; i < TAMANHO_DO_CODIGO; i++) {
-    s += ALFABETO[Math.floor(aleatorio() * ALFABETO.length) % ALFABETO.length];
+    s += ALFABETO[sortear(ALFABETO.length)];
   }
   return s;
 }
@@ -321,6 +348,8 @@ module.exports = {
   MAX_AUXILIARES_ATIVAS,
   TAMANHO_DO_CODIGO,
   gerarCodigoDoConvite,
+  sortearCriptografico,
+  ALFABETO_DO_CONVITE: ALFABETO,
   codigoValido,
   telefoneLimpo,
   conviteVale,

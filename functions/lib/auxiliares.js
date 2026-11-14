@@ -31,6 +31,7 @@
  *
  * A régua (validade, teto de 2, formato) é pura: `reguaDoAuxiliar.js`.
  */
+const { randomInt } = require('node:crypto');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { FieldValue, Timestamp } = require('firebase-admin/firestore');
 const LIMITES = require('./limites');
@@ -84,7 +85,9 @@ function makeConvidarAuxiliar(db) {
     }
 
     for (let i = 0; i < 5; i++) {
-      const codigo = R.gerarCodigoDoConvite();
+      // Gerador criptográfico: o código é o segredo que faz alguém virar
+      // auxiliar. A régua também tem padrão criptográfico; aqui é explícito.
+      const codigo = R.gerarCodigoDoConvite(randomInt);
       const ref = db.doc(`convitesDeAuxiliar/${codigo}`);
       try {
         await ref.create({

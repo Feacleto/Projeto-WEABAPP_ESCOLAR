@@ -26,6 +26,11 @@ import PedirAcesso from './PedirAcesso';
  * Quem digita um número alheio não pode sair sabendo que ali existe "Lucas".
  *
  * Aprovado, o perfil é relido e o gate solta o app — sem tela de "pronto".
+ * ⚠️ Desde 14/11/2026 nada novo nasce "aprovado" (decisão 28): o motorista
+ * manda o LINK ao WhatsApp que cadastrou, e o vínculo vem do link. O
+ * "aprovado" segue lido por causa dos pedidos antigos. "Link enviado" não
+ * chega aqui de propósito — as rules não o mostram a quem pediu, senão a
+ * tela diria a um estranho que aquele número é de uma família.
  */
 export default function AguardandoVinculo() {
   const { profile, refreshProfile, logout } = useAuth();
@@ -69,8 +74,9 @@ export default function AguardandoVinculo() {
         </span>
         <h2 className="text-xl font-extrabold text-text">Pedido enviado</h2>
         <p className="mt-1.5 text-base text-textMuted">
-          Se o número estiver cadastrado, o motorista recebe o pedido. Assim
-          que ele aprovar, seu filho aparece aqui.
+          Se o número estiver cadastrado, o motorista recebe o pedido e manda
+          o link para o WhatsApp que ele tem. Abra o link por lá, com esta
+          mesma conta, e seu filho aparece aqui.
         </p>
         <p className="mt-3 text-base text-textMuted">
           Ele ainda não usa o app? Mande para ele. Quando ele cadastrar seu

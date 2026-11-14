@@ -421,6 +421,41 @@ async function main() {
       userId: S(pai1.uid), type: S('info'), title: S('Pague neste PIX'),
       createdAt: { timestampValue: '2026-08-25T09:00:00Z' },
     }));
+  // ⚠️ `push` SERÁ DO SERVIDOR (14/11/2026). É o contrato antecipado para o
+  // retry do envio (versão seguinte), em que `notifications/{id}.push` vira
+  // o registro gravado pelo Admin SDK que impede o reenvio. O `push.js`
+  // desta base ainda não grava nem lê o campo: a cláusula é inerte hoje, e
+  // estes casos garantem que a porta já esteja fechada quando ele chegar.
+  // Sonda positiva: o mesmo aviso sem `push` passa, e marcar como lida
+  // continua passando.
+  const avisoDoTio = (extra = {}) => ({
+    userId: S(pai1.uid), type: S('info'), title: S('Chegamos'),
+    createdAt: { timestampValue: '2026-08-25T09:00:00Z' }, ...extra,
+  });
+  const PUSH_FALSO = {
+    mapValue: { fields: { estado: S('enviado'), ok: N(1), falhou: N(0), aparelhos: N(1) } },
+  };
+  checar('push', 'tio1 avisa o pai dele (sem push) — sonda', 'PASSA',
+    await criar('notifications', `semPush_${Date.now()}`, tio1, avisoDoTio()));
+  checar('push', 'tio1 cria o aviso já com `push`', 'NEGA',
+    await criar('notifications', `comPush_${Date.now()}`, tio1, avisoDoTio({ push: PUSH_FALSO })));
+  checar('push', 'o pai cria aviso ao tio dele já com `push`', 'NEGA',
+    await criar('notifications', `paiPush_${Date.now()}`, pai1, {
+      userId: S(tio1.uid), type: S('payment'), title: S('Paguei'),
+      createdAt: { timestampValue: '2026-08-25T09:00:00Z' }, push: PUSH_FALSO,
+    }));
+  await semear('notifications/nPush', {
+    userId: S(pai1.uid), type: S('absence'), title: S('aviso'),
+    createdAt: { timestampValue: '2026-08-25T09:00:00Z' },
+    push: { mapValue: { fields: { estado: S('enviado'), ok: N(1) } } },
+  });
+  checar('push', 'o destinatário marca como lida', 'PASSA',
+    await escrever('notifications/nPush', pai1, { readAt: { timestampValue: '2026-08-25T10:00:00Z' } }, ['readAt']));
+  checar('push', 'o destinatário altera `push` (reenviaria)', 'NEGA',
+    await escrever('notifications/nPush', pai1, { push: { mapValue: { fields: { estado: S('pendente') } } } }, ['push']));
+  checar('push', 'o destinatário apaga `push`', 'NEGA',
+    await escrever('notifications/nPush', pai1, {}, ['push']));
+
   checar('corr', 'tio2 lê o chamado de suporte do pai do tio1', 'NEGA', await ler('supportTickets/t1', tio2));
   checar('corr', 'tio2 lê a buzina da família do tio1', 'NEGA', await ler('pendingCalls/pc1', tio2));
   // O recado plantado: tio2 grava com adminUid DELE e o uid do pai do tio1 na
@@ -570,6 +605,7 @@ async function main() {
   await oUsoDoApp({ novato, dono, anon });
   await aSegurancaDoApp({ novato, dono, anon });
   await oBloqueioDaFamilia({ novato, dono, anon });
+  await aComunidadeFechada({ dono, anon });
 
   console.log(`\n${'═'.repeat(64)}`);
   console.log(`  ${ok} passaram, ${bad} falharam`);
@@ -2267,6 +2303,15 @@ async function vagaContratada(tio1, tio2) {
       statusUpdatedAt: T(0), active: B(true), createdAt: T(0),
     }));
 
+  // 4b. A DECLARAÇÃO DE AUTORIZAÇÃO (decisão 29, 14/11/2026): toda criança
+  // nasce com os três campos, por qualquer caminho de cadastro. O `create` é
+  // lista de PROIBIDOS e nenhum dos três está nela — este caso existe para que
+  // acrescentá-los lá falhe aqui, e não no primeiro cadastro real.
+  checar('vaga', 'a criança nasce com a declaração de autorização', 'PASSA',
+    await criarCrianca(tio1, tio1.uid, `vaga_autoriza_${Date.now()}`, {
+      autorizacaoDeclarada: B(true), autorizacaoDeclaradaEm: T(0), autorizacaoDeclaradaPor: S(tio1.uid),
+    }));
+
   // 5. ⚠️ O QUE O `update` RECUSA, O `create` TAMBÉM. Cada um destes nascia.
   checar('vaga', 'a criança nasce com o contrato "aceito"', 'NEGA',
     await criarCrianca(tio1, tio1.uid, `vaga_aceite_${Date.now()}`, {
@@ -3637,6 +3682,23 @@ async function decisao12({ tio1, tio2, pai1, novato, dono }) {
   checar('pedido', 'nem o motorista aprova por fora da callable', 'NEGA',
     await escrever('pedidosDeVinculo/kid-saude_' + pai1.uid, tio1,
       { status: S('aprovado') }, ['status']));
+  // ⚠️ O LINK ENVIADO NÃO É LIDO POR QUEM PEDIU (14/11/2026, decisão 28). O
+  // motorista não aprova mais: manda o link ao WhatsApp que cadastrou, e o
+  // pedido fecha como `link_enviado`. Se quem pediu lesse esse estado, a
+  // tela diria a um estranho que aquele número é de uma família — a mãe de
+  // verdade já sabe, a mensagem chegou no WhatsApp dela. Sem rule nova: a
+  // lista de estados legíveis (`aprovado`, `recusado`) já o deixa fora.
+  await semear('pedidosDeVinculo/kid-link_' + pai1.uid, {
+    childId: S('kid-link'), adminUid: S(tio1.uid), parentUid: S(pai1.uid),
+    status: S('link_enviado'),
+  });
+  checar('pedido', 'quem pediu NAO le o pedido com o link enviado', 'NEGA',
+    await ler('pedidosDeVinculo/kid-link_' + pai1.uid, pai1));
+  checar('pos', 'o motorista le o pedido com o link enviado', 'PASSA',
+    await ler('pedidosDeVinculo/kid-link_' + pai1.uid, tio1));
+  checar('pedido', 'nem o motorista marca o link enviado por fora da callable', 'NEGA',
+    await escrever('pedidosDeVinculo/kid-saude_' + pai1.uid, tio1,
+      { status: S('link_enviado') }, ['status']));
 
   // A PORTA QUE CONTINUA ABERTA, e tem consumidor: remover pai vinculado.
   //
@@ -4798,4 +4860,74 @@ async function aSegurancaDoApp({ novato, dono, anon }) {
   checar(BL, 'o dono não altera', 'NEGA', await escrever(P, dono, dia(99), ['senhaBloqueios']));
   checar(BL, 'o dono não apaga', 'NEGA', await apagar(P, dono));
   checar(BL, 'motorista não cria', 'NEGA', await criar('segurancaDoApp', '2026-10-07', moto, dia(1)));
+}
+
+/**
+ * A COMUNIDADE FECHADA (14/11/2026, decisão 26). O ataque: um estranho cria
+ * conta de motorista, indica o telefone de um colega (a rule aceita qualquer
+ * `chave`) e, quando o colega se cadastra, vira "parceiro" dele pela
+ * indicação. A porta que entregava o WhatsApp e as fotos era a CALLABLE
+ * (`meusParceiros`, `fotosDaComunidade`), fechada pela chave
+ * `platformConfig/app.comunidadeLigada` e medida com as callables de verdade
+ * em `npm run testar:comunidade-fechada`. Aqui se mede o resto: pelas rules,
+ * nem a parceria casada abre dado do colega, e só o dono vira a chave.
+ */
+async function aComunidadeFechada({ dono, anon }) {
+  console.log('\n=== A COMUNIDADE FECHADA (decisão 26, 14/11/2026) ===');
+  const BL = 'comunidadeFechada';
+  const agora = Date.now();
+  const estranho = await criarLogin(`cf.estranho.${agora}@teste.local`);
+  const colega = await criarLogin(`cf.colega.${agora}@teste.local`);
+  const TEL = `119${String(agora).slice(-8)}`;
+  await semear(`users/${estranho.uid}`, { role: S('admin'), name: S('Estranho') });
+  await semear(`users/${colega.uid}`, {
+    role: S('admin'), name: S('Colega Real'), phone: S(TEL), marcaNome: S('Tio do Colega'),
+  });
+
+  // A indicação continua existindo para o DESCONTO — a chave da Comunidade
+  // não fecha esta porta, e o caso diz isso em voz alta.
+  checar(BL, 'o estranho ainda indica o telefone de um colega (desconto)', 'PASSA',
+    await criarComHoraDoServidor(`indicacoes/${estranho.uid}_${TEL}`, estranho, {
+      indicadorUid: S(estranho.uid), chave: S(TEL), nome: S('Colega'), estado: S('pendente'),
+    }, 'em'));
+  // O gatilho `casarNoCadastro` casou (Admin SDK): a "parceria" existe.
+  await semear(`indicacoes/${estranho.uid}_${TEL}`, {
+    indicadorUid: S(estranho.uid), chave: S(TEL), nome: S('Colega'),
+    estado: S('cadastrado'), indicadoUid: S(colega.uid), em: T(0),
+  });
+  const expira = T(1);
+  await semear(`fotosDaTurma/cfParceiros${agora}`, {
+    adminUid: S(colega.uid), publico: S('parceiros'), url: S('https://foto-do-colega'), expiraEm: expira,
+  });
+  await semear(`fotosDaTurma/cfComunidade${agora}`, {
+    adminUid: S(colega.uid), publico: S('comunidade'), caminho: S(`fotosDaTurma/${colega.uid}/c.jpg`), expiraEm: expira,
+  });
+
+  checar(BL, 'o "parceiro" estranho não lê o doc do colega (WhatsApp)', 'NEGA',
+    await ler(`users/${colega.uid}`, estranho));
+  checar(BL, 'o estranho não lê a foto dos parceiros do colega', 'NEGA',
+    await ler(`fotosDaTurma/cfParceiros${agora}`, estranho));
+  checar(BL, 'o estranho não lê a foto da comunidade do colega', 'NEGA',
+    await ler(`fotosDaTurma/cfComunidade${agora}`, estranho));
+  checar(BL, 'o estranho não consulta indicações pelo indicado', 'NEGA',
+    await consultar('indicacoes', 'indicadoUid', colega.uid, estranho));
+  checar(BL, 'o estranho lê a PRÓPRIA indicação (sonda)', 'PASSA',
+    await ler(`indicacoes/${estranho.uid}_${TEL}`, estranho));
+  checar(BL, 'o estranho não promove a própria indicação', 'NEGA',
+    await escrever(`indicacoes/${estranho.uid}_${TEL}`, estranho, { estado: S('ativa') }, ['estado']));
+  checar(BL, 'o colega lê a própria foto (sonda)', 'PASSA',
+    await ler(`fotosDaTurma/cfParceiros${agora}`, colega));
+
+  // A chave: só o dono a vira. Motorista que a ligasse abriria a porta.
+  const LIGA = { comunidadeLigada: B(true) };
+  checar(BL, 'motorista não liga a Comunidade', 'NEGA',
+    await escrever('platformConfig/app', estranho, LIGA, ['comunidadeLigada']));
+  checar(BL, 'anônimo não liga a Comunidade', 'NEGA',
+    await escrever('platformConfig/app', anon, LIGA, ['comunidadeLigada']));
+  checar(BL, 'o dono liga a Comunidade', 'PASSA',
+    await escrever('platformConfig/app', dono, LIGA, ['comunidadeLigada']));
+  checar(BL, 'ligada, as rules continuam negando o doc do colega', 'NEGA',
+    await ler(`users/${colega.uid}`, estranho));
+  checar(BL, 'o dono desliga a Comunidade', 'PASSA',
+    await escrever('platformConfig/app', dono, { comunidadeLigada: B(false) }, ['comunidadeLigada']));
 }

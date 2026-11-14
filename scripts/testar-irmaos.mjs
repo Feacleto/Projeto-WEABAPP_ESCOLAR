@@ -162,8 +162,94 @@ checar('o pedido não grava `parentUid` em criança nenhuma', false,
   /parentUid:\s*uid/.test(pedirAcesso) && /children\//.test(pedirAcesso));
 checar('nem a chave do irmão — o número dela não é comprovado', false,
   pedirAcesso.includes('phoneChave'));
-checar('quem aprova é o motorista dono da criança', true,
-  pedidos.includes('dados.adminUid !== adminUid') && pedidos.includes('exigirMotorista'));
+checar('quem responde é o motorista dono da criança', true,
+  readFileSync(new URL('../functions/lib/reguaDoPedidoDeAcesso.js', import.meta.url), 'utf8')
+    .includes('pedido.adminUid !== adminUid') && pedidos.includes('exigirMotorista'));
+
+/* ⚠️ O PEDIDO NÃO VINCULA CONTA NENHUMA (14/11/2026, decisão 28). O
+   motorista "aprovava" e a conta que pediu virava responsável — com o nome
+   que ela escolheu e o número que ele mesmo digitou batendo com o cadastro.
+   Agora a tela leva o LINK ao WhatsApp cadastrado e o servidor só fecha o
+   pedido. A régua não tem campo de vínculo para devolver; o gravador não
+   escreve em `children` nem em `users`. */
+{
+  const RP = require('../functions/lib/reguaDoPedidoDeAcesso.js');
+  const PEDIDO = { adminUid: 'tio1', childId: 'k1', parentUid: 'estranho', status: 'aguardando', nome: 'Maria', telefone: '11987654321' };
+  const CRIANCA = { adminUid: 'tio1', parentUid: null, parentPhone: '11987654321', name: 'Lucas' };
+  const CHAVES_PERMITIDAS = ['avisarQuemPediu', 'codigo', 'erro', 'ok', 'status'];
+  const respostas = [];
+  for (const acao of [RP.ACAO.ENVIAR_LINK, RP.ACAO.DESCARTAR, null, 'aprovar']) {
+    for (const pedido of [PEDIDO, { ...PEDIDO, status: 'recusado' }, { ...PEDIDO, adminUid: 'tio2' }, null]) {
+      for (const crianca of [CRIANCA, { ...CRIANCA, parentUid: 'mae' }, { ...CRIANCA, adminUid: 'tio2' }, null]) {
+        respostas.push(RP.respostaAoPedido({ pedido, crianca, adminUid: 'tio1', acao }));
+      }
+    }
+  }
+  checar('nenhuma das 64 respostas traz campo de vínculo', [],
+    respostas.flatMap((r) => Object.keys(r)).filter((k) => !CHAVES_PERMITIDAS.includes(k)));
+  checar('nenhuma resposta vira "aprovado"', false, respostas.some((r) => r.status === RP.STATUS.APROVADO));
+  checar('mandar o link fecha o pedido como `link_enviado`', { ok: true, status: 'link_enviado', avisarQuemPediu: false },
+    RP.respostaAoPedido({ pedido: PEDIDO, crianca: CRIANCA, adminUid: 'tio1', acao: RP.ACAO.ENVIAR_LINK }));
+  checar('…e quem pediu NÃO é avisado (não vira oráculo do número)', false,
+    RP.respostaAoPedido({ pedido: PEDIDO, crianca: CRIANCA, adminUid: 'tio1', acao: RP.ACAO.ENVIAR_LINK }).avisarQuemPediu);
+  checar('descartar fecha como recusado e avisa quem pediu', { ok: true, status: 'recusado', avisarQuemPediu: true },
+    RP.respostaAoPedido({ pedido: PEDIDO, crianca: CRIANCA, adminUid: 'tio1', acao: RP.ACAO.DESCARTAR }));
+  checar('pedido de outro motorista é recusado', 'permission-denied',
+    RP.respostaAoPedido({ pedido: { ...PEDIDO, adminUid: 'tio2' }, crianca: CRIANCA, adminUid: 'tio1', acao: RP.ACAO.ENVIAR_LINK }).codigo);
+  checar('pedido já respondido não reabre', 'failed-precondition',
+    RP.respostaAoPedido({ pedido: { ...PEDIDO, status: 'link_enviado' }, crianca: CRIANCA, adminUid: 'tio1', acao: RP.ACAO.ENVIAR_LINK }).codigo);
+  checar('criança que já tem responsável: o link não sai', 'failed-precondition',
+    RP.respostaAoPedido({ pedido: PEDIDO, crianca: { ...CRIANCA, parentUid: 'mae' }, adminUid: 'tio1', acao: RP.ACAO.ENVIAR_LINK }).codigo);
+  checar('o cliente antigo (`aprovar: true`) só manda o link', RP.ACAO.ENVIAR_LINK, RP.acaoDoPedido({ aprovar: true }));
+  checar('`aprovar: false` descarta', RP.ACAO.DESCARTAR, RP.acaoDoPedido({ aprovar: false }));
+  checar('ação desconhecida não vira nada', null, RP.acaoDoPedido({ acao: 'vincular' }));
+  checar('a régua do pedido não requer nada', false,
+    /require\(/.test(readFileSync(new URL('../functions/lib/reguaDoPedidoDeAcesso.js', import.meta.url), 'utf8')));
+
+  const sem = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const responder = sem(pedidos.slice(pedidos.indexOf('function makeResponderPedidoDeAcesso'), pedidos.indexOf('module.exports')));
+  checar('o gravador da resposta não escreve em `users`', false, /users\//.test(responder));
+  checar('…nem atualiza a criança', false, /tx\.(update|set)\(\s*(childRef|db\.doc\(`children)/.test(responder));
+  checar('…e a única escrita da transação é o pedido', ['pedidoRef'],
+    [...responder.matchAll(/tx\.(?:update|set)\(\s*(\w+)/g)].map((m) => m[1]));
+  checar('…sem `vinculadoPor: \'aprovacao\'` em lugar nenhum do servidor', false,
+    /vinculadoPor:\s*'aprovacao'/.test(sem(pedidos)));
+  checar('SONDA: o padrão acha a escrita na criança quando ela existe', true,
+    /tx\.(update|set)\(\s*(childRef|db\.doc\(`children)/.test('tx.update(childRef, { parentUid })'));
+
+  const card = sem(readFileSync(new URL('../src/components/tio/PedidosDeAcesso.jsx', import.meta.url), 'utf8'));
+  checar('o card não tem mais "Aprovar"', false, />\s*Aprovar\s*</.test(card));
+  checar('o card manda o link ao WhatsApp cadastrado', true, card.includes('Mandar o link ao WhatsApp cadastrado'));
+  checar('o número é o da FICHA (crianca.parentPhone), não o do pedido', true,
+    card.includes('crianca?.parentPhone') && !/p\.telefone/.test(card));
+  checar('o card não mostra o nome que a conta escolheu', false, /p\.nome/.test(card));
+  checar('o link sai do gerador do convite (inviteUrl + mensagemDoConvite)', true,
+    card.includes('inviteUrl(crianca.inviteCode)') && card.includes('mensagemDoConvite('));
+  checar('o card nunca pede `aprovar`', false, /responderPedidoDeAcesso\([^)]*(true|false)\)/.test(card));
+
+  // O número com "55" na frente vale no card como vale no `linkDoZap`
+  // (auditoria, 14/11/2026): a mesma limpeza, aplicada aos mesmos casos.
+  const { linkDoZap } = await import('../src/dominio/identidade/auxiliar.js');
+  const limpezaDoCard = card.match(/String\(crianca\?\.parentPhone \|\| ''\)\s*\.replace\(\/\\D\/g, ''\)\s*\.replace\((\/[^\n]+?\/), ''\)/);
+  checar('o card limpa o número como o linkDoZap', true, Boolean(limpezaDoCard));
+  if (limpezaDoCard) {
+    const re = new RegExp(limpezaDoCard[1].slice(1, -1));
+    const doCard = (t) => {
+      const d = String(t).replace(/\D/g, '').replace(re, '');
+      return d.length === 10 || d.length === 11;
+    };
+    for (const t of ['11987654321', '5511987654321', '+55 (11) 98765-4321', '551133334444', '1133334444', '987654321', '55119876543210']) {
+      checar(`card e linkDoZap concordam sobre ${t}`, linkDoZap(t) !== 'https://wa.me/', doCard(t));
+    }
+  }
+  // Convite que não está `pending` é recusado pelo `redeemInvite`: o botão
+  // não aparece, e o card diz por quê.
+  checar('o card só manda o link com o convite pendente', true,
+    /inviteStatus !== 'pending'/.test(card) && /semResponsavel = Boolean\(crianca\) && !familiaJaEntrou && !conviteUsado/.test(card));
+  checar('…e diz quando a família já entrou', true, card.includes('já entrou no app'));
+  checar('o servidor exige o convite pendente (a razão do card)', true,
+    readFileSync(new URL('../functions/lib/invites.js', import.meta.url), 'utf8').includes("child.inviteStatus !== 'pending'"));
+}
 /* ⚠️ A RESPOSTA ERA `{ encontrou: N }` E PASSOU A SER `{ ok: true }`
    (03/10/2026). Ela não dizia o nome da criança, mas dizia SE havia criança
    com aquele número — e quem digita números um atrás do outro lia, na
@@ -298,6 +384,16 @@ for (const [f, t] of comCallable) {
   const chamadas = (t.match(/\bonCall\(/g) || []).length;
   const comAppCheck = (t.match(/onCall\(\s*\{\s*\.\.\.LIMITES\.APP_CHECK/g) || []).length;
   checar(`${f}: toda onCall espalha LIMITES.APP_CHECK`, chamadas, comAppCheck);
+}
+// O App Check vale para TODA callable, inclusive as que ficam fora da
+// varredura de ids acima: `fecharMesAgora` (fechamento.js) ficou sem ele, e
+// ligar `EXIGIR_APP_CHECK` a deixaria de fora sem ninguém perceber.
+for (const f of readdirSync(dirLib).filter((x) => x.endsWith('.js') && FORA_DA_VARREDURA.has(x))) {
+  const t = readFileSync(new URL(f, dirLib), 'utf8');
+  const chamadas = (t.match(/\bonCall\(/g) || []).length;
+  if (!chamadas) continue;
+  const comAppCheck = (t.match(/onCall\(\s*\{\s*\.\.\.LIMITES\.APP_CHECK/g) || []).length;
+  checar(`${f}: toda onCall espalha LIMITES.APP_CHECK (fora da varredura de ids)`, chamadas, comAppCheck);
 }
 const acompTxt = readFileSync(new URL('../functions/lib/acompanhamento.js', import.meta.url), 'utf8');
 const lerTokenTxt = acompTxt.slice(acompTxt.indexOf('function lerToken'), acompTxt.indexOf('function makeGerarAcessoDoDia'));

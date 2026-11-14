@@ -525,8 +525,11 @@ function makeFecharMesDosParceiros(db) {
 
 /** O mesmo, à mão — o dono precisa poder fechar quando algo não rodou. */
 function makeFecharMesAgora(db) {
+  // ⚠️ A única callable sem `LIMITES.APP_CHECK` até 14/11/2026: ligar
+  // `EXIGIR_APP_CHECK` deixaria esta de fora. É do dono, mas emite a fatura
+  // da base inteira — passa pela mesma porta das outras.
   return onCall(
-    { region: REGION, maxInstances: LIMITES.AUTENTICADO },
+    { ...LIMITES.APP_CHECK, region: REGION, maxInstances: LIMITES.AUTENTICADO },
     async (request) => {
       await exigirDono(db, request);
       const mes = String(request.data?.mes || '').trim() || null;

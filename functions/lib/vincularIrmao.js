@@ -85,7 +85,8 @@ function makeVincularIrmao(db) {
         if (!parentUid) {
           // QUEM JÁ PEDIU ACESSO COM ESTE NÚMERO E ESTAVA ESPERANDO
           // (`pedidosDeAcesso.js`). O número dela não é comprovado, então
-          // aqui nunca se vincula: nasce o PEDIDO, e o motorista aprova.
+          // aqui nunca se vincula: nasce o PEDIDO, e o motorista manda o link
+          // ao WhatsApp que ELE cadastrou (o pedido também não vincula).
           const esperando = await db
             .collection('users')
             .where('telefoneAguardandoChave', '==', chave)

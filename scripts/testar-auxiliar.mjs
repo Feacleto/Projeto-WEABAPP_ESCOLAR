@@ -53,6 +53,28 @@ checar('motorista continua no /tio', '/tio', painelDe({ role: 'admin' }));
 console.log('\n2. o convite (servidor)');
 const AGORA = Date.UTC(2026, 9, 5, 12);
 checar('código tem 10 letras sem 0/O/1/I', true, R.codigoValido(R.gerarCodigoDoConvite()));
+// O código é um SEGREDO (quem o tem vira auxiliar): o padrão é criptográfico.
+{
+  const original = Math.random;
+  let chamadas = 0;
+  Math.random = () => { chamadas++; return 0; };
+  const codigos = Array.from({ length: 2000 }, () => R.gerarCodigoDoConvite());
+  Math.random = original;
+  checar('o padrão do código não chama Math.random', 0, chamadas);
+  checar('2000 códigos do padrão saem todos do alfabeto, com 10 letras', true, codigos.every((c) => R.codigoValido(c)));
+  checar('2000 códigos do padrão não se repetem', 2000, new Set(codigos).size);
+  const letras = new Set(codigos.join(''));
+  checar('o padrão alcança as 32 letras do alfabeto', R.ALFABETO_DO_CONVITE.length, letras.size);
+  checar('o injetado é usado (sempre 0 → só A)', 'AAAAAAAAAA', R.gerarCodigoDoConvite(() => 0));
+  checar('o injetado recebe o tamanho do alfabeto (assinatura de crypto.randomInt)', 'AAAAAAAAAA',
+    R.gerarCodigoDoConvite((n) => (n === 32 ? 0 : 31)));
+  checar('sortearCriptografico fica em [0, n)', true,
+    Array.from({ length: 5000 }, () => R.sortearCriptografico(7)).every((x) => Number.isInteger(x) && x >= 0 && x < 7));
+  const fonte = semComentarios(ler('functions/lib/reguaDoAuxiliar.js'));
+  checar('a régua não menciona Math.random fora de comentário', false, /Math\.random/.test(fonte));
+  checar('a callable injeta crypto.randomInt', true,
+    /require\('node:crypto'\)/.test(ler('functions/lib/auxiliares.js')) && /gerarCodigoDoConvite\(randomInt\)/.test(ler('functions/lib/auxiliares.js')));
+}
 checar('código com O é recusado', false, R.codigoValido('ABCDEFGHJO'));
 checar('código com barra nunca vira caminho', false, R.codigoValido('ABCDE/GHJK'));
 checar('convite novo vale', true, R.conviteVale({ criadoEmMs: AGORA - 1000 }, AGORA).vale);

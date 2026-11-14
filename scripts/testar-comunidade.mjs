@@ -282,5 +282,56 @@ eq('o cabeçalho diz por que os dois links são diferentes', /NÃO "uniformizar"
 const telaDaComunidade = fs.readFileSync('src/pages/pai/PaiComunidade.jsx', 'utf8');
 eq('a tela da família não tem botão de baixar nem de compartilhar', /download|navigator\.share|Baixar|Compartilhar/.test(telaDaComunidade), false);
 
+console.log('\n\x1b[1m11. A Comunidade fecha NO SERVIDOR (decisão 26, 14/11/2026)\x1b[0m');
+// Ausente é DESLIGADA, como `cobrancaLigada`: só o `true` explícito liga.
+eq('sem platformConfig: desligada', srv.comunidadeEstaLigada(null), false);
+eq('sem o campo: desligada', srv.comunidadeEstaLigada({ cobrancaLigada: true }), false);
+eq('"true" em texto não liga', srv.comunidadeEstaLigada({ comunidadeLigada: 'true' }), false);
+eq('1 não liga', srv.comunidadeEstaLigada({ comunidadeLigada: 1 }), false);
+eq('false: desligada', srv.comunidadeEstaLigada({ comunidadeLigada: false }), false);
+eq('true: ligada (o comportamento antigo volta)', srv.comunidadeEstaLigada({ comunidadeLigada: true }), true);
+eq('a frase não fala de nível nem de plano', /ouro|nível|plano|pague/i.test(srv.FRASE_DA_COMUNIDADE_FECHADA), false);
+
+// Cada callable que alcança dado de OUTRO motorista confere a chave ANTES
+// de ler a primeira indicação. Recorta o corpo de cada `make…` e procura a
+// ordem — a chamada depois da leitura seria a porta aberta por um instante.
+const semComent = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const corpo = (fonte, nome) => {
+  const i = fonte.indexOf(`function ${nome}(`);
+  if (i < 0) return '';
+  const j = fonte.indexOf('\nfunction ', i + 10);
+  return semComent(fonte.slice(i, j < 0 ? undefined : j));
+};
+const fechaAntes = (trecho, primeiraLeitura) => {
+  const g = trecho.indexOf('await exigirComunidadeLigada(db)');
+  const l = trecho.indexOf(primeiraLeitura);
+  return g > 0 && (l < 0 || g < l);
+};
+const transferencias = fs.readFileSync('functions/lib/transferencias.js', 'utf8');
+eq('meusParceiros fecha antes de ler indicações', fechaAntes(corpo(comunidadeSrv, 'makeMeusParceiros'), "collection('indicacoes')"), true);
+eq('fotosDaComunidade fecha antes de achar os tios', fechaAntes(corpo(comunidadeSrv, 'makeFotosDaComunidade'), 'parceirosDoTio('), true);
+eq('avisarParceiroIndicado fecha antes de ler indicações', fechaAntes(corpo(comunidadeSrv, 'makeAvisarParceiroIndicado'), "collection('indicacoes')"), true);
+eq('pedirTransferencia fecha antes de conferir a parceria', fechaAntes(corpo(transferencias, 'makePedirTransferencia'), 'saoParceiros('), true);
+// O pedido JÁ ABERTO antes da chave também para (auditoria, 14/11/2026):
+// o aceite copia a criança, com endereço, para a conta do "parceiro".
+eq('responderTransferencia fecha antes de ler o pedido', fechaAntes(corpo(transferencias, 'makeResponderTransferencia'), 'ref.get()'), true);
+eq('aceitarTransferencia fecha antes de ler o pedido', fechaAntes(corpo(transferencias, 'makeAceitarTransferencia'), 'ref.get()'), true);
+eq('cancelar fica aberta (só fecha o pedido do próprio tio)', /exigirComunidadeLigada/.test(corpo(transferencias, 'makeCancelarTransferencia')), false);
+const publicar = corpo(comunidadeSrv, 'makePublicarFotoDaTurma');
+eq('publicarFotoDaTurma fecha o que não é para as famílias', /if \(d\.publico !== PUBLICO\.FAMILIAS\) await exigirComunidadeLigada\(db\)/.test(publicar), true);
+eq('…antes de gravar a foto', publicar.indexOf('exigirComunidadeLigada') < publicar.indexOf('lote.commit()'), true);
+// Sonda positiva: o recorte acha a leitura quando ela vem antes do portão.
+eq('sonda: portão depois da leitura é pego', fechaAntes("x collection('indicacoes') y await exigirComunidadeLigada(db)", "collection('indicacoes')"), false);
+const chave = semComent(fs.readFileSync('functions/lib/comunidadeLigada.js', 'utf8'));
+eq('falha de leitura conta como desligada', /catch[\s\S]*?return false/.test(chave), true);
+eq('lê platformConfig/app, o mesmo doc da cobrança', /platformConfig\/app/.test(chave), true);
+// A família não lê a frase do período de teste do MOTORISTA (auditoria).
+eq('a tela da família troca a recusa por uma frase neutra', telaDaComunidade.includes("e.cause?.code === 'functions/failed-precondition' ? 'A Comunidade não está disponível agora.'"), true);
+eq('…e não fala de período de teste', /período de teste/.test(telaDaComunidade), false);
+// O programa de indicação NÃO depende da chave: o desconto continua.
+for (const f of ['functions/lib/casarNoCadastro.js', 'functions/lib/casarIndicacao.js', 'functions/lib/indicacao.js']) {
+  eq(`${f} não passa pela chave da Comunidade`, /comunidadeLigada|exigirComunidadeLigada/.test(fs.readFileSync(f, 'utf8')), false);
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam\n`);
 process.exit(falhou ? 1 : 0);
