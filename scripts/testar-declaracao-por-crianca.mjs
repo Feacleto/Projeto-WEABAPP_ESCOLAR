@@ -222,9 +222,10 @@ const chamadores = arquivosDe('src')
   .filter((f) => !f.endsWith('services/childrenService.js'))
   .filter((f) => /\baddChild\s*\(/.test(ler(f)))
   .sort();
-igual('exatamente três arquivos chamam addChild (um quarto reprova aqui até ser conferido)',
+igual('exatamente quatro arquivos chamam addChild (um quinto reprova aqui até ser conferido)',
   chamadores,
   [
+    'src/components/children/AdicionarCrianca.jsx',
     'src/components/children/CadastroRapidoDaCrianca.jsx',
     'src/components/children/ChildForm.jsx',
     'src/components/perua/FolhaDaVagaRapida.jsx',
@@ -250,16 +251,26 @@ const sem = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '
 for (const [nome, arq] of [
   ['via 2 (cadastro rápido do primeiro acesso)', 'src/components/children/CadastroRapidoDaCrianca.jsx'],
   ['via 3 (vaga rápida da perua)', 'src/components/perua/FolhaDaVagaRapida.jsx'],
+  ['via 4 (a linha "+ Nome" da Lista da turma)', 'src/components/children/AdicionarCrianca.jsx'],
 ]) {
   const f = sem(ler(arq));
   const iConfirma = f.indexOf('declaracao.confirmar()');
   const iChama = f.search(/\baddChild\s*\(/);
   afirma(`${nome}: confere a declaração ANTES de chamar addChild`,
     iConfirma !== -1 && iChama !== -1 && iConfirma < iChama);
+  // A linha "+ Nome" decide pela régua pura `decidirOkDoNome` (com o toque
+  // duplo e o valor junto); o passo 'declaracao' acende o erro e RETORNA.
   afirma(`${nome}: a recusa interrompe o salvar (return)`,
-    /if \(!declaracao\.confirmar\(\)\) return;/.test(f));
-  afirma(`${nome}: só manda \`autorizacaoDeclarada: true\` (nunca outro valor, nem herdado)`,
-    /autorizacaoDeclarada: true/.test(f) && !/autorizacaoDeclarada: (?!true)/.test(f));
+    /if \(!declaracao\.confirmar\(\)\) return;/.test(f) ||
+      (/declarou: declaracao\.jaDeclarou \|\| declaracao\.marcada,/.test(f) &&
+        /if \(passo === 'declaracao'\) \{\s*declaracao\.confirmar\(\);\s*return;\s*\}/.test(f)));
+  // `true` escrito, ou o que a CAIXA diz agora (auditoria da Lista, item b:
+  // um `true` à mão mentiria se a decisão acima mudasse). Nunca herdado de
+  // outro objeto (`...form`, `crianca.autorizacaoDeclarada`).
+  const DA_CAIXA = /autorizacaoDeclarada: declaracao\.jaDeclarou \|\| declaracao\.marcada,/;
+  afirma(`${nome}: só manda \`autorizacaoDeclarada\` da própria declaração (nunca outro valor, nem herdado)`,
+    (/autorizacaoDeclarada: true/.test(f) || DA_CAIXA.test(f)) &&
+      !/autorizacaoDeclarada: (?!true|declaracao\.jaDeclarou \|\| declaracao\.marcada,)/.test(f));
   afirma(`${nome}: a caixa aparece quando ainda não declarou na sessão`,
     f.includes('<DeclaracaoDeAutorizacao') && f.includes('declaracao.jaDeclarou'));
   afirma(`${nome}: só lembra da declaração DEPOIS de salvar`,

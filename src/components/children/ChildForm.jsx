@@ -50,10 +50,17 @@ import {
 import { montarEndereco } from '../../compartilhado/formatters';
 import CampoVigencia from '../contract/CampoVigencia';
 import { vigenciaPadrao, erroDaVigencia } from '../../dominio/cobranca/contratoDaFamilia.js';
+import { valorDoCampoFalta, valorDaMensalidadeFalta } from '../../dominio/cobranca/valorDaMensalidade.js';
+import { DIGA_O_VALOR } from '../../marca/valorDoConvite.js';
 import BotaoDeFalar from '../common/BotaoDeFalar';
 import PerguntaDasVagas from '../perua/PerguntaDasVagas';
-import DeclaracaoDeAutorizacao from './DeclaracaoDeAutorizacao';
-import { ERRO_DA_DECLARACAO } from '../../dominio/identidade/autorizacaoDeclarada.js';
+import DeclaracaoDeAutorizacao, { DeclaracaoJaFeita } from './DeclaracaoDeAutorizacao';
+import {
+  ERRO_DA_DECLARACAO,
+  jaDeclarouNestaSessao,
+  lembrarDaDeclaracao,
+} from '../../dominio/identidade/autorizacaoDeclarada.js';
+import { useAuth } from '../../hooks/useAuth';
 
 const GENDERS = [
   { value: 'male', label: 'Menino' },
@@ -165,8 +172,18 @@ export default function ChildForm() {
   const { id: idParaCompletar } = useParams();
   const { child: paraCompletar } = useChild(idParaCompletar);
   const preenchido = useRef(false);
+  const { user } = useAuth();
+  // A DECLARAÇÃO DA SESSÃO VALE AQUI TAMBÉM (RC2): quem já declarou na Lista
+  // da turma, no cadastro rápido ou na criança anterior não é perguntado de
+  // novo. A caixa sai e a linha "confirmada nesta sessão" fica à vista; o
+  // `addChild` continua gravando os três campos NESTA criança (decisão 29).
+  const declaradaNaSessao = jaDeclarouNestaSessao(user?.uid);
   // A vigência nasce pronta (de hoje até o fim do ano) — ver `vigenciaPadrao`.
-  const [form, setForm] = useState(() => ({ ...EMPTY_FORM, ...vigenciaDoForm() }));
+  const [form, setForm] = useState(() => ({
+    ...EMPTY_FORM,
+    ...vigenciaDoForm(),
+    autorizacaoDeclarada: declaradaNaSessao,
+  }));
   useEffect(() => {
     if (!paraCompletar || preenchido.current) return;
     preenchido.current = true;
@@ -255,16 +272,25 @@ export default function ChildForm() {
         errs.horaEntrega = 'Hora inválida. Ex: 12:35';
       }
     }
-    // Responsável e financeiro: só o telefone é indispensável — é por ele
-    // que o convite chega. Email e mensalidade podem vir depois.
+    // Responsável e financeiro: o WhatsApp da mãe deixou de ser obrigatório
+    // (RC2, 14/11/2026, decisão do dono) — é o que ele quase nunca sabe de
+    // cabeça, e sem o número o convite funciona igual (o link do WhatsApp sem
+    // número abre a escolha de contato, `InviteShare`). Quando ele digita, o
+    // formato continua cobrado.
+    // ⚠️ O custo, aceito: sem o número digitado pelo MOTORISTA no cadastro, a
+    // família não ganha o vínculo automático do irmão (`vincularIrmao` só roda
+    // na criação da criança) nem é achada pelo pedido de acesso até o número
+    // existir.
+    // O VALOR DA MENSALIDADE é obrigatório — valor zero não (decisão do dono,
+    // 14/11/2026): sem ele o contrato não é emitido e a mensalidade não é
+    // gerada. Quem não tem o valor agora usa "Salvar e completar depois"
+    // (passos 2 e 3): a criança fica sem valor, e a trava do contrato a segura.
     if (s === 4) {
-      if (!isValidPhone(form.parentPhone))
-        errs.parentPhone = 'Telefone com DDD — é por aqui que o convite vai.';
+      if (String(form.parentPhone || '').trim() && !isValidPhone(form.parentPhone))
+        errs.parentPhone = 'Telefone com DDD.';
       if (form.parent2Phone && !isValidPhone(form.parent2Phone))
         errs.parent2Phone = 'Telefone inválido.';
-      const fee = parseFloat(form.monthlyFee);
-      if (String(form.monthlyFee).trim() && (!fee || fee <= 0))
-        errs.monthlyFee = 'Valor precisa ser maior que zero.';
+      if (valorDoCampoFalta(form.monthlyFee)) errs.monthlyFee = DIGA_O_VALOR;
       const day = parseInt(form.dueDay, 10);
       if (form.dueDay && (!day || day < 1 || day > 28))
         errs.dueDay = 'Dia entre 1 e 28.';
@@ -329,8 +355,7 @@ export default function ChildForm() {
         ...form,
         horaPega: horaPega || '',
         horaEntrega: horaEntrega || '',
-        // `period` alimenta o filtro da lista de crianças e os rótulos de
-        // ChildCard/ChildDetail. `pickupPeriod`/`dropoffPeriod` são ponte pro
+        // `period` alimenta o rótulo da ChildDetail. `pickupPeriod`/`dropoffPeriod` são ponte pro
         // cadastro anterior ao modelo de horários, lidos só por
         // `horariosCombinados`. Derivados da hora: o motorista informa uma
         // vez e o rótulo se acerta sozinho, em vez de virar mais dois botões.
@@ -384,6 +409,8 @@ export default function ChildForm() {
       } else {
         ({ id, inviteCode } = await addChild(payload));
       }
+      // Só DEPOIS de salvar: recusa do banco não conta como declaração feita.
+      if (form.autorizacaoDeclarada) lembrarDaDeclaracao(user?.uid);
       setCreatedCode(inviteCode);
       setCreatedId(id);
       setPixPerguntado(false);
@@ -424,10 +451,18 @@ export default function ChildForm() {
   const cadastrarOutra = () => {
     setForm({
       ...EMPTY_FORM,
+      // A declaração feita nesta sessão vale para a próxima (decisão 29: a
+      // pergunta pode ser uma por sessão; o registro continua por criança).
+      autorizacaoDeclarada: jaDeclarouNestaSessao(user?.uid),
       // A próxima criança herda a vigência da anterior: a turma costuma ter
       // o mesmo combinado de prazo.
       vigenciaInicio: form.vigenciaInicio,
       vigenciaFim: form.vigenciaFim,
+      // E o VALOR e o VENCIMENTO (RC2, decisão do dono): a turma costuma ter o
+      // mesmo preço. Vêm À VISTA no passo 4, editáveis — nunca gravados em
+      // silêncio numa criança que ele não viu.
+      monthlyFee: form.monthlyFee,
+      dueDay: form.dueDay,
       schoolId: form.schoolId,
       school: form.school,
       schoolAddress: form.schoolAddress,
@@ -516,6 +551,7 @@ export default function ChildForm() {
         {step === 1 && (
           <Step1Child
             form={form}
+            jaDeclarou={declaradaNaSessao && form.autorizacaoDeclarada}
             idReservado={idReservado}
             setForm={setForm}
             setField={setField}
@@ -655,7 +691,7 @@ function ProgressBar({ step, total }) {
 
 /* ─────────────── Passo 1: Criança ─────────────── */
 
-function Step1Child({ form, setForm, setField, errors, idReservado }) {
+function Step1Child({ form, setForm, setField, errors, idReservado, jaDeclarou = false }) {
   const declaracaoRef = useRef(null);
   return (
     <>
@@ -755,12 +791,16 @@ function Step1Child({ form, setForm, setField, errors, idReservado }) {
         *
         * Fica no passo 1 porque é sobre a criança inteira, e no FIM do passo
         * porque ela confirma o que ele acabou de digitar. */}
-      <DeclaracaoDeAutorizacao
-        marcada={form.autorizacaoDeclarada}
-        onChange={(v) => setForm((p) => ({ ...p, autorizacaoDeclarada: v }))}
-        erro={errors.autorizacaoDeclarada}
-        inputRef={declaracaoRef}
-      />
+      {jaDeclarou ? (
+        <DeclaracaoJaFeita />
+      ) : (
+        <DeclaracaoDeAutorizacao
+          marcada={form.autorizacaoDeclarada}
+          onChange={(v) => setForm((p) => ({ ...p, autorizacaoDeclarada: v }))}
+          erro={errors.autorizacaoDeclarada}
+          inputRef={declaracaoRef}
+        />
+      )}
     </>
   );
 }
@@ -1464,7 +1504,7 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
           * convite: o `redeemInvite` grava `linkedEmail` com o e-mail da
           * conta dela, e o contrato e a ficha leem esse. */}
         <Input falar="telefone"
-          label="WhatsApp"
+          label="WhatsApp (se souber)"
           placeholder="Digite aqui"
           icon={Phone}
           inputMode="tel"
@@ -1472,8 +1512,7 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
           onChange={setPhone('parentPhone')}
           maxLength={15}
           error={errors.parentPhone}
-          hint="O convite vai para este número."
-          required
+          hint={String(form.parentPhone || '').trim() ? 'O convite vai para este número.' : 'Sem o número, o WhatsApp abre a escolha de contato.'}
         />
 
         <button
@@ -1517,26 +1556,11 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
           value={form.monthlyFee}
           onChange={(v) => setForm((p) => ({ ...p, monthlyFee: v }))}
           error={errors.monthlyFee}
-          /* O `required` daqui foi REMOVIDO porque era inerte e mentia.
-           *
-           * Este formulário é um assistente por etapas: o botão chama
-           * onSubmit() direto, sem <form> nativo, então a validação do
-           * navegador nunca roda e o atributo não bloqueava nada. E deixar
-           * sem valor é DELIBERADO — a validação da etapa diz, com todas as
-           * letras, que "email e mensalidade podem vir depois", porque nem
-           * sempre o valor está combinado no dia do cadastro.
-           *
-           * O problema não era permitir vazio: era não contar o preço disso.
-           * Mensalidade zerada faz a criança ser PULADA na geração de
-           * cobrança do mês (billing.js ignora fee <= 0), sem erro nenhum na
-           * hora. Quem cadastra trinta crianças e deixa dez sem valor
-           * descobre no dia do fechamento, contando dez cobranças que não
-           * nasceram. */
-          hint={
-            String(form.monthlyFee).trim()
-              ? undefined
-              : 'Sem valor, esta criança não entra na cobrança do mês. Dá pra preencher depois na ficha dela.'
-          }
+          /* OBRIGATÓRIO (14/11/2026): "valor zero não". O que impede o 350 de
+           * virar R$ 3,50 sem ninguém ver é o próprio campo: a máscara escreve
+           * "R$ 3,50" enquanto ele digita e o extenso fica embaixo ("três
+           * reais e cinquenta centavos"), com o "Ouvir". O validador do passo
+           * (`valorDoCampoFalta`) é a mesma régua da emissão do contrato. */
         />
         <div data-erro={errors.dueDay ? true : undefined}>
           <p id="rotulo-vencimento" className="mb-2 block text-sm font-semibold text-text">
@@ -1831,7 +1855,7 @@ function InviteCodeSuccess({
               ? 'Convite enviado'
               : 'Convite para a família'}
           </span>
-          {!jaEntrou && !conviteFeito && (
+          {!jaEntrou && !conviteFeito && !(aoVivo && valorDaMensalidadeFalta(aoVivo)) && (
             <button
               type="button"
               onClick={mandarConvite}

@@ -242,7 +242,11 @@ export async function getChild(id) {
 }
 
 // Atualiza dados gerais (não usar pra mudar status — use updateChildStatus).
-export async function updateChild(id, data) {
+/**
+ * `silencioso`: não toca o som de "salvo". A Lista da turma grava campo a
+ * campo e toca UM som por rajada (`salvarPorCampo.js`), não um por campo.
+ */
+export async function updateChild(id, data, { silencioso = false } = {}) {
   const updates = { ...data };
 
   // `active` NÃO PASSA POR AQUI, e a recusa é barata perto do estrago.
@@ -299,7 +303,7 @@ export async function updateChild(id, data) {
   if (updates.monthlyFee != null) updates.monthlyFee = Number(updates.monthlyFee);
   if (updates.dueDay != null) updates.dueDay = clampDueDay(updates.dueDay);
   await updateDoc(doc(db, 'children', id), updates);
-  playSound('salvo');
+  if (!silencioso) playSound('salvo');
 }
 
 /**

@@ -616,13 +616,16 @@ src/
 │   ├── identidade/    papeis, childIds, generateInviteCode, inviteUrl,
 │   │                  authErrors, verificacao, indicacao, origem,
 │   │                  cadastroDoMotorista
-│   ├── escola/        nomeEscola
+│   ├── escola/        nomeEscola, listaDaTurma (o estado do convite, o que
+│   │                  falta, os grupos por escola e a hora de pegar
+│   │                  PROPOSTA pela entrada — `testar:lista-da-turma`)
 │   ├── suporte/       chamados
 │   └── vitrine/       frentes
 ├── marca/             a personalidade: avatarUrl, greeting, festivities,
 │                      travessia, promessas. Tem regra, mas de apresentação
 ├── compartilhado/     SEM regra nenhuma: formatters, masks, haversine,
-│                      abaAtiva, browserEnv, ruas (a busca de rua pelo nome).
+│                      abaAtiva, browserEnv, ruas (a busca de rua pelo nome),
+│                      salvarPorCampo (o "salvo ✓" com versão) e toques.
 │                      Não conhece o domínio (o lint
 │                      recusa)
 └── firebase/config.js
@@ -3946,6 +3949,59 @@ fase da trilha. ⚠️ A única exceção ao "em dia" é a Platina nos últimos 
 dias. O `AvisoDoBronze` e o `CartaoPrazoPlatina` SAÍRAM do topo e moram aqui.
 ⚠️ Os 30 últimos dias do teste são do `AvisoDoTrial` (topo de toda tela),
 que desde 04/10/2026 é VERDE CALMO no verde da casa, não âmbar.
+
+**MINHA TURMA É A LISTA DA TURMA (RC2, 14/11/2026)** —
+[TioChildren](src/pages/tio/TioChildren.jsx), régua em
+[listaDaTurma.js](src/dominio/escola/listaDaTurma.js), textos em
+[textosDaLista.js](src/marca/textosDaLista.js), `npm run testar:lista-da-turma`.
+O motorista adiciona ("+ Nome da criança", sempre aberta no fim), completa
+(a linha abre NO LUGAR e grava campo a campo pelo `updateChild`; "salvo ✓" só
+depois de o servidor confirmar), convida (Convidar · Enviado · Entrou ✓, e o
+topo "N de M famílias no app") e tira, sem trocar de tela. A ficha e
+o cadastro completo continuam para o que é fundo.
+⚠️ O ESTADO DE SALVAR MORA NA TELA, não na linha: `useSalvadorDaLista`
+([useSalvarNaLista.js](src/hooks/useSalvarNaLista.js)) sobre a máquina pura
+[salvarPorCampo.js](src/compartilhado/salvarPorCampo.js) — por criança e por
+campo, com VERSÃO (resposta velha não acende "salvo ✓"), "esperando sinal"
+depois de 6 s (com faixa no topo: o cache do Firestore é só em memória) e UM
+som por rajada (as escritas da lista são `silencioso`). O campo não é
+remontado pelo valor do banco (`useValorDoCampo`): em erro fica o digitado.
+⚠️ O CONTRATO DA LISTA NASCE NO TOQUE DE "CONVIDAR"
+(`garantirContratoAoConvidar`, uma leitura `getDocsFromServer` da versão mais
+recente), não ao renderizar: eram ~33 escutas com 30 crianças e uma versão
+nova a cada campo salvo. Ao FECHAR a linha que gravou algo,
+`atualizarContratoEsperando` confere a versão que espera aceite (nunca emite a
+primeira). A mensalidade só trava na linha com o contrato ASSINADO
+(`mensalidadeTravada`); antes, com versão esperando, passa por
+`salvarCombinado` (`salvarMensalidadeNaLista`). Abaixo de R$ 30, "Confira".
+⚠️ Convite SEM número abre uma confirmação com o nome completo da criança
+antes do WhatsApp (a mensagem não muda); convite sem valor vira "Pôr o valor".
+⚠️ 360x640: título na barra, topo de ~100 px, "A completar · N" é UMA linha
+(grupos e "fora da rota" na folha), busca é botão ao lado, cabeçalho da escola
+é uma linha com o chip da entrada; o teste refaz a conta (≥ 5 crianças).
+⚠️ A criança do "+ Nome" nasce `cadastroRapido: true` — FORA da rota até ter
+rua e hora de pegar —, e a marca cai no MESMO write que a completa
+(`camposAoSalvar`).
+⚠️ A hora de pegar do grupo é PROPOSTA pela entrada da escola
+(`schools.horaEntrada`), uma por casa, nunca a mesma para todas: `horaPega` é a
+hora na PORTA e mudar avisa a família.
+⚠️ "Tirar da turma" não tem Desfazer e diz TUDO o que `deactivateChildAndParent`
+faz (`textoDeTirar`): apaga faltas futuras, quem busca e recados; a conta da
+família é APAGADA se este é o único filho dela (`desvincularResponsavel`);
+zera aceite e versão esperando; apaga a foto. O teste lê o serviço e reprova
+operação que apaga dado sem frase na tela. O diálogo ignora toques nos
+primeiros 400 ms (`ignorarToquesMs`). "Pausar" é RC3.
+⚠️ **VALOR ZERO NÃO** (decisão do dono, 14/11/2026): a mensalidade é
+OBRIGATÓRIA ao cadastrar (a régua ÚNICA da RC1, `valorDoCampoFalta` em
+[valorDaMensalidade.js](src/dominio/cobranca/valorDaMensalidade.js)) — na
+linha "+ Nome" (herdada da criança anterior, com o vencimento), no cadastro
+rápido do card e no passo 4 do formulário completo. Isentos de propósito: a
+VAGA RÁPIDA da perua (é um lugar, não contrato) e o rascunho "Salvar e
+completar depois"; os dois caem no grupo "sem valor" da caixa "A completar".
+⚠️ O WhatsApp da mãe ficou OPCIONAL no cadastro. Sem ele o convite abre a
+escolha de contato; o custo é o irmão automático (`vincularIrmao` só roda na
+CRIAÇÃO da criança) e o pedido de acesso, que só acham a família quando o
+número existe.
 
 **O Início do motorista tem um ÍNDICE, não um bloco de cadastro.**
 [MeuTransporteSheet](src/components/tio/MeuTransporteSheet.jsx) — turma,

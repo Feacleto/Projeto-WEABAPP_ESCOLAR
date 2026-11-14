@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import Button from './Button';
 import { useVoltarFechaFolha } from '../../hooks/useVoltarFechaFolha';
+import { toqueCedoDemais } from '../../compartilhado/toques.js';
 
 /**
  * Modal de confirmação — bloqueia interação até o usuário decidir. É o
@@ -28,6 +29,11 @@ import { useVoltarFechaFolha } from '../../hooks/useVoltarFechaFolha';
  *   - loading:        bool — desabilita ações durante operação async
  *   - onConfirm:      () => void
  *   - onCancel:       () => void
+ *   - ignorarToquesMs: number (default 0) — toques no botão de confirmar nos
+ *                     primeiros N ms depois de abrir são ignorados. Para o
+ *                     que não tem volta: o segundo toque de um duplo toque
+ *                     que ABRIU o diálogo cai no botão que acabou de nascer
+ *                     embaixo do dedo ("Tirar da turma", 400 ms).
  */
 export default function ConfirmDialog({
   open,
@@ -39,7 +45,16 @@ export default function ConfirmDialog({
   loading = false,
   onConfirm,
   onCancel,
+  ignorarToquesMs = 0,
 }) {
+  const abertoEm = useRef(null);
+  useEffect(() => {
+    abertoEm.current = open ? Date.now() : null;
+  }, [open]);
+  const confirmar = () => {
+    if (ignorarToquesMs && toqueCedoDemais(abertoEm.current, Date.now(), ignorarToquesMs)) return;
+    onConfirm?.();
+  };
   // Fecha com ESC
   // O voltar do celular é o "Cancelar" (03/10/2026) — nunca durante a
   // gravação, como o Escape.
@@ -111,7 +126,7 @@ export default function ConfirmDialog({
           </Button>
           <Button
             variant={variant === 'danger' ? 'danger' : 'primary'}
-            onClick={onConfirm}
+            onClick={confirmar}
             loading={loading}
             fullWidth
           >

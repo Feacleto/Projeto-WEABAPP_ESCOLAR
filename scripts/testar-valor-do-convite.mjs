@@ -34,6 +34,8 @@ const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ler = (p) => fs.readFileSync(path.join(raiz, p), 'utf8');
 // Sem comentários: a frase citada num comentário explicativo não é texto de tela.
 const semComentarios = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+// A prova lê o CÓDIGO: uma frase que só aparece num comentário não prova que o app a cumpre.
+const codigo = (p) => semComentarios(ler(p));
 
 let ok = 0, falhou = 0;
 const eq = (nome, a, b) => {
@@ -56,7 +58,8 @@ const FUNCIONALIDADES = {
   ],
   'falta-avisada-no-painel': [
     ['src/services/absencesService.js', /absenceDeclarations/],
-    ['src/pages/tio/TioDashboard.jsx', /useAbsences/],
+    ['src/pages/tio/TioDashboard.jsx', /useAbsences\(todayKey\)/],
+    ['src/pages/tio/TioDashboard.jsx', /faltas avisadas hoje/],
   ],
   // De manhã: "A perua saiu" e a chegada na escola; à tarde, a entrega em casa.
   'push-de-saida-e-chegada': [
@@ -73,20 +76,27 @@ const FUNCIONALIDADES = {
   'rota-iniciada': [
     ['src/components/route/ControleDeRota.jsx', /ROTA_INICIADA_SEM_MAPA/],
   ],
+  // A família paga com a chave DO MOTORISTA (copia-e-cola montado da chave dele).
   'pix-direto': [
-    ['src/pages/pai/PaiFinance.jsx', /PIX direto/],
+    ['src/components/payments/PixBlock.jsx', /key: admin\?\.pixKey/],
   ],
+  // O mesmo botão do WhatsApp reenvia a cada toque, e há "Gerar link novo".
   'reenviar-link': [
-    ['src/components/children/InviteShare.jsx', /tocar de novo reenvia/],
+    ['src/components/children/InviteShare.jsx', /data-convite-whatsapp/],
     ['src/components/children/InviteShare.jsx', /Gerar link novo/],
   ],
   'link-sem-numero': [
     ['src/components/children/InviteShare.jsx', /https:\/\/wa\.me\/\?text=/],
   ],
-  inviteUsedAt: [
+  // A família entra (o resgate grava `parentUid`) e a Lista da turma mostra o
+  // selo "Entrou ✓" (RC2). A RC1 apoiava a frase no aviso "ainda não entraram"
+  // do Início — que, com a RC2, passou a contar só quem precisa de um toque
+  // (`contarConvitesAMandar`), e a criança sai dele quando o convite é ENVIADO.
+  'entrou-na-lista': [
     ['functions/lib/invites.js', /inviteUsedAt/],
-    ['src/components/children/ChildCard.jsx', /inviteStatus === 'pending'/],
-    ['src/components/children/ChildCard.jsx', /Convite pendente/],
+    ['src/dominio/escola/listaDaTurma.js', /if \(crianca\.parentUid\) return CONVITE\.ENTROU;/],
+    ['src/components/children/InviteShare.jsx', /if \(estado === CONVITE\.ENTROU\) \{[\s\S]{0,400}ROTULOS\.entrou/],
+    ['src/pages/tio/TioChildren.jsx', /<ConviteEnxuto\b/],
   ],
   'claimed-paid': [
     ['src/components/payments/AguardandoVoce.jsx', /Dar baixa/],
@@ -102,7 +112,7 @@ const FUNCIONALIDADES = {
 const CONDICOES = {
   'mae-no-app': [['functions/lib/billing.js', /if \(!child\.parentUid\) \{/]],
   'aviso-no-celular-da-mae': [['functions/lib/push.js', /fcmTokens/]],
-  'chave-pix-cadastrada': [['src/components/payments/PerguntaDaChavePix.jsx', /PIX/]],
+  'chave-pix-cadastrada': [['src/components/payments/PixBlock.jsx', /key: admin\?\.pixKey/]],
 };
 
 const semAcento = (t) => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -124,6 +134,56 @@ function reprova(texto) {
   return achada ? `promessa que o app não cumpre: ${achada}` : null;
 }
 
+/**
+ * ⚠️ PRESENTE NÃO É MONTADO. Uma versão deste catálogo apoiou uma frase numa
+ * etiqueta do `ChildCard`, e o `ChildCard` não é importado por nenhuma tela:
+ * o texto existia no arquivo e ninguém o via. Aqui o grafo de imports de src/
+ * (sem comentários) diz o que é ALCANÇÁVEL a partir do `main.jsx`, e um
+ * componente .jsx só conta se algum arquivo alcançável o RENDERIZA (`<Nome`).
+ */
+function arquivosDe(dir) {
+  return fs.readdirSync(path.join(raiz, dir), { withFileTypes: true }).flatMap((d) => {
+    const rel = `${dir}/${d.name}`;
+    if (d.isDirectory()) return d.name === 'node_modules' ? [] : arquivosDe(rel);
+    return /\.(jsx?|mjs)$/.test(d.name) ? [rel] : [];
+  });
+}
+const arquivosDoSrc = arquivosDe('src');
+function resolverImport(de, spec) {
+  if (!spec.startsWith('.')) return null;
+  const base = path.posix.normalize(path.posix.join(path.posix.dirname(de), spec));
+  return [base, `${base}.js`, `${base}.jsx`, `${base}/index.js`, `${base}/index.jsx`].find((c) => arquivosDoSrc.includes(c)) || null;
+}
+const fontes = Object.fromEntries(arquivosDoSrc.map((f) => [f, semComentarios(ler(f))]));
+const grafoReal = Object.fromEntries(
+  arquivosDoSrc.map((f) => [
+    f,
+    [...fontes[f].matchAll(/(?:from\s+|import\s*\(\s*|import\s+)['"]([^'"]+)['"]/g)]
+      .map((m) => resolverImport(f, m[1]))
+      .filter(Boolean),
+  ]),
+);
+/** Quem se alcança a partir de `inicio` seguindo os imports. */
+function alcancaveis(grafo, inicio) {
+  const vistos = new Set([inicio]);
+  const fila = [inicio];
+  while (fila.length) {
+    for (const g of grafo[fila.pop()] || []) if (!vistos.has(g)) { vistos.add(g); fila.push(g); }
+  }
+  return vistos;
+}
+/** Devolve por que o arquivo NÃO está montado, ou null se está. */
+function naoMontado(arquivo, grafo, vistos, fonteDoArquivo) {
+  if (!vistos.has(arquivo)) return 'não é alcançável a partir do main.jsx';
+  if (!arquivo.endsWith('.jsx')) return null;
+  const nome = path.basename(arquivo).replace(/\.\w+$/, '');
+  const quem = Object.keys(grafo).filter((f) => f !== arquivo && vistos.has(f) && grafo[f].includes(arquivo));
+  return quem.some((f) => new RegExp(`<${nome}\\b`).test(fonteDoArquivo(f)))
+    ? null
+    : 'nenhum arquivo alcançável o renderiza';
+}
+const alcancados = alcancaveis(grafoReal, 'src/main.jsx');
+
 const afirmacoes = todasAsAfirmacoes();
 
 console.log('\n\x1b[1m1. Cada afirmação tem origem\x1b[0m');
@@ -133,12 +193,12 @@ for (const a of afirmacoes) {
 }
 for (const [chave, provas] of Object.entries(FUNCIONALIDADES)) {
   for (const [arquivo, padrao] of provas) {
-    eq(`"${chave}" existe: ${arquivo} ~ ${padrao}`, padrao.test(ler(arquivo)), true);
+    eq(`"${chave}" existe: ${arquivo} ~ ${padrao}`, padrao.test(codigo(arquivo)), true);
   }
 }
 for (const [chave, provas] of Object.entries(CONDICOES)) {
   for (const [arquivo, padrao] of provas) {
-    eq(`condição "${chave}" existe: ${arquivo}`, padrao.test(ler(arquivo)), true);
+    eq(`condição "${chave}" existe: ${arquivo}`, padrao.test(codigo(arquivo)), true);
   }
 }
 for (const l of [...LINHAS_DO_VALOR, LINHA_DO_PIX]) {
@@ -146,6 +206,50 @@ for (const l of [...LINHAS_DO_VALOR, LINHA_DO_PIX]) {
 }
 eq('nenhuma chave da lista fechada ficou sem uso',
   Object.keys(FUNCIONALIDADES).filter((k) => !afirmacoes.some((a) => a.sustenta === k)), []);
+
+console.log('\n\x1b[1m1b. O que sustenta e o que mostra está MONTADO numa tela\x1b[0m');
+const arquivosDeProva = new Set(
+  [...Object.values(FUNCIONALIDADES), ...Object.values(CONDICOES)]
+    .flat()
+    .map(([arquivo]) => arquivo)
+    .filter((a) => a.startsWith('src/')),
+);
+// Os componentes e páginas que MOSTRAM as frases do catálogo.
+const TELAS_QUE_MOSTRAM = [
+  'src/components/children/PorQueConvidar.jsx',
+  'src/components/children/InviteShare.jsx',
+  'src/components/children/ChildForm.jsx',
+  'src/pages/ChildDetail.jsx',
+  'src/components/payments/AguardandoVoce.jsx',
+  'src/components/tio/ConvitePush.jsx',
+  'src/components/route/ControleDeRota.jsx',
+  'src/pages/tio/TioFinance.jsx',
+  'src/pages/tio/TioDashboard.jsx',
+];
+for (const a of new Set([...arquivosDeProva, ...TELAS_QUE_MOSTRAM])) {
+  eq(`montado: ${a}`, naoMontado(a, grafoReal, alcancados, (f) => fontes[f]), null);
+}
+// Sonda positiva: um componente órfão — e um que só é importado por órfão — reprovam.
+const grafoFalso = {
+  'src/main.jsx': ['src/App.jsx'],
+  'src/App.jsx': ['src/Tela.jsx'],
+  'src/Tela.jsx': [],
+  'src/Orfao.jsx': ['src/Tela.jsx'],
+  'src/FilhoDoOrfao.jsx': [],
+  'src/Importado.jsx': [],
+};
+grafoFalso['src/Orfao.jsx'].push('src/FilhoDoOrfao.jsx');
+grafoFalso['src/App.jsx'].push('src/Importado.jsx');
+const fontesFalsas = {
+  'src/main.jsx': '', 'src/App.jsx': '<Tela />', 'src/Tela.jsx': '', 'src/Orfao.jsx': '<FilhoDoOrfao />',
+  'src/FilhoDoOrfao.jsx': '', 'src/Importado.jsx': '',
+};
+const vistosFalsos = alcancaveis(grafoFalso, 'src/main.jsx');
+const verFalso = (a) => naoMontado(a, grafoFalso, vistosFalsos, (f) => fontesFalsas[f]);
+eq('sonda: componente montado passa', verFalso('src/Tela.jsx'), null);
+eq('sonda: componente órfão reprova', verFalso('src/Orfao.jsx') !== null, true);
+eq('sonda: componente só importado por órfão reprova', verFalso('src/FilhoDoOrfao.jsx') !== null, true);
+eq('sonda: importado mas nunca renderizado reprova', verFalso('src/Importado.jsx') !== null, true);
 
 console.log('\n\x1b[1m2. Nada que a marca proíbe ou que o app não cumpre\x1b[0m');
 const todosOsTextos = [
@@ -179,14 +283,23 @@ eq('o cartão tem exatamente três linhas de valor', LINHAS_DO_VALOR.length, 3);
 console.log('\n\x1b[1m4. O momento 2 com e sem nome\x1b[0m');
 const comNome = textoDoEnviado('Ana Clara Souza');
 const semNome = textoDoEnviado('');
+eq('com nome: o texto verdadeiro, palavra por palavra', comNome,
+  'Enviado para Ana. Quando ela entrar, aparece Entrou ✓ na lista.');
+eq('sem nome: o texto verdadeiro, palavra por palavra', semNome,
+  'Enviado. Quando a família entrar, aparece Entrou ✓ na lista.');
+eq('a frase da RC1 ("sai do aviso" do Início) não volta: o aviso agora sai no ENVIO',
+  /ainda não entraram/.test(comNome + semNome), false);
 eq('com nome: só o primeiro nome', comNome.startsWith('Enviado para Ana. '), true);
 eq('com nome: não carrega o sobrenome', comNome.includes('Clara'), false);
 eq('sem nome: não deixa buraco nem "undefined"', /undefined|null|\{|\}|para \./.test(semNome), false);
 eq('sem nome: fala da família', semNome.includes('família'), true);
 eq('nulo e espaços valem como sem nome', [textoDoEnviado(null), textoDoEnviado('   ')], [semNome, semNome]);
-eq('com nome cabe em 80 caracteres', comNome.length <= 80, true);
-eq('nenhuma das duas formas promete um "Entrou ✓" que a tela não tem',
-  /entrou ✓/i.test(comNome + semNome), false);
+eq('com nome cabe em 90 caracteres', comNome.length <= 90, true);
+eq('as duas formas citam o selo "Entrou ✓" da lista', [/Entrou ✓/.test(comNome), /Entrou ✓/.test(semNome)], [true, true]);
+eq('e o selo que elas citam existe na linha da lista (com o visto)',
+  /ROTULOS\.entrou/.test(ler('src/components/children/InviteShare.jsx')) &&
+    /<Check size=\{16\}[^>]*\/>\s*\{ROTULOS\.entrou\}/.test(ler('src/components/children/InviteShare.jsx')), true);
+eq('a frase antiga ("Convite pendente" some) não volta', /Convite pendente/.test(comNome + semNome), false);
 
 console.log('\n\x1b[1m5. Os componentes usam o catálogo\x1b[0m');
 const cartao = ler('src/components/children/PorQueConvidar.jsx');
@@ -257,6 +370,7 @@ const ANTIGOS = [
   'ambiente de operação',
   'A família recebeu há',
   'não foi usado',
+  'some da lista',
 ];
 function arquivos(dir) {
   return fs.readdirSync(path.join(raiz, dir), { withFileTypes: true }).flatMap((d) => {

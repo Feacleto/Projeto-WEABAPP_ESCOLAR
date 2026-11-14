@@ -13,11 +13,16 @@
  * Cobrar por ele, saber quando o PIX chega, reduzir atraso, segurança, preço,
  * "grátis", prazo de função nova e número solto. Número, só da régua.
  *
- * ⚠️ O MOMENTO 2 DIZ "o aviso 'Convite pendente' some", E NÃO "aparece Entrou ✓"
- * como a especificação propunha: não existe "Entrou ✓" em tela nenhuma. O que o
- * app faz é tirar a etiqueta "Convite pendente" do cartão da criança quando a
- * família entra (`inviteStatus` deixa de ser `pending`). Prometer um selo que
- * não aparece seria a primeira mentira do cartão que veio explicar o valor.
+ * ⚠️ O MOMENTO 2 DIZ "aparece Entrou ✓ na lista" DESDE A RC2 (14/11/2026).
+ * A RC1 dizia "sai do aviso 'ainda não entraram' no Início", porque o selo não
+ * existia (e antes dela, "o 'Convite pendente' some", apoiada no `ChildCard`,
+ * que nenhuma tela montava). Com a RC2 a frase da RC1 ficou FALSA: o aviso do
+ * Início passou a contar só quem ainda precisa de um toque (nunca recebeu ou o
+ * link venceu — `contarConvitesAMandar`), então a criança sai dele quando o
+ * convite é ENVIADO, não quando a família entra. O que muda quando ela entra é
+ * o selo da Lista da turma (`ConviteEnxuto`, em InviteShare.jsx, pelo
+ * `parentUid`), e o teste confere que essa tela é ALCANÇÁVEL a partir do
+ * `main.jsx` antes de a frase a citar.
  */
 
 /** O que o cartão chama o assunto. */
@@ -86,7 +91,7 @@ export const O_QUE_FAZER = {
   },
 };
 
-export const SUSTENTA_DO_ENVIADO = 'inviteUsedAt';
+export const SUSTENTA_DO_ENVIADO = 'entrou-na-lista';
 
 /**
  * Momento 2 — depois de mandar. Com o nome de quem recebe quando há, sem nome
@@ -96,8 +101,8 @@ export const SUSTENTA_DO_ENVIADO = 'inviteUsedAt';
 export function textoDoEnviado(nome) {
   const primeiro = String(nome || '').trim().split(/\s+/)[0];
   return primeiro
-    ? `Enviado para ${primeiro}. Quando ela entrar, o “Convite pendente” some da lista.`
-    : 'Enviado. Quando a família entrar, o “Convite pendente” some da lista.';
+    ? `Enviado para ${primeiro}. Quando ela entrar, aparece Entrou ✓ na lista.`
+    : 'Enviado. Quando a família entrar, aparece Entrou ✓ na lista.';
 }
 
 /**
@@ -180,3 +185,13 @@ export const ROTA_INICIADA_SEM_MAPA = 'Rota iniciada. A perua não aparece no ma
 export const CHAVE_CONVITE_ENVIADO = 'alobuzinou:valorDoConvite:enviado';
 export const EVENTO_CONVITE_ENVIADO = 'alobuzinou:convite-enviado';
 export const CHAVE_AVISO_DO_BANCO = 'alobuzinou:valorDoConvite:bancoVisto';
+
+/**
+ * ── 4ª RODADA: o valor da mensalidade é obrigatório (decisão do dono) ──
+ * Sem ele o contrato não é emitido e o servidor não gera a mensalidade.
+ * A frase diz só isso: não promete cobrança, prazo nem o que acontece depois.
+ */
+export const FALTA_O_VALOR =
+  'Falta o valor da mensalidade. Sem ele, o contrato não pode ser emitido e a mensalidade não é gerada.';
+export const DIGA_O_VALOR = 'Diga o valor da mensalidade.';
+export const ATALHO_DO_VALOR = 'Preencher o valor';

@@ -2,6 +2,8 @@ import {
   collection,
   doc,
   getDocs,
+  getDocsFromServer,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -21,6 +23,11 @@ import {
   proximoNumeroDoContrato,
 } from '../dominio/cobranca/contratoDaFamilia.js';
 import { pedidoDeRenovacao } from '../dominio/cobranca/renovacaoDoContrato.js';
+import {
+  valorDaMensalidadeFalta,
+  valorDoCampoFalta,
+} from '../dominio/cobranca/valorDaMensalidade.js';
+import { FALTA_O_VALOR } from '../marca/valorDoConvite.js';
 
 /**
  * AS VERSÕES DO CONTRATO DE UMA CRIANÇA — `children/{id}/contratos/{numero}`
@@ -107,6 +114,11 @@ async function emitir({
   novosValores = null,
   naCrianca = {},
 }) {
+  // ⚠️ A ÚLTIMA TRANCA: toda versão do contrato, de qualquer caminho (primeira
+  // emissão, reemissão ou aditivo), passa por aqui. VALOR ZERO NÃO — decisão do
+  // dono. As telas avisam antes; esta linha garante que um caminho esquecido
+  // não grave "R$ 0,00" num documento que a família assina.
+  if (valorDoCampoFalta(dados?.finance?.monthlyFee)) throw new Error(FALTA_O_VALOR);
   const numero = proximoNumeroDoContrato(contratos);
   const pendente = versaoAguardando(contratos);
   const batch = writeBatch(db);
@@ -153,6 +165,8 @@ async function emitir({
  */
 export async function garantirContrato({ child, admin, contratos }) {
   if (!child || !contratos) return null;
+  // Sem valor não há o que emitir: a tela do motorista diz o que falta.
+  if (valorDaMensalidadeFalta(child)) return null;
   const estado = estadoDoContrato(child);
   if (estado !== 'sem-contrato' && estado !== 'aguardando') return null;
   const dados = buildContractData({ child, admin });
@@ -183,6 +197,9 @@ export async function garantirContrato({ child, admin, contratos }) {
  * Devolve `'direto'`, `'aditivo'` ou `'nada'` (quando nada do contrato mudou).
  */
 export async function salvarCombinado({ child, admin, contratos, novos }) {
+  // O combinado salvo sem valor deixaria a criança fora da cobrança do mês e
+  // sem contrato que valha — recusado aqui, mesmo que a tela não tenha pedido.
+  if (valorDaMensalidadeFalta({ ...child, ...novos })) throw new Error(FALTA_O_VALOR);
   const estado = estadoDoContrato(child);
   if (estado === 'sem-contrato' || estado === 'aguardando') {
     const naCrianca = { ...novos, updatedAt: serverTimestamp() };
@@ -209,6 +226,75 @@ export async function salvarCombinado({ child, admin, contratos, novos }) {
   await emitir({ child, dados, tipo: 'aditivo', contratos, mudancas, novosValores: novos });
   notifyContratoPronto({ parentUid: child.parentUid, childName: child.name, mudanca: true });
   return 'aditivo';
+}
+
+/**
+ * A VERSÃO MAIS RECENTE, LIDA UMA VEZ E DO SERVIDOR — para a Lista da turma,
+ * que não escuta os contratos de cada criança (RC2, achado M2 da auditoria).
+ *
+ * Uma só basta: `emitir` retira a versão esperando aceite no mesmo lote em que
+ * grava a nova, então só a MAIS RECENTE pode estar `aguardando`, e o próximo
+ * número sai dela.
+ *
+ * ⚠️ DO SERVIDOR, NUNCA DO CACHE. Sem sinal, uma leitura do cache vazio diria
+ * "não há versão nenhuma", e a próxima seria a número 1 — por cima da que já
+ * existe. Sem sinal, a leitura falha e nada é emitido: a próxima abertura do
+ * convite, da ficha ou do contrato garante a versão.
+ */
+async function versaoMaisRecente(childId) {
+  const snap = await getDocsFromServer(
+    query(collection(db, 'children', childId, 'contratos'), orderBy('numero', 'desc'), limit(1))
+  );
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * O CONTRATO NASCE NO TOQUE DE "CONVIDAR", NA LISTA DA TURMA (RC2).
+ *
+ * A lista emitia o contrato ao RENDERIZAR: uma escuta de contratos por linha
+ * (~33 com 30 crianças) e uma versão nova a cada campo salvo de quem ainda não
+ * tinha família. Agora o contrato é garantido quando ele toca em mandar — que
+ * é quando a família vai precisar dele — com uma leitura só.
+ *
+ * Mesma régua de `garantirContrato` (que ela chama): sem valor, sem os dados
+ * dele ou depois do aceite, não escreve nada.
+ */
+export async function garantirContratoAoConvidar({ child, admin }) {
+  if (!child?.id || valorDaMensalidadeFalta(child)) return null;
+  const estado = estadoDoContrato(child);
+  if (estado !== 'sem-contrato' && estado !== 'aguardando') return null;
+  if (!buildContractData({ child, admin })) return null;
+  return garantirContrato({ child, admin, contratos: await versaoMaisRecente(child.id) });
+}
+
+/**
+ * A VERSÃO QUE ESPERA ACEITE ACOMPANHA A FICHA — chamada quando a linha da
+ * lista FECHA, uma vez por edição (não a cada campo). Só age em quem já tem
+ * versão esperando aceite: a primeira emissão é do toque de "Convidar".
+ */
+export async function atualizarContratoEsperando({ child, admin }) {
+  if (!child?.id || child.contratoAguardando == null || child.contratoVigente) return null;
+  return garantirContratoAoConvidar({ child, admin });
+}
+
+/**
+ * A MENSALIDADE DIGITADA NA LINHA DA LISTA, ANTES DO ACEITE.
+ *
+ * Com versão esperando aceite, passa por `salvarCombinado` — o valor muda na
+ * criança e na versão no MESMO lote (separados, a família poderia aceitar o
+ * número velho). Sem versão nenhuma, devolve `'sem-contrato'` e quem chama
+ * grava o campo direto: a primeira versão nasce no "Convidar".
+ * Depois do aceite a linha não edita (é reajuste, pela ficha).
+ */
+export async function salvarMensalidadeDaLista({ child, admin, valor }) {
+  if (child?.contratoVigente || child?.contractAcceptedAt) throw new Error('Mudança de valor depois do aceite é pela ficha.');
+  if (child?.contratoAguardando == null) return 'sem-contrato';
+  return salvarCombinado({
+    child,
+    admin,
+    contratos: await versaoMaisRecente(child.id),
+    novos: { monthlyFee: valor },
+  });
 }
 
 /** O motorista desiste da mudança que a família ainda não aceitou. */

@@ -17,6 +17,13 @@ import { criancaRapida, frasesDaPerua, ocupacao } from '../../dominio/identidade
  * o cadastro"). "Cadastro completo" leva ao formulário de sempre.
  *
  * Um botão cheio só: "Pôr na perua". Menino/menina é escolha, não protagonista.
+ *
+ * ⚠️ ISENTA DO VALOR OBRIGATÓRIO (decisão do dono, 14/11/2026). "Valor zero
+ * não" vale para CADASTRAR criança (a linha "+ Nome" da lista e o cadastro
+ * rápido do card); a vaga rápida é só um LUGAR na perua — não é contrato nem
+ * matrícula —, e pedir valor aqui travaria o gesto de encher a perua. A
+ * criança nasce `cadastroRapido` (fora da rota e sem contrato, que não é
+ * emitido com valor zero) e cai no grupo "sem valor" da caixa "A completar".
  */
 const GENEROS = [
   { value: 'male', label: 'Menino' },

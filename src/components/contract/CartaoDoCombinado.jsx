@@ -9,6 +9,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { retirarMudanca } from '../../services/contratosDaFamiliaService';
 import { dadosDaContratadaFaltando } from '../../services/contractService';
 import { formatBRL } from '../../compartilhado/formatters';
+import { valorDaMensalidadeFalta } from '../../dominio/cobranca/valorDaMensalidade.js';
+import { FALTA_O_VALOR, ATALHO_DO_VALOR } from '../../marca/valorDoConvite.js';
 import {
   dataBR,
   estadoDoContrato,
@@ -48,6 +50,10 @@ export default function CartaoDoCombinado({
 
   const estado = estadoDoContrato(child);
   const faltaDados = dadosDaContratadaFaltando(profile).length > 0;
+  // VALOR ZERO NÃO: sem mensalidade o contrato não é emitido (ver
+  // `valorDaMensalidade.js`), e o cartão diz isso no lugar de "Preparando…".
+  const faltaValor =
+    valorDaMensalidadeFalta(child) && (estado === 'sem-contrato' || estado === 'aguardando');
   const periodo = vigente?.dados?.period;
   const vig = periodo
     ? { inicio: periodo.inicio, fim: periodo.fim }
@@ -67,10 +73,14 @@ export default function CartaoDoCombinado({
   };
 
   const status = {
-    'sem-contrato': faltaDados
+    'sem-contrato': faltaValor
+      ? { cor: 'text-warningText', texto: FALTA_O_VALOR }
+      : faltaDados
       ? { cor: 'text-warningText', texto: 'Complete seus dados para o contrato ser emitido.' }
       : { cor: 'text-textMuted', texto: 'Preparando o contrato…' },
-    aguardando: { cor: 'text-warningText', texto: 'Esperando a família assinar.' },
+    aguardando: faltaValor
+      ? { cor: 'text-warningText', texto: FALTA_O_VALOR }
+      : { cor: 'text-warningText', texto: 'Esperando a família assinar.' },
     aceito: {
       cor: 'text-accentText',
       texto: `Assinado por ${child.contratoVigente?.aceitoNome || child.contractAcceptedName || 'responsável'}.`,
@@ -119,6 +129,17 @@ export default function CartaoDoCombinado({
         </dl>
 
         <p className={`text-base font-semibold ${status.cor}`}>{status.texto}</p>
+
+        {faltaValor && (
+          <button
+            type="button"
+            onClick={() => setEditando(true)}
+            disabled={!contratos}
+            className="tap inline-flex h-12 w-full items-center justify-center rounded-xl bg-marca px-4 text-base font-bold text-naMarca disabled:opacity-50"
+          >
+            {ATALHO_DO_VALOR}
+          </button>
+        )}
 
         {estado === 'mudanca' && aguardando?.mudancas?.length > 0 && (
           <div className="rounded-xl bg-warningSoft p-3">

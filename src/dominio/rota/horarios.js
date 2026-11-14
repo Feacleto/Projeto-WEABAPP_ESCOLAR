@@ -237,8 +237,8 @@ export function horaNaDirecao(child, direcao) {
  * são gravados — e por motivos DIFERENTES, o que importa pra quem for
  * simplificar isto:
  *
- *   `period`         é LIDO DE VERDADE: ChildCard, ChildDetail e o filtro de
- *                    TioChildren. Removê-lo quebra o filtro da lista.
+ *   `period`         é LIDO DE VERDADE pela ChildDetail (o filtro por
+ *                    período da lista de crianças saiu na RC2).
  *   `pickupPeriod`   e `dropoffPeriod` são lidos SÓ por `horariosCombinados`,
  *                    aqui neste arquivo, como ponte pra criança cadastrada
  *                    antes do modelo de horários. É ponte com prazo: quando

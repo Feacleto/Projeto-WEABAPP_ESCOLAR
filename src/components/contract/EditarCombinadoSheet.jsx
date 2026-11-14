@@ -8,6 +8,8 @@ import CampoDeValor from '../common/CampoDeValor';
 import CampoVigencia from './CampoVigencia';
 import { useAuth } from '../../hooks/useAuth';
 import { salvarCombinado } from '../../services/contratosDaFamiliaService';
+import { valorDoCampoFalta } from '../../dominio/cobranca/valorDaMensalidade.js';
+import { DIGA_O_VALOR, FALTA_O_VALOR } from '../../marca/valorDoConvite.js';
 import {
   vigenciaDaCrianca,
   erroDaVigencia,
@@ -42,7 +44,7 @@ export default function EditarCombinadoSheet({ open, onClose, child, contratos }
   const salvar = async () => {
     const e = {};
     const valor = parseFloat(String(fee).replace(',', '.'));
-    if (!valor || valor <= 0) e.fee = 'Escreva o valor da mensalidade.';
+    if (valorDoCampoFalta(fee)) e.fee = DIGA_O_VALOR;
     const d = parseInt(dia, 10);
     if (!d || d < 1 || d > 28) e.dia = 'Dia entre 1 e 28.';
     const ev = erroDaVigencia(inicio, fim);
@@ -69,7 +71,11 @@ export default function EditarCombinadoSheet({ open, onClose, child, contratos }
       onClose();
     } catch (err) {
       console.error(err);
-      toast.error(err.message?.startsWith('Complete') ? err.message : 'Não deu pra salvar. Tente de novo.');
+      toast.error(
+        err.message?.startsWith('Complete') || err.message === FALTA_O_VALOR
+          ? err.message
+          : 'Não deu pra salvar. Tente de novo.'
+      );
     } finally {
       setSalvando(false);
     }

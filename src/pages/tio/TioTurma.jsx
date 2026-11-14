@@ -137,7 +137,10 @@ export default function TioTurma() {
       crianca: c.name,
       assinatura: profile?.marcaNome || profile?.name || '',
       familiaEntrou: !!c.parentUid,
-      linkDoConvite: c.inviteStatus === 'pending' && c.inviteCode && !c.cadastroRapido ? inviteUrl(c.inviteCode) : null,
+      // A criança da linha "+ Nome" (cadastroRapido) também é convidada pela
+      // Lista da turma: esconder o link dela aqui deixava as duas telas em
+      // desacordo sobre a mesma família.
+      linkDoConvite: c.inviteStatus === 'pending' && c.inviteCode ? inviteUrl(c.inviteCode) : null,
     });
 
   const acoes = { valor, lembreteDe, onMudar: setMudando, onFicha: setFichaDe };
