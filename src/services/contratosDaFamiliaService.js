@@ -1,6 +1,8 @@
 import {
   collection,
   doc,
+  getDocsFromServer,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -225,6 +227,75 @@ export async function salvarCombinado({ child, admin, contratos, novos }) {
   await emitir({ child, dados, tipo: 'aditivo', contratos, mudancas, novosValores: novos });
   notifyContratoPronto({ parentUid: child.parentUid, childName: child.name, mudanca: true });
   return 'aditivo';
+}
+
+/**
+ * A VERSÃO MAIS RECENTE, LIDA UMA VEZ E DO SERVIDOR — para a Lista da turma,
+ * que não escuta os contratos de cada criança (RC2, achado M2 da auditoria).
+ *
+ * Uma só basta: `emitir` retira a versão esperando aceite no mesmo lote em que
+ * grava a nova, então só a MAIS RECENTE pode estar `aguardando`, e o próximo
+ * número sai dela.
+ *
+ * ⚠️ DO SERVIDOR, NUNCA DO CACHE. Sem sinal, uma leitura do cache vazio diria
+ * "não há versão nenhuma", e a próxima seria a número 1 — por cima da que já
+ * existe. Sem sinal, a leitura falha e nada é emitido: a próxima abertura do
+ * convite, da ficha ou do contrato garante a versão.
+ */
+async function versaoMaisRecente(childId) {
+  const snap = await getDocsFromServer(
+    query(collection(db, 'children', childId, 'contratos'), orderBy('numero', 'desc'), limit(1))
+  );
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * O CONTRATO NASCE NO TOQUE DE "CONVIDAR", NA LISTA DA TURMA (RC2).
+ *
+ * A lista emitia o contrato ao RENDERIZAR: uma escuta de contratos por linha
+ * (~33 com 30 crianças) e uma versão nova a cada campo salvo de quem ainda não
+ * tinha família. Agora o contrato é garantido quando ele toca em mandar — que
+ * é quando a família vai precisar dele — com uma leitura só.
+ *
+ * Mesma régua de `garantirContrato` (que ela chama): sem valor, sem os dados
+ * dele ou depois do aceite, não escreve nada.
+ */
+export async function garantirContratoAoConvidar({ child, admin }) {
+  if (!child?.id || valorDaMensalidadeFalta(child)) return null;
+  const estado = estadoDoContrato(child);
+  if (estado !== 'sem-contrato' && estado !== 'aguardando') return null;
+  if (!buildContractData({ child, admin })) return null;
+  return garantirContrato({ child, admin, contratos: await versaoMaisRecente(child.id) });
+}
+
+/**
+ * A VERSÃO QUE ESPERA ACEITE ACOMPANHA A FICHA — chamada quando a linha da
+ * lista FECHA, uma vez por edição (não a cada campo). Só age em quem já tem
+ * versão esperando aceite: a primeira emissão é do toque de "Convidar".
+ */
+export async function atualizarContratoEsperando({ child, admin }) {
+  if (!child?.id || child.contratoAguardando == null || child.contratoVigente) return null;
+  return garantirContratoAoConvidar({ child, admin });
+}
+
+/**
+ * A MENSALIDADE DIGITADA NA LINHA DA LISTA, ANTES DO ACEITE.
+ *
+ * Com versão esperando aceite, passa por `salvarCombinado` — o valor muda na
+ * criança e na versão no MESMO lote (separados, a família poderia aceitar o
+ * número velho). Sem versão nenhuma, devolve `'sem-contrato'` e quem chama
+ * grava o campo direto: a primeira versão nasce no "Convidar".
+ * Depois do aceite a linha não edita (é reajuste, pela ficha).
+ */
+export async function salvarMensalidadeDaLista({ child, admin, valor }) {
+  if (child?.contratoVigente || child?.contractAcceptedAt) throw new Error('Mudança de valor depois do aceite é pela ficha.');
+  if (child?.contratoAguardando == null) return 'sem-contrato';
+  return salvarCombinado({
+    child,
+    admin,
+    contratos: await versaoMaisRecente(child.id),
+    novos: { monthlyFee: valor },
+  });
 }
 
 /** O motorista desiste da mudança que a família ainda não aceitou. */

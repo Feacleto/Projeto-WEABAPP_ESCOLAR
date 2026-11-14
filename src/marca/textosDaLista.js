@@ -22,8 +22,8 @@ import { DIGA_O_VALOR } from './valorDoConvite.js';
 export function contadorDeFamilias(entraram, total) {
   const e = Math.max(0, Number(entraram) || 0);
   const t = Math.max(0, Number(total) || 0);
-  if (t === 1) return e ? 'A família entrou no app' : 'A família ainda não entrou no app';
-  return `${e} de ${t} famílias entraram no app`;
+  if (t === 1) return e ? 'A família está no app' : 'A família ainda não está no app';
+  return `${e} de ${t} famílias no app`;
 }
 
 /** As crianças que a rota ainda não leva. */
@@ -44,34 +44,60 @@ export function progressoDaFila(posicao, total) {
 }
 
 /**
- * "TIRAR DA TURMA" DIZ O QUE SE PERDE (doc 11, seção corrigida).
+ * "TIRAR DA TURMA" DIZ O QUE SE PERDE — TUDO, e só o que acontece de verdade
+ * (achado A2 da auditoria: a frase citava vínculo, aceite e foto, e calava o
+ * resto).
  *
  * `deactivateChildAndParent` (services/accountService.js) faz, nesta ordem:
- * apaga as faltas de hoje em diante, o "quem busca" e os recados da criança;
- * desvincula a família (`desvincularResponsavel`: se era o único filho, a
- * conta dela some); desativa a criança, zera o aceite do contrato e apaga a
- * foto. E não existe reativar (`updateChild` recusa `active`). Por isso não há
- * "Desfazer": seria mentira. Os pagamentos ficam (o histórico do Financeiro).
+ *   1. apaga as faltas de hoje em diante, o "quem busca" (`altPickups`) e os
+ *      recados da criança (`agendaEntries`);
+ *   2. desvincula a família (`desvincularResponsavel`, no servidor): se esta é
+ *      a ÚNICA criança dela no app, o documento da conta dela é APAGADO — ela
+ *      não entra mais;
+ *   3. desativa a criança, zera o aceite do contrato e a versão esperando
+ *      aceite, e apaga o responsável avulso (`altResponsibles`, "quem busca");
+ *   4. apaga a foto.
+ * Não existe reativar (`updateChild` recusa `active`): por isso não há
+ * "Desfazer". Os pagamentos ficam (o histórico do Financeiro).
  *
- * A frase só cita o que esta criança TEM: dizer "apagar a foto" de quem nunca
- * teve foto ensina que o aviso é genérico, e aviso genérico ninguém lê.
+ * ⚠️ A CONTA DA FAMÍLIA. A lista só vê as crianças DESTE motorista. Com um
+ * irmão na turma, a conta certamente fica; sem irmão aqui, ela pode ter filho
+ * em outra perua — e a frase diz a condição em vez de afirmar.
+ *
+ * `npm run testar:lista-da-turma` (7b) lê o serviço e confere que cada efeito
+ * citado existe lá e que nenhum efeito que apaga dado ficou de fora.
  */
-export function textoDeTirar({ nome, temFamilia, temFoto, temAceite } = {}) {
-  const primeiro = String(nome || '').trim().split(/\s+/)[0] || 'a criança';
-  const perdas = [];
-  if (temFamilia) perdas.push('desfazer o vínculo da família');
-  if (temAceite) perdas.push('zerar o aceite do contrato');
-  if (temFoto) perdas.push('apagar a foto');
-  let corpo;
-  if (perdas.length === 0) corpo = `${primeiro} sai da turma e da rota. Não dá para voltar.`;
-  else if (perdas.length === 1) corpo = `Vai ${perdas[0]}. Não dá para voltar.`;
-  else corpo = `Vai ${perdas.slice(0, -1).join(', ')} e ${perdas[perdas.length - 1]}. Não dá para voltar.`;
+export function textoDeTirar({
+  nome,
+  temFamilia = false,
+  irmaoNaTurma = false,
+  temAceite = false,
+  temContratoEsperando = false,
+  temFoto = false,
+} = {}) {
+  const primeiro = String(nome || '').trim().split(/\s+/)[0] || 'A criança';
+  const linhas = [`${primeiro} sai da turma e da rota.`];
+  if (temFamilia) {
+    linhas.push(
+      irmaoNaTurma
+        ? 'A família continua no app: ela tem outro filho na sua turma.'
+        : 'A conta da família no app é encerrada quando este é o único filho dela.'
+    );
+  }
+  linhas.push(APAGADOS_AO_TIRAR);
+  if (temAceite) linhas.push('O aceite do contrato é apagado.');
+  if (temContratoEsperando) linhas.push('O contrato que esperava aceite é retirado.');
+  if (temFoto) linhas.push('A foto é apagada.');
+  linhas.push('Não dá para voltar.');
   return {
-    titulo: `Tirar ${primeiro} da turma?`,
-    corpo,
+    titulo: `Tirar ${primeiro === 'A criança' ? 'a criança' : primeiro} da turma?`,
+    linhas,
+    corpo: linhas.join(' '),
     pagamentos: PAGAMENTOS_FICAM,
   };
 }
+
+export const APAGADOS_AO_TIRAR = 'As faltas marcadas, quem busca e os recados são apagados.';
 
 export const PAGAMENTOS_FICAM = 'Os pagamentos que já existem continuam no Financeiro.';
 
@@ -84,7 +110,12 @@ export const ROTULOS = {
   entrou: 'Entrou',
   linkNovo: 'Link novo',
   mandarParaQuemFalta: 'Mandar convite para quem falta',
-  proxima: (nome) => `Próxima: família de ${nome}`,
+  convidarAFamiliaDe: (nome) => `Convidar a família de ${nome}`,
+  linkNovoPara: (nome) => `Link novo para a família de ${nome}`,
+  porOValor: 'Pôr o valor',
+  porOValorDe: (nome) => `Pôr o valor de ${nome}`,
+  abrirWhatsApp: 'Abrir o WhatsApp',
+  escolhaOContato: 'Sem o número da mãe',
   // Lista
   titulo: 'Minha turma',
   vaziaTitulo: 'Sua turma começa aqui',
@@ -93,6 +124,9 @@ export const ROTULOS = {
   ok: 'OK',
   semEscola: 'Sem escola',
   entrada: 'Entrada',
+  entradaChip: (hora) => `Entrada ${hora}`,
+  porEntrada: 'Pôr entrada',
+  buscar: 'Buscar pelo nome',
   cadastroCompleto: 'Cadastro completo, passo a passo',
   // Campos, na ordem em que ele sabe
   nome: 'Nome',
@@ -118,6 +152,7 @@ export const ROTULOS = {
   // Salvar sozinho
   salvo: 'salvo ✓',
   salvando: 'salvando…',
+  esperandoSinal: 'esperando sinal',
   naoSalvou: 'Não salvou.',
   tentarDeNovo: 'Tentar de novo',
   // Ações da linha aberta
@@ -137,7 +172,40 @@ export const ROTULOS = {
   irParaProxima: 'Ir para a próxima',
   fimDaFila: 'Fim desta lista.',
   verDeNovo: 'Ver de novo quem ficou',
+  voltarAosGrupos: 'Voltar',
+  foraDaRota: 'Fora da rota',
+  horaInvalida: 'Hora inválida. Ex: 06:20',
 };
+
+/**
+ * ANTES DE ABRIR O WHATSAPP SEM NÚMERO (achado M5). Sem o número, o WhatsApp
+ * abre a escolha de contato — e na sequência "família por família" é fácil
+ * escolher o contato errado. Ter o link é ter o vínculo (a família vê o
+ * endereço e a escola), então a tela diz para QUEM é, com o nome completo.
+ */
+export function confirmacaoSemNumero(nomeCompleto) {
+  const nome = String(nomeCompleto || '').trim().replace(/\s+/g, ' ');
+  return `Vai para a família de ${nome || 'esta criança'}. Escolha o contato certo.`;
+}
+
+/** "R$ 3,50? Confira." — o valor muito baixo, sem bloquear. */
+export function confiraOValor(valorFormatado) {
+  return `${valorFormatado}? Confira.`;
+}
+
+/** A proposta conferida: quem ganhou hora no meio-tempo ficou como estava. */
+export function textoJaTinhamHora(n) {
+  return n === 1
+    ? '1 criança já tinha hora e ficou como estava.'
+    : `${n} crianças já tinham hora e ficaram como estavam.`;
+}
+
+/** A faixa do topo: escritas que o servidor ainda não confirmou. */
+export function textoEsperandoSinal(n) {
+  return n === 1
+    ? '1 alteração esperando sinal. Se fechar o app agora, ela se perde.'
+    : `${n} alterações esperando sinal. Se fechar o app agora, elas se perdem.`;
+}
 
 /** O nome de cada grupo da caixa "A completar" (chave = `FALTA`). */
 export const GRUPO_A_COMPLETAR = {
@@ -222,6 +290,14 @@ export function todasAsAfirmacoesDaLista() {
     { id: 'ponhaAEntrada', ...PONHA_A_ENTRADA },
     { id: 'puladosFicam', ...PULADOS_FICAM },
     { id: 'tirarComTudo', texto: tirar.corpo, sustenta: 'tirar-da-turma' },
+    {
+      id: 'tirarComIrmao',
+      texto: textoDeTirar({ nome: 'Ana', temFamilia: true, irmaoNaTurma: true }).corpo,
+      sustenta: 'tirar-da-turma',
+    },
+    { id: 'semNumero', texto: confirmacaoSemNumero('Ana Clara Souza'), sustenta: 'link-sem-numero' },
+    { id: 'esperandoSinal', texto: textoEsperandoSinal(2), sustenta: 'cache-em-memoria' },
+    { id: 'jaTinhamHora', texto: textoJaTinhamHora(2), sustenta: 'proposta-conferida' },
     { id: 'tirarSemNada', texto: textoDeTirar({ nome: 'Ana' }).corpo, sustenta: 'tirar-da-turma' },
     { id: 'pagamentosFicam', texto: PAGAMENTOS_FICAM, sustenta: 'pagamentos-ficam' },
   ];

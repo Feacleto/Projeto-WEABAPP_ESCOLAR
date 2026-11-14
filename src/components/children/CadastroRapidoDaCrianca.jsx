@@ -68,8 +68,8 @@ export default function CadastroRapidoDaCrianca({ onSalva }) {
       const { id } = await addChild({
         name: form.name,
         // Só chega aqui com a declaração feita (marcada agora ou nesta sessão);
-        // o `addChild` recusa criança sem ela.
-        autorizacaoDeclarada: true,
+        // o `addChild` recusa criança sem ela. O que vai é o que a caixa diz.
+        autorizacaoDeclarada: declaracao.jaDeclarou || declaracao.marcada,
         gender: form.gender || null,
         parentName: form.parentName,
         monthlyFee: Number(form.monthlyFee),

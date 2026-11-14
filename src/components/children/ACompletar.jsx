@@ -1,13 +1,23 @@
 import { useMemo, useState } from 'react';
-import { ListChecks } from 'lucide-react';
+import { ListChecks, ChevronRight } from 'lucide-react';
 import AppSheet from '../common/AppSheet';
 import Avatar from '../common/Avatar';
 import CampoDeValor from '../common/CampoDeValor';
 import CampoDaRua from './CampoDaRua';
 import { CLASSE_DO_CAMPO } from './CamposDaLinha';
 import { useSalvarNaLista } from '../../hooks/useSalvarNaLista';
-import { procurarPontoDaCasa } from '../../services/listaDaTurmaService';
-import { FALTA, gruposACompletar, oQueFalta, resumoDaLinha } from '../../dominio/escola/listaDaTurma.js';
+import { procurarPontoDaCasa, salvarMensalidadeNaLista } from '../../services/listaDaTurmaService';
+import { useAuth } from '../../hooks/useAuth';
+import { FASE } from '../../compartilhado/salvarPorCampo.js';
+import {
+  FALTA,
+  gruposACompletar,
+  oQueFalta,
+  resumoDaLinha,
+  contarACompletar,
+  foraDaRota,
+  mensalidadeTravada,
+} from '../../dominio/escola/listaDaTurma.js';
 import { normalizaHora } from '../../dominio/rota/horarios.js';
 import { valorDoCampoFalta } from '../../dominio/cobranca/valorDaMensalidade.js';
 import { DIGA_O_VALOR } from '../../marca/valorDoConvite.js';
@@ -19,13 +29,19 @@ import {
   SEM_VALOR,
   PULADOS_FICAM,
   progressoDaFila,
+  textoForaDaRota,
 } from '../../marca/textosDaLista.js';
 
 /**
- * A CAIXA "A COMPLETAR" (RC2) — o que ele deixou para depois, junto, AGRUPADO
- * PELO QUE FALTA: hora de pegar, rua, número da casa, WhatsApp da mãe e
+ * A CAIXA "A COMPLETAR" (RC2) — o que ele deixou para depois, AGRUPADO PELO
+ * QUE FALTA: hora de pegar, rua, número da casa, WhatsApp da mãe e
  * mensalidade (a fila de "sem valor": sem valor, a mensalidade do mês não
- * nasce — `functions/lib/billing.js`).
+ * nasce — `functions/lib/billing.js`). E, quando há, quem está FORA DA ROTA.
+ *
+ * ⚠️ NA LISTA É UMA LINHA SÓ, "A completar · 14 ›" (achado M6). Era uma caixa
+ * de grupos em chips (~180 px) — e numa turma nova, com o topo e o cabeçalho
+ * da escola, a primeira tela não mostrava criança nenhuma. Os grupos moram na
+ * folha que a linha abre.
  *
  * Tocar num grupo abre a fila: UM campo por vez, com o progresso ("2 de 7"),
  * "Salvar e ir para a próxima" e "Ainda não sei · próxima", que pula sem
@@ -34,62 +50,126 @@ import {
  *
  * A fila é a foto do grupo na hora em que ele abriu: quem foi completado no
  * meio não some de baixo do dedo dele; quem foi pulado volta no "Ver de novo".
+ *
+ * O estado de "salvo" é o do salvador da tela (`salvador`, de TioChildren).
  */
-export default function ACompletar({ criancas }) {
+export default function ACompletar({ criancas, salvador, onAbrirCrianca }) {
   const grupos = useMemo(() => gruposACompletar(criancas), [criancas]);
-  const [aberta, setAberta] = useState(null); // { falta, ids }
+  const total = useMemo(() => contarACompletar(criancas), [criancas]);
+  const fora = useMemo(
+    () => (criancas || []).filter((c) => c && c.active !== false && foraDaRota(c)),
+    [criancas]
+  );
+  const [folha, setFolha] = useState(false);
+  const [aberta, setAberta] = useState(null); // { falta, ids } | { fora: true }
   const porId = useMemo(() => new Map((criancas || []).map((c) => [c.id, c])), [criancas]);
-  if (!grupos.length) return null;
+  if (!grupos.length && !fora.length) return null;
 
   const abrir = (falta) => {
     const g = gruposACompletar(criancas).find((x) => x.falta === falta);
     // `chave` remonta a fila no "Ver de novo": recomeça do primeiro.
     setAberta((antes) => (g ? { falta, ids: g.criancas.map((c) => c.id), chave: (antes?.chave || 0) + 1 } : null));
   };
+  const fechar = () => {
+    setFolha(false);
+    setAberta(null);
+  };
+
+  const titulo = !aberta
+    ? ROTULOS.aCompletar
+    : aberta.fora
+      ? ROTULOS.foraDaRota
+      : `${ROTULOS.aCompletar} · ${GRUPO_A_COMPLETAR[aberta.falta]}`;
 
   return (
-    <section className="space-y-2 rounded-2xl bg-card p-3 shadow-rest" aria-label={ROTULOS.aCompletar}>
-      <p className="flex items-center gap-1.5 text-base font-bold text-text">
-        <ListChecks size={18} aria-hidden="true" className="text-primary" />
-        {ROTULOS.aCompletar}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {grupos.map((g) => (
-          <button
-            key={g.falta}
-            type="button"
-            onClick={() => abrir(g.falta)}
-            className={`tap inline-flex min-h-11 items-center gap-2 rounded-full border-2 px-3 text-base font-semibold ${
-              g.falta === FALTA.HORA ? 'border-warningBorder bg-warningSoft text-warningText' : 'border-border bg-card text-text'
-            }`}
-          >
-            {GRUPO_A_COMPLETAR[g.falta]}
-            <span className="rounded-full bg-neutro px-2 text-sm font-bold text-text">{g.criancas.length}</span>
-          </button>
-        ))}
-      </div>
-
-      <AppSheet
-        open={!!aberta}
-        onClose={() => setAberta(null)}
-        title={aberta ? `${ROTULOS.aCompletar} · ${GRUPO_A_COMPLETAR[aberta.falta]}` : ''}
-        icon={ListChecks}
+    <>
+      <button
+        type="button"
+        onClick={() => setFolha(true)}
+        className="tap flex min-h-14 w-full min-w-0 items-center gap-2 rounded-2xl bg-card px-3 text-left shadow-rest"
       >
-        {aberta && (
-          <Fila
-            key={aberta.chave}
-            falta={aberta.falta}
-            ids={aberta.ids}
-            porId={porId}
-            onRecomecar={() => abrir(aberta.falta)}
-          />
+        <ListChecks size={18} aria-hidden="true" className="shrink-0 text-primary" />
+        <span className="min-w-0 flex-1 truncate text-base font-bold text-text">
+          {ROTULOS.aCompletar} · {total || fora.length}
+        </span>
+        <ChevronRight size={20} aria-hidden="true" className="shrink-0 text-textMuted" />
+      </button>
+
+      <AppSheet open={folha} onClose={fechar} title={titulo} icon={ListChecks}>
+        {!aberta ? (
+          <div className="space-y-2">
+            {grupos.map((g) => (
+              <button
+                key={g.falta}
+                type="button"
+                onClick={() => abrir(g.falta)}
+                className={`tap flex min-h-14 w-full items-center gap-2 rounded-xl border-2 px-3 text-left text-base font-semibold ${
+                  g.falta === FALTA.HORA ? 'border-warningBorder bg-warningSoft text-warningText' : 'border-border bg-card text-text'
+                }`}
+              >
+                <span className="min-w-0 flex-1">{GRUPO_A_COMPLETAR[g.falta]}</span>
+                <span className="rounded-full bg-neutro px-2 text-sm font-bold text-text">{g.criancas.length}</span>
+                <ChevronRight size={18} aria-hidden="true" className="shrink-0 text-textMuted" />
+              </button>
+            ))}
+            {fora.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setAberta({ fora: true })}
+                className="tap flex min-h-14 w-full items-center gap-2 rounded-xl border-2 border-border bg-card px-3 text-left text-base font-semibold text-text"
+              >
+                <span className="min-w-0 flex-1">{ROTULOS.foraDaRota}</span>
+                <span className="rounded-full bg-neutro px-2 text-sm font-bold text-text">{fora.length}</span>
+                <ChevronRight size={18} aria-hidden="true" className="shrink-0 text-textMuted" />
+              </button>
+            )}
+          </div>
+        ) : aberta.fora ? (
+          <div className="space-y-3">
+            <p className="text-base text-textBody">{textoForaDaRota(fora.length)}</p>
+            <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border">
+              {fora.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      fechar();
+                      onAbrirCrianca?.(c.id);
+                    }}
+                    className="tap flex min-h-14 w-full items-center gap-3 px-3 text-left"
+                  >
+                    <Avatar photoURL={c.photoURL} gender={c.gender} seed={c.id} kind="child" size="sm" />
+                    <span className="min-w-0 flex-1 truncate text-base font-semibold text-text">{c.name}</span>
+                    <ChevronRight size={18} aria-hidden="true" className="shrink-0 text-textMuted" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button type="button" onClick={() => setAberta(null)} className="tap min-h-12 w-full text-base font-semibold text-primary">
+              {ROTULOS.voltarAosGrupos}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <Fila
+              key={aberta.chave}
+              falta={aberta.falta}
+              ids={aberta.ids}
+              porId={porId}
+              salvador={salvador}
+              onRecomecar={() => abrir(aberta.falta)}
+            />
+            <button type="button" onClick={() => setAberta(null)} className="tap min-h-12 w-full text-base font-semibold text-primary">
+              {ROTULOS.voltarAosGrupos}
+            </button>
+          </div>
         )}
       </AppSheet>
-    </section>
+    </>
   );
 }
 
-function Fila({ falta, ids, porId, onRecomecar }) {
+function Fila({ falta, ids, porId, salvador, onRecomecar }) {
   const [pos, setPos] = useState(0);
   const proxima = () => setPos((p) => p + 1);
   if (pos >= ids.length) {
@@ -119,7 +199,7 @@ function Fila({ falta, ids, porId, onRecomecar }) {
         <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
       </div>
       {crianca ? (
-        <ItemDaFila key={crianca.id} falta={falta} crianca={crianca} onProxima={proxima} />
+        <ItemDaFila key={crianca.id} falta={falta} crianca={crianca} salvador={salvador} onProxima={proxima} />
       ) : (
         <button type="button" onClick={proxima} className="tap min-h-12 w-full text-base font-semibold text-primary">
           {ROTULOS.pularEProxima}
@@ -129,15 +209,18 @@ function Fila({ falta, ids, porId, onRecomecar }) {
   );
 }
 
-function ItemDaFila({ falta, crianca, onProxima }) {
-  const { estado, salvar } = useSalvarNaLista(crianca);
+function ItemDaFila({ falta, crianca, salvador, onProxima }) {
+  const { profile } = useAuth();
+  const { estado, salvar } = useSalvarNaLista(crianca, salvador);
   const [valor, setValor] = useState('');
   const [erro, setErro] = useState('');
   // Já resolvido por outro caminho (a linha, a família): segue.
   const aindaFalta = oQueFalta(crianca).includes(falta);
-  const contratoFeito = !!(crianca.contratoVigente || crianca.contractAcceptedAt || crianca.contratoAguardando);
-  const salvando = estado[falta] === 'salvando';
-  const naoSalvou = estado[falta] && typeof estado[falta] === 'object';
+  // A mensalidade só trava com o contrato ASSINADO (o mesmo critério da linha).
+  const contratoFeito = mensalidadeTravada(crianca);
+  const fase = estado(falta)?.fase;
+  const salvando = fase === FASE.SALVANDO;
+  const naoSalvou = fase === FASE.ERRO;
 
   const gravar = async () => {
     let mudanca = null;
@@ -164,7 +247,12 @@ function ItemDaFila({ falta, crianca, onProxima }) {
     }
     if (!mudanca) return onProxima();
     setErro('');
-    const ok = await salvar(falta, mudanca);
+    const ok = await salvar(falta, mudanca, {
+      digitado: valor,
+      ...(falta === FALTA.MENSALIDADE
+        ? { executar: (c) => salvarMensalidadeNaLista(c, mudanca.monthlyFee, profile) }
+        : {}),
+    });
     if (!ok) return;
     if (falta === FALTA.NUMERO) {
       procurarPontoDaCasa(crianca, mudanca.address, { ...crianca.enderecoPartes, numero: valor.trim() });
@@ -202,7 +290,7 @@ function ItemDaFila({ falta, crianca, onProxima }) {
       </div>
 
       {!aindaFalta ? null : falta === FALTA.RUA || (falta === FALTA.NUMERO && !crianca.enderecoPartes?.logradouro) ? (
-        <CampoDaRua crianca={crianca} salvar={salvar} estado={estado.rua} />
+        <CampoDaRua crianca={crianca} salvar={salvar} estado={estado('rua')} />
       ) : falta === FALTA.MENSALIDADE ? (
         contratoFeito ? null : <CampoDeValor label={GRUPO_A_COMPLETAR[falta]} value={valor} onChange={setValor} error={erro} />
       ) : (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FileText, NotebookPen, CircleSlash } from 'lucide-react';
 import Avatar from '../common/Avatar';
 import CampoDeValor from '../common/CampoDeValor';
@@ -8,16 +8,21 @@ import { ConviteEnxuto } from './InviteShare';
 import CampoDaRua from './CampoDaRua';
 import { CampoQueSalva, EscolhaQueSalva, RotuloDoCampo } from './CamposDaLinha';
 import { useSalvarNaLista } from '../../hooks/useSalvarNaLista';
-import { camposDaEscola } from '../../services/listaDaTurmaService';
+import { useValorDoCampo } from '../../hooks/useValorDoCampo';
+import { useAuth } from '../../hooks/useAuth';
+import { camposDaEscola, salvarMensalidadeNaLista } from '../../services/listaDaTurmaService';
+import { atualizarContratoEsperando } from '../../services/contratosDaFamiliaService';
 import {
   fraseDeEstado,
   resumoDaLinha,
   NOME_DA_FALTA,
   FALTA,
+  mensalidadeTravada,
+  valorParaConferir,
 } from '../../dominio/escola/listaDaTurma.js';
 import { valorDoCampoFalta } from '../../dominio/cobranca/valorDaMensalidade.js';
 import { formatCurrency } from '../../compartilhado/formatters';
-import { ROTULOS } from '../../marca/textosDaLista.js';
+import { ROTULOS, confiraOValor } from '../../marca/textosDaLista.js';
 
 /**
  * UMA CRIANÇA DA LISTA DA TURMA (RC2) — fechada no padrão do WhatsApp, aberta
@@ -35,9 +40,15 @@ import { ROTULOS } from '../../marca/textosDaLista.js';
  * ⚠️ DUAS COISAS NÃO SE MEXEM DAQUI, E A FICHA CONTINUA SENDO O CAMINHO:
  *  - o RESPONSÁVEL de quem já entrou no app (a ficha também só deixa editar
  *    antes de a família entrar — depois, o número é dela);
- *  - a MENSALIDADE com contrato aceito ou emitido: mudar ali é reajuste, que
- *    vira aditivo assinado pela família. Um campo que grava ao sair seria o
- *    reajuste de um toque que o dono recusou.
+ *  - a MENSALIDADE com contrato ASSINADO (`mensalidadeTravada`): mudar ali é
+ *    reajuste, que vira aditivo assinado pela família. Um campo que grava ao
+ *    sair seria o reajuste de um toque que o dono recusou. Com a versão só
+ *    ESPERANDO aceite, o campo grava e a versão é reemitida no mesmo lote
+ *    (`salvarMensalidadeNaLista`).
+ *
+ * ⚠️ O ESTADO DE "SALVO" NÃO É DA LINHA: é do salvador da tela (`salvador`,
+ * de `TioChildren`), por criança e por campo — fechar a linha ou ela pular de
+ * grupo não apaga "Não salvou", nem o que ele digitou.
  */
 export default function LinhaDaTurma({
   child,
@@ -45,28 +56,33 @@ export default function LinhaDaTurma({
   aberta,
   onAlternar,
   tocou,
+  agora,
+  salvador,
   onEnviado,
   onLinkNovo,
+  onPedirValor,
   onAbrirFicha,
   onRecado,
   onTirar,
 }) {
-  const sub = resumoDaLinha(child);
   const frase = fraseDeEstado(child);
+  // A escola já está no cabeçalho do grupo: a linha diz hora · rua.
+  const sub = resumoDaLinha({ ...child, school: '' });
+  const segunda = frase.texto || sub;
+  const esperando = salvador.esperandoSinal(`${child.id}:`) > 0;
   return (
-    <li className={aberta ? 'bg-surface' : ''}>
-      <div className="flex items-center gap-2 py-1 pl-2 pr-2">
+    <li id={`linha-${child.id}`} className={aberta ? 'bg-surface' : ''}>
+      <div className="flex items-center gap-2 pl-2 pr-2">
         <button
           type="button"
           onClick={onAlternar}
           aria-expanded={aberta}
-          className="tap flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-xl py-1 text-left"
+          className="tap flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-xl text-left"
         >
           <Avatar photoURL={child.photoURL} gender={child.gender} seed={child.id} kind="child" size="sm" />
           <span className="min-w-0 flex-1 leading-snug">
             <span className="block truncate text-base font-bold text-text">{child.name}</span>
-            {sub && <span className="block truncate text-sm text-textMuted">{sub}</span>}
-            {(frase.faltaHora || frase.texto) && (
+            {(frase.faltaHora || segunda || esperando) && (
               <span className="block truncate text-sm text-textBody">
                 {frase.faltaHora && (
                   <span className="font-semibold text-warningText">
@@ -74,18 +90,27 @@ export default function LinhaDaTurma({
                     falta {NOME_DA_FALTA[FALTA.HORA]}
                   </span>
                 )}
-                {frase.faltaHora && frase.texto ? ' · ' : ''}
-                {frase.texto}
+                {frase.faltaHora && segunda ? ' · ' : ''}
+                {segunda}
+                {esperando && <span className="font-semibold"> · {ROTULOS.esperandoSinal}</span>}
               </span>
             )}
           </span>
         </button>
-        <ConviteEnxuto crianca={child} tocou={tocou} onEnviado={onEnviado} onLinkNovo={onLinkNovo} />
+        <ConviteEnxuto
+          crianca={child}
+          tocou={tocou}
+          agora={agora}
+          onEnviado={onEnviado}
+          onLinkNovo={onLinkNovo}
+          onPedirValor={onPedirValor}
+        />
       </div>
       {aberta && (
         <CorpoDaLinha
           child={child}
           escolas={escolas}
+          salvador={salvador}
           onAbrirFicha={onAbrirFicha}
           onRecado={onRecado}
           onTirar={onTirar}
@@ -95,20 +120,39 @@ export default function LinhaDaTurma({
   );
 }
 
-function CorpoDaLinha({ child, escolas, onAbrirFicha, onRecado, onTirar }) {
-  const { estado, salvar, tentarDeNovo } = useSalvarNaLista(child);
+function CorpoDaLinha({ child, escolas, salvador, onAbrirFicha, onRecado, onTirar }) {
+  const { profile } = useAuth();
+  const { estado, salvar, tentarDeNovo, atual, mexeu } = useSalvarNaLista(child, salvador);
   const [novaEscola, setNovaEscola] = useState(false);
   const comFamilia = !!child.parentUid;
-  const contratoFeito = !!(child.contratoVigente || child.contractAcceptedAt || child.contratoAguardando);
-  const campo = (nome) => ({ estado: estado[nome], onTentar: () => tentarDeNovo(nome) });
+  const travada = mensalidadeTravada(child);
+  const campo = (nome) => ({ estado: estado(nome), onTentar: () => tentarDeNovo(nome) });
+
+  // ⚠️ A VERSÃO DO CONTRATO ESPERANDO ACEITE ACOMPANHA A FICHA AO FECHAR
+  // (achado M2). Cada campo salvo reemitia uma versão; agora é UMA conferência
+  // por abertura da linha, e só se algo foi gravado. A primeira emissão é do
+  // toque de "Convidar".
+  const admin = useRef(profile);
+  useEffect(() => {
+    admin.current = profile;
+  });
+  useEffect(
+    () => () => {
+      if (!mexeu.current) return;
+      const c = { ...atual.current, ...mexeu.current };
+      atualizarContratoEsperando({ child: c, admin: admin.current }).catch((err) =>
+        console.error('[lista da turma] contrato não conferido:', err?.code || 'erro')
+      );
+    },
+    [atual, mexeu]
+  );
 
   return (
     <div className="space-y-4 px-3 pb-4 pt-1">
       <CampoQueSalva
-        key={`nome:${child.name}`}
         rotulo={ROTULOS.nome}
         valorSalvo={child.name}
-        onSalvar={(v) => salvar('nome', { name: v })}
+        onSalvar={(v, digitado) => salvar('nome', { name: v }, { digitado })}
         {...campo('nome')}
       />
 
@@ -156,11 +200,10 @@ function CorpoDaLinha({ child, escolas, onAbrirFicha, onRecado, onTirar }) {
       </div>
 
       <CampoQueSalva
-        key={`hora:${child.horaPega || ''}`}
         rotulo={ROTULOS.horaDePegar}
         tipo="hora"
         valorSalvo={child.horaPega || ''}
-        onSalvar={(v) => salvar('hora', { horaPega: v })}
+        onSalvar={(v, digitado) => salvar('hora', { horaPega: v }, { digitado })}
         {...campo('hora')}
       />
 
@@ -168,11 +211,10 @@ function CorpoDaLinha({ child, escolas, onAbrirFicha, onRecado, onTirar }) {
         <p className="text-base text-textBody">{child.parentName || ''}</p>
       ) : (
         <CampoQueSalva
-          key={`mae:${child.parentName || ''}`}
           rotulo={ROTULOS.nomeDaMae}
           tipo="textoOpcional"
           valorSalvo={child.parentName || ''}
-          onSalvar={(v) => salvar('mae', { parentName: v })}
+          onSalvar={(v, digitado) => salvar('mae', { parentName: v }, { digitado })}
           {...campo('mae')}
         />
       )}
@@ -181,17 +223,16 @@ function CorpoDaLinha({ child, escolas, onAbrirFicha, onRecado, onTirar }) {
 
       {!comFamilia && (
         <CampoQueSalva
-          key={`fone:${child.parentPhone || ''}`}
           rotulo={ROTULOS.whatsappDaMae}
           extra={ROTULOS.seSouber}
           tipo="telefone"
           valorSalvo={child.parentPhone || ''}
-          onSalvar={(v) => salvar('fone', { parentPhone: v })}
+          onSalvar={(v, digitado) => salvar('fone', { parentPhone: v }, { digitado })}
           {...campo('fone')}
         />
       )}
 
-      {contratoFeito ? (
+      {travada ? (
         <div>
           <RotuloDoCampo rotulo={ROTULOS.mensalidade} />
           <p className="text-base text-textBody">
@@ -199,7 +240,13 @@ function CorpoDaLinha({ child, escolas, onAbrirFicha, onRecado, onTirar }) {
           </p>
         </div>
       ) : (
-        <CampoDaMensalidade key={`fee:${child.monthlyFee || 0}`} child={child} salvar={salvar} {...campo('mensalidade')} />
+        <CampoDaMensalidade
+          child={child}
+          onSalvar={(n, digitado) =>
+            salvar('mensalidade', { monthlyFee: n }, { digitado, executar: (c) => salvarMensalidadeNaLista(c, n, admin.current) })
+          }
+          {...campo('mensalidade')}
+        />
       )}
 
       <div className="flex flex-wrap gap-2 pt-1">
@@ -226,24 +273,35 @@ function CorpoDaLinha({ child, escolas, onAbrirFicha, onRecado, onTirar }) {
  * A mensalidade grava ao sair do campo; o extenso embaixo é a conferência.
  * OBRIGATÓRIA (decisão do dono): apagar o valor não grava zero — a linha diz
  * "Diga o valor da mensalidade." e o valor salvo continua.
+ *
+ * ⚠️ VALOR MUITO BAIXO GANHA UM "CONFIRA", SEM BLOQUEAR (achado M1). O campo
+ * é de caixa eletrônico: "350" digitado vira R$ 3,50. Abaixo de
+ * `VALOR_PARA_CONFERIR` a linha repete o valor com "? Confira." — e grava,
+ * porque um valor baixo pode ser verdade (irmão, combinado de família).
  */
-function CampoDaMensalidade({ child, salvar, estado, onTentar }) {
-  const inicial = Number(child.monthlyFee) > 0 ? Number(child.monthlyFee).toFixed(2) : '';
-  const [valor, setValor] = useState(inicial);
+function CampoDaMensalidade({ child, onSalvar, estado, onTentar }) {
+  const doBanco = Number(child.monthlyFee) > 0 ? Number(child.monthlyFee).toFixed(2) : '';
+  const { valor, setValor, setEditando } = useValorDoCampo(doBanco, estado);
   const [erro, setErro] = useState('');
   const sair = () => {
+    setEditando(false);
     if (valorDoCampoFalta(valor)) {
       setErro(ROTULOS.erroSemValor);
       return;
     }
     setErro('');
-    if (valor === inicial) return;
-    salvar('mensalidade', { monthlyFee: Number(valor) });
+    if (valor === doBanco) return;
+    onSalvar(Number(valor), valor);
   };
   return (
-    <div onBlur={sair}>
+    <div onFocus={() => setEditando(true)} onBlur={sair}>
       <RotuloDoCampo rotulo={ROTULOS.mensalidade} estado={estado} onTentar={onTentar} />
       <CampoDeValor value={valor} onChange={(v) => { setErro(''); setValor(v); }} error={erro} />
+      {!erro && valorParaConferir(valor) && (
+        <p role="status" className="mt-1 text-base font-bold text-text">
+          {confiraOValor(formatCurrency(Number(valor)))}
+        </p>
+      )}
     </div>
   );
 }

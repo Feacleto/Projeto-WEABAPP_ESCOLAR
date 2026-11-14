@@ -2,10 +2,13 @@ import { useId, useState } from 'react';
 import { mascaraHora, maskPhone, unmaskPhone, isValidPhone } from '../../compartilhado/masks';
 import { normalizaHora } from '../../dominio/rota/horarios.js';
 import { ROTULOS } from '../../marca/textosDaLista.js';
+import { FASE } from '../../compartilhado/salvarPorCampo.js';
+import { useValorDoCampo } from '../../hooks/useValorDoCampo';
 
 /**
  * OS CAMPOS DA LINHA ABERTA DA LISTA DA TURMA (RC2) — salvam SOZINHOS, ao
- * sair do campo, e dizem "salvo ✓" só quando o servidor confirmou.
+ * sair do campo, e dizem "salvo ✓" só quando o servidor confirmou a escrita
+ * MAIS NOVA daquele campo (o salvador da tela conta versões).
  *
  * ⚠️ POR QUE NÃO É O `<Input>` COMUM. O `Input` acende "Pronto" com a borda
  * verde ao sair do campo, ANTES de qualquer escrita — certo no passo a passo,
@@ -18,7 +21,6 @@ import { ROTULOS } from '../../marca/textosDaLista.js';
 
 /** O rótulo do campo e, à direita, o estado da escrita. */
 export function RotuloDoCampo({ htmlFor, rotulo, extra, estado, onTentar }) {
-  const erro = estado && typeof estado === 'object' && estado.erro;
   return (
     <div className="mb-1.5 flex min-h-6 items-baseline justify-between gap-2">
       {htmlFor ? (
@@ -30,19 +32,27 @@ export function RotuloDoCampo({ htmlFor, rotulo, extra, estado, onTentar }) {
           {rotulo} {extra && <span className="text-sm font-normal text-textMuted">{extra}</span>}
         </span>
       )}
-      <EstadoDoSalvar estado={estado} onTentar={onTentar} erro={erro} />
+      <EstadoDoSalvar estado={estado} onTentar={onTentar} />
     </div>
   );
 }
 
-function EstadoDoSalvar({ estado, onTentar, erro }) {
-  if (estado === 'salvando') {
+/**
+ * `estado` é o do salvador da tela (`salvarPorCampo.js`): `{ fase }`, ou
+ * nulo quando o campo não foi mexido nesta abertura.
+ */
+export function EstadoDoSalvar({ estado, onTentar }) {
+  const fase = estado?.fase;
+  if (fase === FASE.SALVANDO) {
     return <span role="status" className="shrink-0 text-sm text-textMuted">{ROTULOS.salvando}</span>;
   }
-  if (estado === 'salvo') {
+  if (fase === FASE.ESPERANDO) {
+    return <span role="status" className="shrink-0 text-sm font-semibold text-textBody">{ROTULOS.esperandoSinal}</span>;
+  }
+  if (fase === FASE.SALVO) {
     return <span role="status" className="shrink-0 whitespace-nowrap text-sm font-bold text-accentText">{ROTULOS.salvo}</span>;
   }
-  if (erro) {
+  if (fase === FASE.ERRO) {
     return (
       <span role="alert" className="flex shrink-0 items-center gap-1 text-sm font-semibold text-dangerText">
         {ROTULOS.naoSalvou}
@@ -82,8 +92,8 @@ const TIPOS = {
 
 /**
  * Um campo de texto que grava ao sair. `valorSalvo` é o do banco (a escuta);
- * quem chama remonta o campo quando ele muda (`key`), então o que aparece é
- * sempre o que está gravado — menos enquanto ele digita.
+ * ele entra no campo pela regra de `useValorDoCampo` — nunca por cima do que
+ * ele está digitando, nem do que ficou digitado numa escrita recusada.
  *
  * Só grava quando MUDOU e é válido. Vazio, num campo que não aceita vazio
  * (nome, hora), volta ao valor salvo: apagar o nome sem querer não pode virar
@@ -92,10 +102,11 @@ const TIPOS = {
 export function CampoQueSalva({ rotulo, extra, tipo = 'texto', valorSalvo = '', estado, onSalvar, onTentar, autoFocus }) {
   const id = useId();
   const t = TIPOS[tipo];
-  const [valor, setValor] = useState(() => t.mascara(String(valorSalvo || '')));
+  const { valor, setValor, setEditando } = useValorDoCampo(t.mascara(String(valorSalvo || '')), estado);
   const [erro, setErro] = useState('');
 
   const sair = () => {
+    setEditando(false);
     const limpo = String(valor || '');
     if (!limpo.trim() && !t.vazioOk) {
       setValor(t.mascara(String(valorSalvo || '')));
@@ -109,7 +120,7 @@ export function CampoQueSalva({ rotulo, extra, tipo = 'texto', valorSalvo = '', 
     setErro('');
     const novo = limpo.trim() ? t.paraGravar(limpo) : '';
     if (novo === (tipo === 'telefone' ? unmaskPhone(valorSalvo) : String(valorSalvo || '').trim())) return;
-    onSalvar(novo);
+    onSalvar(novo, limpo);
   };
 
   return (
@@ -123,6 +134,7 @@ export function CampoQueSalva({ rotulo, extra, tipo = 'texto', valorSalvo = '', 
         autoFocus={autoFocus}
         value={valor}
         aria-invalid={erro ? true : undefined}
+        onFocus={() => setEditando(true)}
         onChange={(e) => {
           setErro('');
           setValor(t.mascara(e.target.value));

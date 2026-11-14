@@ -86,7 +86,8 @@ export async function addEscola(data) {
   return ref.id;
 }
 
-export async function updateEscola(id, data) {
+/** `silencioso`: sem o som de "salvo" (a Lista toca um por rajada). */
+export async function updateEscola(id, data, { silencioso = false } = {}) {
   if (!id) return;
   const updates = { ...data, updatedAt: serverTimestamp() };
   if ('nome' in updates) updates.nome = updates.nome?.trim() || '';
@@ -100,7 +101,7 @@ export async function updateEscola(id, data) {
   // o cliente não tentar.
   delete updates.adminUid;
   await updateDoc(doc(db, 'schools', id), updates);
-  playSound('salvo');
+  if (!silencioso) playSound('salvo');
 }
 
 /**

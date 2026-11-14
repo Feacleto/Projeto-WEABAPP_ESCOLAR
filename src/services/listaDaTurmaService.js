@@ -2,6 +2,8 @@ import { updateChild } from './childrenService';
 import { notifyScheduleChanged } from './notificationsService';
 import { searchAddress } from './locationService';
 import { updateEscola } from './escolasService';
+import { playSound } from './soundService';
+import { salvarMensalidadeDaLista } from './contratosDaFamiliaService';
 import { camposAoSalvar } from '../dominio/escola/listaDaTurma.js';
 import { normalizaHora, periodoDaHora } from '../dominio/rota/horarios.js';
 
@@ -32,7 +34,7 @@ export async function salvarCampoDaLista(crianca, mudanca) {
     m.pickupPeriod = periodo;
     m.period = periodo;
   }
-  await updateChild(crianca.id, camposAoSalvar(crianca, m));
+  await updateChild(crianca.id, camposAoSalvar(crianca, m), { silencioso: true });
   if ('horaPega' in mudanca && mudanca.horaPega) {
     const antes = normalizaHora(crianca.horaPega) || null;
     if (antes !== mudanca.horaPega) {
@@ -49,6 +51,29 @@ export async function salvarCampoDaLista(crianca, mudanca) {
 }
 
 /**
+ * A MENSALIDADE DIGITADA NA LINHA (achado M1). Com o contrato assinado a
+ * linha nem mostra o campo (reajuste é pela ficha). Antes disso:
+ *   - com versão esperando aceite, o valor e a versão mudam no MESMO lote
+ *     (`salvarCombinado`, pelo serviço de contratos);
+ *   - sem versão nenhuma, grava o campo direto — a primeira versão nasce no
+ *     toque de "Convidar".
+ */
+export async function salvarMensalidadeNaLista(crianca, valor, admin) {
+  const r = await salvarMensalidadeDaLista({ child: crianca, admin, valor });
+  if (r === 'sem-contrato') await salvarCampoDaLista(crianca, { monthlyFee: valor });
+  return r;
+}
+
+/**
+ * ⚠️ O SOM DE "SALVO" É UM POR RAJADA. As escritas daqui são silenciosas, e
+ * quem toca o som é o salvador da tela (`salvarPorCampo.js`), quando a última
+ * escrita pendente termina — cinco campos seguidos, um som.
+ */
+export function somDeSalvo() {
+  playSound('salvo');
+}
+
+/**
  * O PONTO DA CASA NO MAPA — uma consulta só, depois de a rua (e o número, ou
  * o "não sei o número") estar assentada. Não achar não é erro: a criança fica
  * com `geoPending`, como no cadastro completo. O Nominatim não aceita
@@ -57,7 +82,7 @@ export async function salvarCampoDaLista(crianca, mudanca) {
 export async function procurarPontoDaCasa(crianca, endereco, partes) {
   try {
     const r = await searchAddress(endereco, partes);
-    await updateChild(crianca.id, { lat: r.lat, lng: r.lng });
+    await updateChild(crianca.id, { lat: r.lat, lng: r.lng }, { silencioso: true });
     return true;
   } catch {
     return false;
@@ -78,5 +103,5 @@ export function camposDaEscola(escola) {
 
 /** A hora de ENTRADA da escola — é dela que a hora de pegar é proposta. */
 export function salvarEntradaDaEscola(escolaId, horaEntrada) {
-  return updateEscola(escolaId, { horaEntrada: horaEntrada || '' });
+  return updateEscola(escolaId, { horaEntrada: horaEntrada || '' }, { silencioso: true });
 }

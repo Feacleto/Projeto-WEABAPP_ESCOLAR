@@ -10,6 +10,7 @@ import { CLASSE_DO_CAMPO } from './CamposDaLinha';
 import CampoDeValor from '../common/CampoDeValor';
 import { formatCurrency } from '../../compartilhado/formatters';
 import { valorDoCampoFalta } from '../../dominio/cobranca/valorDaMensalidade.js';
+import { decidirOkDoNome } from '../../dominio/escola/listaDaTurma.js';
 
 /**
  * A LINHA "+ Nome da criança" — SEMPRE ABERTA NO FIM DA LISTA (RC2).
@@ -39,6 +40,7 @@ import { valorDoCampoFalta } from '../../dominio/cobranca/valorDaMensalidade.js'
 export default function AdicionarCrianca({ escola, anterior = null, onCriada }) {
   const id = useId();
   const campo = useRef(null);
+  const blocoDoValor = useRef(null);
   const [nome, setNome] = useState('');
   const valorAnterior = Number(anterior?.monthlyFee) > 0 ? Number(anterior.monthlyFee).toFixed(2) : '';
   const [valor, setValor] = useState(valorAnterior);
@@ -47,21 +49,37 @@ export default function AdicionarCrianca({ escola, anterior = null, onCriada }) 
   const [salvando, setSalvando] = useState(false);
   const declaracao = useDeclaracaoDaSessao();
 
+  // ⚠️ O DUPLO TOQUE NO OK CRIAVA A CRIANÇA DUAS VEZES: `salvando` é estado,
+  // e o segundo toque chega antes de o React redesenhar. A ref fecha na hora.
+  const emCurso = useRef(false);
+
   const adicionar = async (ev) => {
     ev?.preventDefault?.();
     const limpo = nome.trim();
-    if (!limpo || salvando) return;
-    if (!declaracao.confirmar()) return;
-    if (valorDoCampoFalta(valor)) {
+    const passo = decidirOkDoNome({
+      nome: limpo,
+      valor,
+      declarou: declaracao.jaDeclarou || declaracao.marcada,
+      ocupado: emCurso.current,
+    });
+    if (passo === 'ignorar') return;
+    if (passo === 'declaracao') {
+      // Acende o erro da caixa; nada é criado.
+      declaracao.confirmar();
+      return;
+    }
+    if (passo === 'valor') {
       setErroValor(ROTULOS.erroSemValor);
       return;
     }
+    emCurso.current = true;
     setSalvando(true);
     try {
       const { id: novoId } = await addChild({
         name: limpo,
-        // Só chega aqui com a declaração feita (marcada agora ou nesta sessão).
-        autorizacaoDeclarada: true,
+        // O que a caixa diz AGORA — nunca um `true` escrito à mão: se a
+        // decisão acima mudar, o registro não mente por ela.
+        autorizacaoDeclarada: declaracao.jaDeclarou || declaracao.marcada,
         cadastroRapido: true,
         monthlyFee: Number(valor),
         dueDay,
@@ -75,6 +93,7 @@ export default function AdicionarCrianca({ escola, anterior = null, onCriada }) 
       console.error('[lista da turma] criança não criada:', err?.code || 'erro');
       toast.error('Não deu pra salvar. Tente de novo.');
     } finally {
+      emCurso.current = false;
       setSalvando(false);
     }
   };
@@ -119,7 +138,13 @@ export default function AdicionarCrianca({ escola, anterior = null, onCriada }) 
           {ROTULOS.ok}
         </button>
       </div>
-      <div className="space-y-1 px-1">
+      {/* O teclado do celular cobre o fim da lista: ao focar o valor, ele sobe
+        * para o meio da tela (depois de o teclado abrir). */}
+      <div
+        ref={blocoDoValor}
+        onFocus={() => setTimeout(() => blocoDoValor.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' }), 300)}
+        className="space-y-1 px-1"
+      >
         <CampoDeValor
           label={ROTULOS.mensalidade}
           value={valor}

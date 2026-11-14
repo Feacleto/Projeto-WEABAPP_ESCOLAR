@@ -27,7 +27,11 @@
  * anterior a isso fala de um link morto: a linha volta a pedir convite.
  */
 import { conviteVencido } from '../identidade/validadeDoConvite.js';
-import { valorDaMensalidadeFalta } from '../cobranca/valorDaMensalidade.js';
+import {
+  valorDaMensalidade,
+  valorDaMensalidadeFalta,
+  valorDoCampoFalta,
+} from '../cobranca/valorDaMensalidade.js';
 import { normalizaHora, horaCurta, emMinutos, deMinutos } from '../rota/horarios.js';
 
 export const CONVITE = {
@@ -404,8 +408,88 @@ export function proporHorasDePegar({ criancas, escola, entrada }) {
     .map(({ child, minutos }) => ({ child, hora: deMinutos(minutos) }));
 }
 
-// O valor da mensalidade: a régua é UMA só, `valorDaMensalidade.js`
-// (src/dominio/cobranca/). A Lista tinha uma cópia (`valorObrigatorioNoCadastro`)
-// e ela saiu no merge com a RC1 — duas réguas para "tem valor?" divergiam em
-// "350,00" (a da Lista dizia que faltava). Quem cadastra chama
-// `valorDoCampoFalta`; a caixa "A completar" chama `semValor`, que delega.
+// ============================================================================
+// O valor da mensalidade na lista
+// ============================================================================
+// A régua de "tem valor?" é UMA só, `valorDaMensalidade.js` (dominio/cobranca).
+// A Lista tinha uma cópia (`valorObrigatorioNoCadastro`) e ela saiu no merge
+// com a RC1 — as duas divergiam em "350,00" (a da Lista dizia que faltava).
+// Quem cadastra chama `valorDoCampoFalta`; a caixa "A completar", `semValor`.
+
+/**
+ * A MENSALIDADE SÓ TRAVA NA LINHA COM O CONTRATO ASSINADO (achado M1).
+ * Travava também com a versão ESPERANDO aceite (`contratoAguardando`) — e o
+ * convite emite essa versão, então quase toda criança convidada tinha a
+ * mensalidade presa na ficha. Antes do aceite, mudar o valor é corrigir o
+ * combinado (a versão esperando é reemitida junto); depois, é reajuste, que
+ * vira aditivo pela ficha.
+ */
+export function mensalidadeTravada(crianca) {
+  return !!(crianca?.contratoVigente || crianca?.contractAcceptedAt);
+}
+
+/** Abaixo disto o valor merece um "Confira" (sem bloquear): "350" vira R$ 3,50. */
+export const VALOR_PARA_CONFERIR = 30;
+
+export function valorParaConferir(valor) {
+  const n = valorDaMensalidade(valor);
+  return n > 0 && n < VALOR_PARA_CONFERIR;
+}
+
+/**
+ * O "OK" DA LINHA "+ Nome da criança" — o que fazer com o toque, nesta ordem:
+ *   'ignorar'    sem nome, ou um toque já em curso (o duplo toque criaria a
+ *                criança duas vezes);
+ *   'declaracao' a declaração de autorização não foi feita (nada é criado);
+ *   'valor'      sem mensalidade (valor zero não);
+ *   'criar'.
+ */
+export function decidirOkDoNome({ nome, valor, declarou, ocupado }) {
+  if (ocupado || !String(nome || '').trim()) return 'ignorar';
+  if (!declarou) return 'declaracao';
+  if (valorDoCampoFalta(valor)) return 'valor';
+  return 'criar';
+}
+
+/**
+ * A PROPOSTA DE HORAS CONFERIDA CONTRA A CRIANÇA DE AGORA (achado f).
+ * A proposta é uma foto de quando ele tocou em "Propor"; até ele confirmar,
+ * outra tela (ou a família) pode ter dado hora a alguém. Devolve
+ * `{ gravar: [{ child, hora }], jaTinham: [id], invalidas: [id] }`:
+ *   - quem JÁ ganhou hora no meio-tempo é pulado e CONTADO (a tela diz);
+ *   - hora editada que não é hora fica em `invalidas` — a tela a mostra e não
+ *     grava nada, em vez de pular calada.
+ * `atuais` é um Map id → criança ao vivo.
+ */
+export function conferirProposta(proposta, atuais) {
+  const r = { gravar: [], jaTinham: [], invalidas: [] };
+  for (const item of proposta || []) {
+    const atual = atuais?.get?.(item.child.id) || item.child;
+    if (temHoraDePegar(atual)) {
+      r.jaTinham.push(item.child.id);
+      continue;
+    }
+    const hora = normalizaHora(item.hora);
+    if (!hora) r.invalidas.push(item.child.id);
+    else r.gravar.push({ child: atual, hora });
+  }
+  return r;
+}
+
+/** Quantas crianças têm algo a completar (a linha "A completar · N"). */
+export function contarACompletar(criancas) {
+  return (criancas || []).filter((c) => c && c.active !== false && oQueFalta(c).length > 0).length;
+}
+
+/**
+ * Tem outro filho da MESMA família nesta turma? Se tem, tirar uma criança não
+ * encerra a conta da família (o servidor só a apaga quando não sobra filho
+ * nenhum — `desvincularResponsavel`). Sem irmão aqui, a lista não sabe se ela
+ * tem filho em OUTRA perua, e a frase de "Tirar da turma" diz a condição.
+ */
+export function temIrmaoNaTurma(crianca, criancas) {
+  if (!crianca?.parentUid) return false;
+  return (criancas || []).some(
+    (c) => c && c.id !== crianca.id && c.active !== false && c.parentUid === crianca.parentUid
+  );
+}
