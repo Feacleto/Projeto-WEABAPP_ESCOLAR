@@ -35,6 +35,12 @@ const FUNCIONALIDADES = {
     ['functions/lib/billing.js', /if \(!child\.parentUid\) \{/],
     ['functions/lib/billing.js', /if \(fee <= 0\) \{/],
   ],
+  // "Não tem aula": uma notificação por família com conta, e a falta marcada
+  // para toda criança escolhida.
+  'aviso-de-escola-por-familia': [
+    ['src/services/broadcastService.js', /type: 'school_no_class'/],
+    ['src/services/broadcastService.js', /absenceDeclarations/],
+  ],
 };
 
 /** As condições de que uma frase depende, e a prova de cada uma. */
@@ -43,6 +49,10 @@ const CONDICOES = {
   'mensalidade-com-valor': [
     ['functions/lib/billing.js', /const fee = Number\(child\.monthlyFee\) \|\| 0;/],
     ['functions/lib/reguaDaFamiliaEntrou.js', /Number\(crianca\.monthlyFee\)/],
+  ],
+  // Só quem entrou no app (`parentUid`) recebe notificação.
+  'familia-com-conta': [
+    ['src/services/broadcastService.js', /if \(c\.parentUid\) \{/],
   ],
 };
 

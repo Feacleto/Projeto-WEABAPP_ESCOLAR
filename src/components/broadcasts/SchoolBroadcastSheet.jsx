@@ -1,6 +1,6 @@
 import { useVoltarFechaFolha } from '../../hooks/useVoltarFechaFolha';
 import { useEffect, useMemo, useState } from 'react';
-import { X, Megaphone, School, Send, Check, Users } from 'lucide-react';
+import { X, Megaphone, School, Send, Check, Users, Layers } from 'lucide-react';
 import Button from '../common/Button';
 import toast from 'react-hot-toast';
 import { useChildren } from '../../hooks/useChildren';
@@ -18,6 +18,21 @@ import { getDateKey } from '../../dominio/rota/horarios';
 import { chaveDoNome } from '../../dominio/escola/nomeEscola';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
 import BotaoDeFalar from '../common/BotaoDeFalar';
+import {
+  TODAS_AS_ESCOLAS,
+  ofereceTodas,
+  precisaConfirmar,
+  criancasDeTodas,
+  familiasComConta,
+  envioPorEscola,
+} from '../../dominio/escola/avisoSemAula.js';
+import {
+  SEM_AULA_TODAS,
+  textoDaConfirmacaoSemAula,
+  textoDoBotaoSemAulaTodas,
+  BOTAO_CONFIRMAR_SEM_AULA,
+  BOTAO_VOLTAR_SEM_AULA,
+} from '../../marca/valorDosAvisos.js';
 
 /**
  * "Sem aula" — o aviso que já sai virando ausência na rota.
@@ -28,6 +43,13 @@ import BotaoDeFalar from '../common/BotaoDeFalar';
  * famílias que não deviam ser avisadas, ou disparava o mesmo recado três vezes
  * pra cobrir três dias, ou descobria que metade da turma não tinha recebido
  * porque a escola dela estava escrita com pontos.
+ *
+ * TODAS AS ESCOLAS (14/11/2026, RC2 — `dominio/escola/avisoSemAula.js`)
+ * Feriado da cidade obrigava a repetir o aviso escola por escola. Agora há
+ * "Todas as escolas", e ela é a ÚNICA que pede confirmação, com o número de
+ * famílias que vão receber: o aviso não volta. Uma escola continua indo
+ * direto, como sempre. O envio continua escola por escola (uma chamada de
+ * `createSchoolBroadcast` para cada), então o lote de 15 não muda.
  */
 /**
  * A CASCA. O miolo só monta com a folha ABERTA — e isso não é detalhe.
@@ -63,6 +85,9 @@ function SchoolBroadcastBody({ onClose }) {
   const [message, setMessage] = useState('');
   const [desmarcadas, setDesmarcadas] = useState(() => new Set());
   const [enviando, setEnviando] = useState(false);
+  // A confirmação de "todas as escolas". Qualquer mudança na escolha a
+  // desfaz: confirmar 12 famílias e mandar para 15 seria a contagem mentindo.
+  const [confirmando, setConfirmando] = useState(false);
 
   /**
    * As escolas ofertadas. Sai das entidades cadastradas, mas cai pro nome
@@ -93,7 +118,14 @@ function SchoolBroadcastBody({ onClose }) {
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }, [escolas, todasCriancas]);
 
-  const escolhida = opcoes.find((o) => o.id === escolaId) || null;
+  const todas = escolaId === TODAS_AS_ESCOLAS;
+  const mostraTodas = ofereceTodas(opcoes);
+  const escolhida = useMemo(() => {
+    if (escolaId === TODAS_AS_ESCOLAS) {
+      return { id: TODAS_AS_ESCOLAS, nome: SEM_AULA_TODAS.rotulo, criancas: criancasDeTodas(opcoes), legada: false };
+    }
+    return opcoes.find((o) => o.id === escolaId) || null;
+  }, [opcoes, escolaId]);
 
   // Trocar de escola zera a seleção de crianças: manter marcações da escola
   // anterior faria o aviso sair pra quem ele não estava olhando.
@@ -111,6 +143,15 @@ function SchoolBroadcastBody({ onClose }) {
     () => (escolhida?.criancas || []).filter((c) => !desmarcadas.has(c.id)),
     [escolhida, desmarcadas]
   );
+
+  // O número da confirmação: famílias com conta entre as crianças marcadas.
+  const familias = useMemo(() => familiasComConta(alcancadas), [alcancadas]);
+
+  // Mudou a escolha (escola, dias, crianças): a confirmação some.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setConfirmando(false);
+  }, [escolaId, de, ate, desmarcadas]);
 
   function alternar(id) {
     setDesmarcadas((s) => {
@@ -134,6 +175,14 @@ function SchoolBroadcastBody({ onClose }) {
       toast.error('Escolha pelo menos uma criança.');
       return;
     }
+    if (precisaConfirmar(escolaId) && !confirmando) {
+      setConfirmando(true);
+      return;
+    }
+    if (todas) {
+      await enviarParaTodas();
+      return;
+    }
     setEnviando(true);
     try {
       const { affectedCount } = await createSchoolBroadcast({
@@ -154,6 +203,49 @@ function SchoolBroadcastBody({ onClose }) {
     } catch (err) {
       console.error(err);
       toast.error(err.message || 'Não deu pra enviar o aviso.');
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  /**
+   * "Todas as escolas": uma chamada por escola, em sequência. Se uma falhar,
+   * as anteriores já foram e não voltam — a mensagem diz quais, para ele não
+   * mandar de novo para quem já recebeu.
+   */
+  async function enviarParaTodas() {
+    setEnviando(true);
+    const feitas = [];
+    try {
+      for (const { escola, criancas } of envioPorEscola(opcoes, desmarcadas)) {
+        await createSchoolBroadcast({
+          escolaId: escola.legada ? null : escola.id,
+          escolaNome: escola.nome,
+          de,
+          ate: ate || de,
+          message,
+          adminUid: user.uid,
+          children: criancas,
+        });
+        feitas.push(escola.nome);
+      }
+      toast.success(
+        familias
+          ? `${familias} ${familias === 1 ? 'família avisada' : 'famílias avisadas'} · ${rotuloDoPeriodo(dias)}`
+          : `Faltas marcadas · ${rotuloDoPeriodo(dias)}`
+      );
+      setMessage('');
+      setAte('');
+      setConfirmando(false);
+      onClose?.();
+    } catch (err) {
+      console.error(err);
+      toast.error(
+        feitas.length
+          ? `Parou no meio. Já avisadas: ${feitas.join(', ')}. Mande só para as outras escolas.`
+          : err.message || 'Não deu pra enviar o aviso.'
+      );
+      setConfirmando(false);
     } finally {
       setEnviando(false);
     }
@@ -209,6 +301,33 @@ function SchoolBroadcastBody({ onClose }) {
               </p>
             ) : (
               <div className="space-y-2">
+                {mostraTodas && (
+                  <button
+                    type="button"
+                    onClick={() => setEscolaId(TODAS_AS_ESCOLAS)}
+                    aria-pressed={todas}
+                    className={`tap w-full min-h-12 text-left rounded-2xl border-2 px-3 py-2.5 flex items-center gap-3 ${
+                      todas ? 'border-primary bg-primarySoft' : 'border-border bg-card'
+                    }`}
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                        todas ? 'bg-primary text-white' : 'bg-neutro text-textMuted'
+                      }`}
+                    >
+                      <Layers size={15} />
+                    </div>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-base font-semibold text-text truncate">
+                        {SEM_AULA_TODAS.rotulo}
+                      </span>
+                      <span className="block text-sm text-textMuted">
+                        {opcoes.length} escolas
+                      </span>
+                    </span>
+                    {todas && <Check size={17} className="text-primary shrink-0" />}
+                  </button>
+                )}
                 {opcoes.map((o) => {
                   const ativa = escolaId === o.id;
                   return (
@@ -374,15 +493,40 @@ function SchoolBroadcastBody({ onClose }) {
         </div>
 
         <div className="px-5 pt-2 pb-3 border-t border-neutro bg-card">
-          <Button
-            onClick={enviar}
-            disabled={enviando || !escolhida || !dias.length || !alcancadas.length}
-            icon={Send}
-          >
-            {enviando
-              ? 'Enviando…'
-              : `Avisar ${alcancadas.length} ${alcancadas.length === 1 ? 'família' : 'famílias'}`}
-          </Button>
+          {confirmando && todas ? (
+            // A confirmação de "todas": quantas famílias recebem, e que o aviso
+            // não volta. Uma ação principal (Mandar) e a saída (Voltar).
+            <div role="alertdialog" aria-live="polite" className="space-y-3">
+              <p className="text-base font-semibold text-text">
+                {textoDaConfirmacaoSemAula(familias)}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={enviar} disabled={enviando} icon={Send}>
+                  {enviando ? 'Enviando…' : BOTAO_CONFIRMAR_SEM_AULA}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmando(false)}
+                  disabled={enviando}
+                  className="tap min-h-12 rounded-xl border-2 border-border bg-card px-4 text-base font-semibold text-text"
+                >
+                  {BOTAO_VOLTAR_SEM_AULA}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              onClick={enviar}
+              disabled={enviando || !escolhida || !dias.length || !alcancadas.length}
+              icon={Send}
+            >
+              {enviando
+                ? 'Enviando…'
+                : todas
+                  ? textoDoBotaoSemAulaTodas(familias)
+                  : `Avisar ${alcancadas.length} ${alcancadas.length === 1 ? 'família' : 'famílias'}`}
+            </Button>
+          )}
         </div>
       </div>
     </div>

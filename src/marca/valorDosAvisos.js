@@ -20,6 +20,15 @@ function primeiroNome(nome) {
   return String(nome || '').trim().split(/\s+/)[0] || '';
 }
 
+function familias(n) {
+  return n === 1 ? '1 família' : `${n} famílias`;
+}
+
+/** Inteiro positivo, ou 0 para tudo o que não é contagem confiável. */
+function contagem(n) {
+  return Number.isInteger(n) && n > 0 ? n : 0;
+}
+
 /**
  * ── 1. A FAMÍLIA ENTROU (aviso ao motorista, escrito pelo SERVIDOR)
  *
@@ -48,10 +57,43 @@ export const FAMILIA_ENTROU = {
   },
 };
 
+/**
+ * ── 2. "NÃO TEM AULA" PARA TODAS AS ESCOLAS
+ *
+ * Uma escola segue direto, como sempre foi. Todas de uma vez pede
+ * confirmação, porque o aviso não volta: não existe função que apague um
+ * aviso de escola. O número é de FAMÍLIAS COM CONTA (`parentUid`), não de
+ * crianças — é quem recebe a notificação. Quem não entrou no app tem a falta
+ * marcada do mesmo jeito, e a confirmação diz isso quando ninguém recebe.
+ */
+export const SEM_AULA_TODAS = {
+  rotulo: 'Todas as escolas',
+  sustenta: 'aviso-de-escola-por-familia',
+  condicao: 'familia-com-conta',
+};
+
+export function textoDaConfirmacaoSemAula(numeroDeFamilias) {
+  const n = contagem(numeroDeFamilias);
+  return n
+    ? `Vai avisar ${familias(n)}. O aviso não volta.`
+    : 'Nenhuma família entrou no app. As faltas ficam marcadas.';
+}
+
+/** O botão que pede a confirmação (todas as escolas). */
+export function textoDoBotaoSemAulaTodas(numeroDeFamilias) {
+  const n = contagem(numeroDeFamilias);
+  return n ? `Avisar ${familias(n)}` : 'Marcar as faltas';
+}
+
+export const BOTAO_CONFIRMAR_SEM_AULA = 'Mandar';
+export const BOTAO_VOLTAR_SEM_AULA = 'Voltar';
+
 /** Todas as afirmações com a sua origem, para o teste varrer. */
 export function todasAsAfirmacoes() {
   return [
     { id: 'familiaEntrouComValor', ...FAMILIA_ENTROU.comValor },
     { id: 'familiaEntrouSemValor', ...FAMILIA_ENTROU.semValor },
+    { id: 'semAulaConfirma', texto: textoDaConfirmacaoSemAula(4), ...SEM_AULA_TODAS },
+    { id: 'semAulaNinguem', texto: textoDaConfirmacaoSemAula(0), ...SEM_AULA_TODAS },
   ];
 }
