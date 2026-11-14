@@ -88,11 +88,46 @@ function exigirConfigDoFirebase(mode) {
   );
 }
 
+/**
+ * UM BUILD DE PRODUÇÃO SEM A CHAVE DO MAPA NÃO PODE SER PUBLICADO.
+ *
+ * Sem `VITE_MAPTILER_KEY`, `config/mapa.js` volta em silêncio para o servidor
+ * doado do OpenStreetMap — o caminho de DESENVOLVIMENTO, e a própria violação
+ * da política de uso deles quando é produção (rota ao vivo é exatamente o que
+ * ela exclui). O modo de falhar é o pior possível: o mapa fica cinza para
+ * todas as famílias ao mesmo tempo, sem erro na tela e sem nada que avise.
+ * Foi essa a razão de o Firebase ter a checagem acima, e vale o mesmo aqui:
+ * a hora de descobrir é no build, não pela reclamação de uma mãe.
+ *
+ * ⚠️ SÓ NO BUILD DE PRODUÇÃO. `npm run dev` e qualquer outro modo seguem
+ * funcionando sem a chave, como `.env.example` promete a quem clona o repo.
+ * ⚠️ ESPAÇO EM BRANCO NÃO É CHAVE (mesma regra de `config/mapa.js`): um `.env`
+ * com `VITE_MAPTILER_KEY= ` produziria o mesmo mapa cinza.
+ *
+ * A SAÍDA EXISTE, E TEM NOME: `SEM_CHAVE_DO_MAPA=1`. É para um build que nunca
+ * vai a lugar nenhum (CI que só confere que o projeto compila). Ela não é
+ * `VITE_*` de propósito — não entra no bundle — e `deploy.ps1` não a define.
+ */
+function exigirChaveDoMapa(mode, command) {
+  if (command !== 'build' || mode !== 'production') return;
+  if (process.env.SEM_CHAVE_DO_MAPA === '1') return;
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  if (env.VITE_MAPTILER_KEY && env.VITE_MAPTILER_KEY.trim()) return;
+  throw new Error(
+    'Build de PRODUCAO abortado: falta VITE_MAPTILER_KEY no .env. ' +
+      'Sem ela o mapa volta para o servidor do OpenStreetMap, cuja politica de uso ' +
+      'exclui rota ao vivo — e o mapa fica cinza para todas as familias, sem erro na tela. ' +
+      'Crie a chave no painel do MapTiler, restrinja-a ao dominio do app e ponha no .env. ' +
+      '(Build que nao vai a lugar nenhum: SEM_CHAVE_DO_MAPA=1.)'
+  );
+}
+
 // PWA com atualização AVISADA (registerType prompt — ver o comentário lá).
 // Service worker faz cache apenas do shell; dados do Firestore sempre são
 // buscados online (importante porque o app depende de tempo real).
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   exigirConfigDoFirebase(mode);
+  exigirChaveDoMapa(mode, command);
   const versao = versaoDoBuild();
 
   return {

@@ -21,14 +21,17 @@
  * Sem chave, `config/mapa.js` volta para o OSM de propósito: quem clona o
  * repositório vê mapa sem criar conta em nada. Isso é bom para desenvolver e
  * **é a própria violação** em produção — então o teste prova que os dois
- * caminhos existem E que a decisão está escrita, sem poder exigir a chave (que
- * não está no git).
+ * caminhos existem E que a decisão está escrita. A chave em si não está no git
+ * e o teste não a exige; quem a exige é o BUILD de produção (`vite.config.js`,
+ * `exigirChaveDoMapa`), e o bloco 5 prova que ele aborta sem ela e que o
+ * desenvolvimento continua funcionando.
  *
  * COMO RODAR
  *   node scripts/testar-mapa.mjs      (ou: npm run testar:mapa)
  */
 
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { tilesPara, MAPA } from '../src/config/mapa.js';
 
 let ok = 0;
@@ -150,6 +153,72 @@ checar('a CSP libera api.maptiler.com', true, imgSrc.includes('https://api.mapti
 // repositorio ve mapa cinza e vai procurar o defeito no lugar errado.
 checar('e o do OSM continua liberado (o fallback)', true,
   imgSrc.includes('tile.openstreetmap.org'));
+
+// ─────────────────────────────────────────────────────────────────────────
+bloco('5. O build de PRODUÇÃO recusa o mapa sem chave; o desenvolvimento não');
+
+// Avalia o `vite.config.js` de verdade (é onde a checagem mora), sem empacotar
+// nada. `loadEnv` dá precedência a `process.env` sobre o `.env`, então
+// definir a variável aqui — inclusive vazia — vale mesmo numa máquina que
+// tenha a chave de verdade num `.env`.
+const { resolveConfig } = await import('vite');
+const CAMINHO_DO_CONFIG = fileURLToPath(new URL('../vite.config.js', import.meta.url));
+const FIREBASE_DE_MENTIRA = {
+  VITE_FIREBASE_API_KEY: 'x',
+  VITE_FIREBASE_AUTH_DOMAIN: 'x',
+  VITE_FIREBASE_PROJECT_ID: 'x',
+  VITE_FIREBASE_APP_ID: 'x',
+};
+
+async function avaliar({ modo, comando, env }) {
+  const guardado = {};
+  const todas = { ...FIREBASE_DE_MENTIRA, ...env };
+  for (const k of [...Object.keys(todas), 'SEM_CHAVE_DO_MAPA']) guardado[k] = process.env[k];
+  Object.assign(process.env, todas);
+  if (!('SEM_CHAVE_DO_MAPA' in env)) delete process.env.SEM_CHAVE_DO_MAPA;
+  try {
+    await resolveConfig({ configFile: CAMINHO_DO_CONFIG, logLevel: 'silent' }, comando, modo);
+    return { passou: true, mensagem: '' };
+  } catch (e) {
+    return { passou: false, mensagem: String(e?.message || e) };
+  } finally {
+    for (const [k, v] of Object.entries(guardado)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+}
+
+const semChaveEmProducao = await avaliar({
+  modo: 'production', comando: 'build', env: { VITE_MAPTILER_KEY: '' },
+});
+checar('build de producao SEM a chave aborta', false, semChaveEmProducao.passou);
+checar('e a mensagem nomeia a variavel que falta', true,
+  semChaveEmProducao.mensagem.includes('VITE_MAPTILER_KEY'));
+checar('e diz o que acontece sem ela (mapa cinza)', true,
+  semChaveEmProducao.mensagem.includes('cinza'));
+
+// Espaco em branco nao e chave — o mesmo criterio de `config/mapa.js`.
+const chaveEmBranco = await avaliar({
+  modo: 'production', comando: 'build', env: { VITE_MAPTILER_KEY: '   ' },
+});
+checar('chave so com espacos tambem aborta', false, chaveEmBranco.passou);
+
+// Sonda positiva: sem ela, "aborta" poderia ser o config quebrado por outro motivo.
+const comChaveEmProducao = await avaliar({
+  modo: 'production', comando: 'build', env: { VITE_MAPTILER_KEY: 'chave-de-teste' },
+});
+checar('build de producao COM a chave passa', true, comChaveEmProducao.passou);
+
+const semChaveNoDev = await avaliar({
+  modo: 'development', comando: 'serve', env: { VITE_MAPTILER_KEY: '' },
+});
+checar('desenvolvimento sem a chave continua funcionando', true, semChaveNoDev.passou);
+
+const semChaveNumBuildDeTeste = await avaliar({
+  modo: 'production', comando: 'build', env: { VITE_MAPTILER_KEY: '', SEM_CHAVE_DO_MAPA: '1' },
+});
+checar('a saida nomeada (SEM_CHAVE_DO_MAPA=1) deixa passar', true, semChaveNumBuildDeTeste.passou);
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);
