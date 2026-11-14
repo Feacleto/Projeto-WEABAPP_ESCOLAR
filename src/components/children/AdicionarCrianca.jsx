@@ -9,7 +9,7 @@ import { ROTULOS, DECLARACAO_UMA_VEZ } from '../../marca/textosDaLista.js';
 import { CLASSE_DO_CAMPO } from './CamposDaLinha';
 import CampoDeValor from '../common/CampoDeValor';
 import { formatCurrency } from '../../compartilhado/formatters';
-import { valorObrigatorioNoCadastro } from '../../dominio/escola/listaDaTurma.js';
+import { valorDoCampoFalta } from '../../dominio/cobranca/valorDaMensalidade.js';
 
 /**
  * A LINHA "+ Nome da criança" — SEMPRE ABERTA NO FIM DA LISTA (RC2).
@@ -29,7 +29,7 @@ import { valorObrigatorioNoCadastro } from '../../dominio/escola/listaDaTurma.js
  * a data do servidor e quem). Sem a caixa marcada, nada é criado.
  *
  * ⚠️ VALOR ZERO NÃO (decisão do dono, 14/11/2026). A linha pede também a
- * MENSALIDADE, obrigatória (`valorObrigatorioNoCadastro`), já PREENCHIDA com
+ * MENSALIDADE, obrigatória (`valorDoCampoFalta`), já PREENCHIDA com
  * o valor e o vencimento da criança anterior (`anterior`) — a turma costuma
  * ter o mesmo preço, e a segunda criança continua custando só o nome e o OK.
  * A primeira criança dele digita o valor. O valor aparece em destaque
@@ -52,7 +52,7 @@ export default function AdicionarCrianca({ escola, anterior = null, onCriada }) 
     const limpo = nome.trim();
     if (!limpo || salvando) return;
     if (!declaracao.confirmar()) return;
-    if (valorObrigatorioNoCadastro(valor)) {
+    if (valorDoCampoFalta(valor)) {
       setErroValor(ROTULOS.erroSemValor);
       return;
     }
@@ -129,7 +129,7 @@ export default function AdicionarCrianca({ escola, anterior = null, onCriada }) 
           }}
           error={erroValor}
         />
-        {!valorObrigatorioNoCadastro(valor) && (
+        {!valorDoCampoFalta(valor) && (
           <p className="text-lg font-bold text-text">
             {formatCurrency(Number(valor))} · {ROTULOS.venceNoDia(dueDay)}
           </p>

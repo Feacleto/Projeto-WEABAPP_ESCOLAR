@@ -9,10 +9,14 @@ import { doDa } from '../../compartilhado/formatters';
 import { mensagemDoConvite } from '../../marca/mensagensDoLink.js';
 import {
   textoDoEnviado,
+  FALTA_O_VALOR,
+  ATALHO_DO_VALOR,
   CHAVE_CONVITE_ENVIADO,
   EVENTO_CONVITE_ENVIADO,
 } from '../../marca/valorDoConvite.js';
 import { lembrar } from '../../compartilhado/lembreteDoAparelho';
+import { valorDaMensalidadeFalta } from '../../dominio/cobranca/valorDaMensalidade.js';
+import EditarCombinadoSheet from '../contract/EditarCombinadoSheet';
 import { FileSignature } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { dadosDaContratadaFaltando } from '../../services/contractService';
@@ -111,6 +115,35 @@ function GarantirContrato({ childId }) {
   const { contratos } = useContratos(child);
   useGarantirContrato(child, contratos);
   return null;
+}
+
+/**
+ * VALOR ZERO NÃO (14/11/2026, decisão do dono). O contrato nasce antes de o
+ * convite sair e não é emitido sem a mensalidade — e sem ela o servidor nem
+ * gera a cobrança do mês. Então o convite espera o valor: o cartão diz o que
+ * falta e o botão abre a mesma folha que edita o combinado, sem trocar de tela.
+ * Quem completa o valor volta direto ao botão do convite (a criança é lida ao
+ * vivo).
+ */
+function FaltaOValor({ crianca }) {
+  const { contratos } = useContratos(crianca);
+  const [aberto, setAberto] = useState(false);
+  return (
+    <div className="space-y-3 rounded-2xl border border-warningBorder bg-warningSoft p-4 text-left">
+      <p className="text-base font-bold text-warningText">Antes do convite: o valor da mensalidade</p>
+      <p className="text-sm leading-relaxed text-warningText">{FALTA_O_VALOR}</p>
+      <Button onClick={() => setAberto(true)} disabled={!contratos}>
+        {ATALHO_DO_VALOR}
+      </Button>
+      <EditarCombinadoSheet
+        key={`${crianca.monthlyFee}-${aberto}`}
+        open={aberto}
+        onClose={() => setAberto(false)}
+        child={crianca}
+        contratos={contratos}
+      />
+    </div>
+  );
 }
 
 /**
@@ -268,6 +301,16 @@ export default function InviteShare({
         <DadosDoContratoForm textoDoBotao="Salvar e liberar o convite" />
       </div>
     );
+  }
+
+  // O convite espera o valor da mensalidade. Enquanto a criança não chegou, um
+  // espaço no lugar do botão: mostrá-lo e tirá-lo depois seria a trava com
+  // uma fresta de meio segundo.
+  if (!jaEntrou && !criancaDoConvite && childId) {
+    return <div aria-hidden className="h-14 animate-pulse rounded-xl bg-neutro" />;
+  }
+  if (!jaEntrou && criancaDoConvite && valorDaMensalidadeFalta(criancaDoConvite)) {
+    return <FaltaOValor crianca={criancaDoConvite} />;
   }
 
   return (

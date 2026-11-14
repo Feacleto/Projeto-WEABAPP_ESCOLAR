@@ -27,6 +27,7 @@
  * anterior a isso fala de um link morto: a linha volta a pedir convite.
  */
 import { conviteVencido } from '../identidade/validadeDoConvite.js';
+import { valorDaMensalidadeFalta } from '../cobranca/valorDaMensalidade.js';
 import { normalizaHora, horaCurta, emMinutos, deMinutos } from '../rota/horarios.js';
 
 export const CONVITE = {
@@ -171,7 +172,7 @@ export function temRua(crianca) {
 
 /** Sem valor, a mensalidade não é gerada (`functions/lib/billing.js`). */
 export function semValor(crianca) {
-  return !(Number(crianca?.monthlyFee) > 0);
+  return valorDaMensalidadeFalta(crianca);
 }
 
 /** O que falta nesta criança, em ordem. */
@@ -403,28 +404,8 @@ export function proporHorasDePegar({ criancas, escola, entrada }) {
     .map(({ child, minutos }) => ({ child, hora: deMinutos(minutos) }));
 }
 
-// ============================================================================
-// O valor da mensalidade é obrigatório no cadastro (decisão do dono, 14/11/2026)
-// ============================================================================
-
-/**
- * "VALOR ZERO NÃO." Ao CADASTRAR uma criança (a linha "+ Nome" da lista e o
- * cadastro rápido do card do primeiro acesso), o tio diz o valor da
- * mensalidade. Sem valor a mensalidade do mês não nasce (`billing.js` pula
- * `fee <= 0`) e o contrato sairia de R$ 0,00.
- *
- * Devolve `true` quando o valor FALTA (vazio, zero, negativo, lixo) — a mesma
- * direção de `valorDaMensalidadeFalta(child)`, a régua irmã que mora em
- * `src/dominio/cobranca/` na branch feat/ux. Para unificar: esta passa a
- * chamar aquela com `{ monthlyFee: valor }` (ou some, e os chamadores usam a
- * de cobrança), mantendo o caso exato `> 0` — o teste reprova `>= 0`.
- *
- * ⚠️ ISENTOS, DE PROPÓSITO: a VAGA RÁPIDA da perua (FolhaDaVagaRapida) é só
- * um lugar na perua, não é contrato nem matrícula; e o "Salvar e completar
- * depois" do formulário completo é rascunho. Os dois caem no grupo "sem valor"
- * da caixa "A completar".
- */
-export function valorObrigatorioNoCadastro(valor) {
-  const n = Number(valor);
-  return !(Number.isFinite(n) && n > 0);
-}
+// O valor da mensalidade: a régua é UMA só, `valorDaMensalidade.js`
+// (src/dominio/cobranca/). A Lista tinha uma cópia (`valorObrigatorioNoCadastro`)
+// e ela saiu no merge com a RC1 — duas réguas para "tem valor?" divergiam em
+// "350,00" (a da Lista dizia que faltava). Quem cadastra chama
+// `valorDoCampoFalta`; a caixa "A completar" chama `semValor`, que delega.

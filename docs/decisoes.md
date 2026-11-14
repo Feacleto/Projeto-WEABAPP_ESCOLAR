@@ -489,6 +489,30 @@ Sobre ela incidem:
 
 ---
 
+## 32. Valor zero não: a mensalidade é obrigatória ao cadastrar uma criança, e o contrato não é emitido sem ela
+
+**Estado:** aceita (14/11/2026) — em implementação: a trava na emissão e o formulário completo na primeira versão; a linha "+ Nome da criança" e o cadastro rápido na segunda
+
+**Contexto.** O contrato era montado com `Number(child?.monthlyFee) || 0`, então podia ser emitido, e assinado pela família, com valor zero; e o `billing.js` pula a criança sem valor, então ele ficava sem efeito. O cadastro tratava a mensalidade como "pode vir depois".
+
+**Decisão.** O valor é obrigatório (maior que zero) quando o tio cadastra uma criança, e **nenhum contrato é emitido sem ele**. A vaga rápida da perua não é matrícula nem contrato e fica isenta. O "Salvar e completar depois" continua sendo rascunho, e a trava da emissão o segura até o valor existir. Quem cadastra várias crianças vê o valor da anterior já preenchido, e o valor aparece formatado ("R$ 350,00") antes de confirmar.
+
+**Como verificar.** A criar: teste da regra pura (valor zero ou negativo é recusado, com mutação) e testes por leitura de arquivo de que o botão de emitir não é alcançável sem valor e de que o formulário o exige.
+
+---
+
+## 33. O contrato só pede à família o que o contrato usa, e o tio não é substituído por ela no dinheiro
+
+**Estado:** aceita (14/11/2026) — a implementar na segunda versão (a lista única do que falta e o primeiro acesso da mãe); fechar o documento assinado com o que ela completou fica para a terceira, com revisão jurídica
+
+**Contexto.** Os dados da família que faltam viram campo em branco no contrato, sem aviso (`contractService.js`). O primeiro acesso da mãe já pergunta nome, WhatsApp e número da casa, mas isso não entra no documento que ela assina, porque o servidor tira o hash do snapshot gravado na emissão.
+
+**Decisão.** Os campos obrigatórios da família para o contrato são o **nome completo do responsável**, o **WhatsApp** e o **número da casa**. O **CPF do responsável é opcional**: o contrato de hoje não o usa, e pedi-lo é coletar um dado novo (minimização da LGPD, e fricção no momento da assinatura). Valor, vencimento e vigência são do tio: a mãe os vê e aceita, e nunca os edita. A função que diz o que falta vem de um lugar só e alimenta a lista da turma, o aviso ao tio antes de emitir e o formulário da mãe.
+
+**Como verificar.** A criar: teste da função pura `lacunasDoContrato` (separa o que é do tio do que é da família) e leitura de arquivo de que a tela da mãe nunca oferece campo de valor.
+
+---
+
 ## Como adicionar uma decisão
 
 Copie o formato. Contexto em duas linhas, decisão em uma, consequência no que ela custa, e **sempre** a linha de como verificar. Decisão sem teste é comentário — e comentário que promete garantia sem prová-la já foi problema recorrente neste repositório.

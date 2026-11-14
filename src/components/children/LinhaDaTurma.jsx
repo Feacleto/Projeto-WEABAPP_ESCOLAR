@@ -14,8 +14,8 @@ import {
   resumoDaLinha,
   NOME_DA_FALTA,
   FALTA,
-  valorObrigatorioNoCadastro,
 } from '../../dominio/escola/listaDaTurma.js';
+import { valorDoCampoFalta } from '../../dominio/cobranca/valorDaMensalidade.js';
 import { formatCurrency } from '../../compartilhado/formatters';
 import { ROTULOS } from '../../marca/textosDaLista.js';
 
@@ -232,7 +232,7 @@ function CampoDaMensalidade({ child, salvar, estado, onTentar }) {
   const [valor, setValor] = useState(inicial);
   const [erro, setErro] = useState('');
   const sair = () => {
-    if (valorObrigatorioNoCadastro(valor)) {
+    if (valorDoCampoFalta(valor)) {
       setErro(ROTULOS.erroSemValor);
       return;
     }

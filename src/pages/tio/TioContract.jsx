@@ -17,6 +17,7 @@ import {
   dadosDaContratadaFaltando,
 } from '../../services/contractService';
 import { estadoDoContrato } from '../../dominio/cobranca/contratoDaFamilia.js';
+import { valorDaMensalidadeFalta } from '../../dominio/cobranca/valorDaMensalidade.js';
 
 const ROTULO = {
   aguardando: 'esperando assinatura',
@@ -52,6 +53,8 @@ export default function TioContract() {
   // Aceite antigo, anterior aos documentos: o texto é o que os campos dizem.
   const legado = useMemo(() => {
     if (!child || !profile || vigente || aguardando) return null;
+    // Sem valor não há prévia: um contrato de "R$ 0,00" não pode nem ser impresso.
+    if (valorDaMensalidadeFalta(child)) return null;
     // O aceite antigo foi dado lendo o TEXTO 1 — remontá-lo no texto de hoje
     // mostraria cláusulas que ela não leu. Sem aceite, é só prévia.
     return buildContractData({
@@ -138,6 +141,9 @@ export default function TioContract() {
   const fone = String(child.parentPhone || '').replace(/\D/g, '');
   const waHref = `https://wa.me/${fone ? (fone.startsWith('55') ? fone : `55${fone}`) : ''}?text=${encodeURIComponent(texto)}`;
   const pedeAceite = estado === 'aguardando' || estado === 'mudanca';
+  // VALOR ZERO NÃO: enquanto não há mensalidade e nenhuma versão emitida, o
+  // cartão diz o que falta (com o atalho) e não há documento para mostrar.
+  const semValor = !mostrada && valorDaMensalidadeFalta(child);
 
   return (
     <>
@@ -160,9 +166,11 @@ export default function TioContract() {
               Avisar a família no WhatsApp
             </a>
           )}
-          <Button variant="secondary" icon={Printer} onClick={() => window.print()}>
-            Imprimir ou salvar em PDF
-          </Button>
+          {!semValor && (
+            <Button variant="secondary" icon={Printer} onClick={() => window.print()}>
+              Imprimir ou salvar em PDF
+            </Button>
+          )}
         </div>
 
         {/* O HISTÓRICO: cada versão, com o que aconteceu com ela. */}
@@ -204,7 +212,7 @@ export default function TioContract() {
           </section>
         )}
 
-        {dados ? (
+        {semValor ? null : dados ? (
           <div className="bg-card rounded-3xl shadow-sm p-6 print:p-0 print:shadow-none print:rounded-none">
             <ContractView
               data={dados}

@@ -16,6 +16,7 @@
  * "Recebeu" também não: o app sabe que ELE tocou em mandar, não que a mensagem
  * chegou.
  */
+import { DIGA_O_VALOR } from './valorDoConvite.js';
 
 /** O contador do topo. O número vem de `resumoDosConvites`, nunca escrito. */
 export function contadorDeFamilias(entraram, total) {
@@ -111,7 +112,7 @@ export const ROTULOS = {
   mensalidade: 'Mensalidade',
   // A mensalidade é OBRIGATÓRIA no cadastro (decisão do dono, 14/11/2026):
   // o "(se quiser)" saiu daqui e da linha aberta.
-  erroSemValor: 'Diga o valor da mensalidade.',
+  erroSemValor: DIGA_O_VALOR, // a mesma frase do formulário completo (RC1)
   venceNoDia: (dia) => `vence todo dia ${dia}`,
   mesmoValorDaAnterior: 'O mesmo valor da criança anterior.',
   // Salvar sozinho

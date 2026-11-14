@@ -8,7 +8,7 @@ import { useDeclaracaoDaSessao } from '../../hooks/useDeclaracaoDaSessao';
 import DeclaracaoDeAutorizacao, { DeclaracaoJaFeita } from './DeclaracaoDeAutorizacao';
 import CampoDeValor from '../common/CampoDeValor';
 import { formatCurrency } from '../../compartilhado/formatters';
-import { valorObrigatorioNoCadastro } from '../../dominio/escola/listaDaTurma.js';
+import { valorDoCampoFalta } from '../../dominio/cobranca/valorDaMensalidade.js';
 import { ROTULOS } from '../../marca/textosDaLista.js';
 
 /**
@@ -56,7 +56,7 @@ export default function CadastroRapidoDaCrianca({ onSalva }) {
       setErro('Escreva o nome da criança.');
       return;
     }
-    if (valorObrigatorioNoCadastro(form.monthlyFee)) {
+    if (valorDoCampoFalta(form.monthlyFee)) {
       setErroValor(ROTULOS.erroSemValor);
       return;
     }
@@ -163,7 +163,7 @@ export default function CadastroRapidoDaCrianca({ onSalva }) {
           }}
           error={erroValor}
         />
-        {!valorObrigatorioNoCadastro(form.monthlyFee) && (
+        {!valorDoCampoFalta(form.monthlyFee) && (
           <p className="text-lg font-bold text-text">{formatCurrency(Number(form.monthlyFee))}</p>
         )}
       </div>

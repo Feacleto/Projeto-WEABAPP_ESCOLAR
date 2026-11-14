@@ -41,8 +41,8 @@ import {
   completaParaARota,
   camposAoSalvar,
   SEM_ESCOLA,
-  valorObrigatorioNoCadastro,
 } from '../src/dominio/escola/listaDaTurma.js';
+import { valorDoCampoFalta } from '../src/dominio/cobranca/valorDaMensalidade.js';
 import { blocosDaDirecao, normalizaHora } from '../src/dominio/rota/horarios.js';
 import {
   contadorDeFamilias,
@@ -404,20 +404,20 @@ eq('o formulário lembra a declaração só depois de salvar',
 
 bloco('11. Valor zero não: a mensalidade é obrigatória no cadastro (decisão do dono)');
 {
+  // A régua é UMA só, a da RC1 (`valorDaMensalidade.js`, testada por
+  // testar:valor-da-mensalidade). Aqui só se confere que a Lista a usa.
   const FALTA_VALOR = ['', null, undefined, 0, '0', '0.00', -10, 'abc', NaN];
-  const TEM_VALOR = [0.01, '350.00', 350, '3.50'];
-  eq('vazio, zero, negativo e lixo: falta o valor', FALTA_VALOR.map(valorObrigatorioNoCadastro), FALTA_VALOR.map(() => true));
-  eq('qualquer valor acima de zero passa', TEM_VALOR.map(valorObrigatorioNoCadastro), TEM_VALOR.map(() => false));
-  // MUTAÇÃO: trocar `> 0` por `>= 0` deixaria o zero passar — e o caso acima reprova.
-  const mutante = (v) => { const n = Number(v); return !(Number.isFinite(n) && n >= 0); };
-  eq('sonda de mutação: com ">= 0" o zero passaria (o caso do zero pega)', mutante(0) === valorObrigatorioNoCadastro(0), false);
-  const regua = ler('src/dominio/escola/listaDaTurma.js');
-  eq('a régua compara com "> 0" exato', /return !\(Number\.isFinite\(n\) && n > 0\);/.test(regua), true);
+  const TEM_VALOR = [0.01, '350.00', 350, '3.50', '350,00'];
+  eq('vazio, zero, negativo e lixo: falta o valor', FALTA_VALOR.map(valorDoCampoFalta), FALTA_VALOR.map(() => true));
+  eq('qualquer valor acima de zero passa (com vírgula também)', TEM_VALOR.map(valorDoCampoFalta), TEM_VALOR.map(() => false));
+  const regua = semComentarios(ler('src/dominio/escola/listaDaTurma.js'));
+  eq('a Lista não tem régua própria de valor (uma régua só)', /valorObrigatorioNoCadastro/.test(regua), false);
+  eq('"sem valor" da caixa delega para a régua da cobrança', /return valorDaMensalidadeFalta\(crianca\);/.test(regua), true);
 
   const add = semComentarios(ler('src/components/children/AdicionarCrianca.jsx'));
   const telaLista = semComentarios(ler('src/pages/tio/TioChildren.jsx'));
   eq('"+ Nome": sem valor válido o OK não cria (a régua vem ANTES do addChild)',
-    add.indexOf('valorObrigatorioNoCadastro(valor)') > -1 && add.indexOf('valorObrigatorioNoCadastro(valor)') < add.indexOf('addChild('), true);
+    add.indexOf('valorDoCampoFalta(valor)') > -1 && add.indexOf('valorDoCampoFalta(valor)') < add.indexOf('addChild('), true);
   eq('"+ Nome": e diz "Diga o valor da mensalidade."', /setErroValor\(ROTULOS\.erroSemValor\)/.test(add) && ROTULOS.erroSemValor === 'Diga o valor da mensalidade.', true);
   eq('"+ Nome": grava o valor e o vencimento na criança', /monthlyFee: Number\(valor\),\s*dueDay,/.test(add), true);
   eq('"+ Nome": já vem com o valor da anterior', /useState\(valorAnterior\)/.test(add) && /<AdicionarCrianca escola=\{ultimaEscola\} anterior=\{anterior\} \/>/.test(telaLista), true);
@@ -427,23 +427,23 @@ bloco('11. Valor zero não: a mensalidade é obrigatória no cadastro (decisão 
 
   const card = semComentarios(ler('src/components/children/CadastroRapidoDaCrianca.jsx'));
   eq('card do primeiro acesso: o valor é obrigatório (antes do addChild)',
-    card.indexOf('valorObrigatorioNoCadastro(form.monthlyFee)') > -1 &&
-      card.indexOf('valorObrigatorioNoCadastro(form.monthlyFee)') < card.indexOf('addChild('), true);
+    card.indexOf('valorDoCampoFalta(form.monthlyFee)') > -1 &&
+      card.indexOf('valorDoCampoFalta(form.monthlyFee)') < card.indexOf('addChild('), true);
   eq('card do primeiro acesso: grava o valor', /monthlyFee: Number\(form\.monthlyFee\)/.test(card), true);
   eq('card do primeiro acesso: não diz mais que a mensalidade é "depois"', /mensalidade você completa depois/.test(card), false);
 
   const vagaComComentario = ler('src/components/perua/FolhaDaVagaRapida.jsx');
   const vaga = semComentarios(vagaComComentario);
   eq('a vaga rápida é ISENTA, e diz por quê', /ISENTA DO VALOR OBRIGATÓRIO/.test(vagaComComentario) && /não é contrato nem\s*\* matrícula/.test(vagaComComentario), true);
-  eq('a vaga rápida não pede valor (nem a régua, nem o campo)', !/valorObrigatorioNoCadastro|CampoDeValor|monthlyFee/.test(vaga), true);
+  eq('a vaga rápida não pede valor (nem a régua, nem o campo)', !/valorDoCampoFalta|valorObrigatorioNoCadastro|CampoDeValor|monthlyFee/.test(vaga), true);
 
   const formCompleto = semComentarios(ler('src/components/children/ChildForm.jsx'));
-  eq('formulário completo: o passo 4 exige o valor', /if \(valorObrigatorioNoCadastro\(form\.monthlyFee\)\)\s*errs\.monthlyFee = 'Diga o valor da mensalidade\.'/.test(formCompleto), true);
+  eq('formulário completo: o passo 4 exige o valor', /if \(valorDoCampoFalta\(form\.monthlyFee\)\) errs\.monthlyFee = DIGA_O_VALOR;/.test(formCompleto), true);
   eq('formulário completo: o rascunho ("Salvar e completar depois") continua antes do passo 4',
     /canSaveEarly && step < TOTAL_STEPS/.test(formCompleto), true);
 
   eq('a linha aberta não diz mais "(se quiser)" na mensalidade', /seQuiser/.test(linha) || Object.hasOwn(ROTULOS, 'seQuiser'), false);
-  eq('a linha aberta não grava zero (usa a régua)', /if \(valorObrigatorioNoCadastro\(valor\)\) \{\s*setErro\(ROTULOS\.erroSemValor\)/.test(linha), true);
+  eq('a linha aberta não grava zero (usa a régua)', /if \(valorDoCampoFalta\(valor\)\) \{\s*setErro\(ROTULOS\.erroSemValor\)/.test(linha), true);
   eq('o grupo "sem valor" diz que é cadastro antigo ou rascunho', /Cadastro antigo ou salvo para completar depois/.test(SEM_VALOR.texto), true);
 
   // A lista não oferece contrato para criança sem valor: não há botão de

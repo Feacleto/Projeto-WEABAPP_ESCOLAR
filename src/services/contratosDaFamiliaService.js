@@ -18,6 +18,11 @@ import {
   mesmoConteudo,
   mudancasEntre,
 } from '../dominio/cobranca/contratoDaFamilia.js';
+import {
+  valorDaMensalidadeFalta,
+  valorDoCampoFalta,
+} from '../dominio/cobranca/valorDaMensalidade.js';
+import { FALTA_O_VALOR } from '../marca/valorDoConvite.js';
 
 /**
  * AS VERSÕES DO CONTRATO DE UMA CRIANÇA — `children/{id}/contratos/{numero}`
@@ -108,6 +113,11 @@ async function emitir({
   novosValores = null,
   naCrianca = {},
 }) {
+  // ⚠️ A ÚLTIMA TRANCA: toda versão do contrato, de qualquer caminho (primeira
+  // emissão, reemissão ou aditivo), passa por aqui. VALOR ZERO NÃO — decisão do
+  // dono. As telas avisam antes; esta linha garante que um caminho esquecido
+  // não grave "R$ 0,00" num documento que a família assina.
+  if (valorDoCampoFalta(dados?.finance?.monthlyFee)) throw new Error(FALTA_O_VALOR);
   const numero = proximoNumero(contratos);
   const pendente = versaoAguardando(contratos);
   const batch = writeBatch(db);
@@ -154,6 +164,8 @@ async function emitir({
  */
 export async function garantirContrato({ child, admin, contratos }) {
   if (!child || !contratos) return null;
+  // Sem valor não há o que emitir: a tela do motorista diz o que falta.
+  if (valorDaMensalidadeFalta(child)) return null;
   const estado = estadoDoContrato(child);
   if (estado !== 'sem-contrato' && estado !== 'aguardando') return null;
   const dados = buildContractData({ child, admin });
@@ -184,6 +196,9 @@ export async function garantirContrato({ child, admin, contratos }) {
  * Devolve `'direto'`, `'aditivo'` ou `'nada'` (quando nada do contrato mudou).
  */
 export async function salvarCombinado({ child, admin, contratos, novos }) {
+  // O combinado salvo sem valor deixaria a criança fora da cobrança do mês e
+  // sem contrato que valha — recusado aqui, mesmo que a tela não tenha pedido.
+  if (valorDaMensalidadeFalta({ ...child, ...novos })) throw new Error(FALTA_O_VALOR);
   const estado = estadoDoContrato(child);
   if (estado === 'sem-contrato' || estado === 'aguardando') {
     const naCrianca = { ...novos, updatedAt: serverTimestamp() };

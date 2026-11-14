@@ -14,11 +14,15 @@
  * "grátis", prazo de função nova e número solto. Número, só da régua.
  *
  * ⚠️ O MOMENTO 2 DIZ "aparece Entrou ✓ na lista" DESDE A RC2 (14/11/2026).
- * Na RC1 ele dizia "o 'Convite pendente' some", porque o selo não existia —
- * e nem essa frase era verdade: o `ChildCard`, único lugar da etiqueta, não
- * era mais montado por tela nenhuma. A Lista da turma (`ConviteEnxuto`, em
- * InviteShare.jsx) passou a mostrar o selo quando a família entra
- * (`parentUid`), e o teste confere que ele existe antes de a frase o citar.
+ * A RC1 dizia "sai do aviso 'ainda não entraram' no Início", porque o selo não
+ * existia (e antes dela, "o 'Convite pendente' some", apoiada no `ChildCard`,
+ * que nenhuma tela montava). Com a RC2 a frase da RC1 ficou FALSA: o aviso do
+ * Início passou a contar só quem ainda precisa de um toque (nunca recebeu ou o
+ * link venceu — `contarConvitesAMandar`), então a criança sai dele quando o
+ * convite é ENVIADO, não quando a família entra. O que muda quando ela entra é
+ * o selo da Lista da turma (`ConviteEnxuto`, em InviteShare.jsx, pelo
+ * `parentUid`), e o teste confere que essa tela é ALCANÇÁVEL a partir do
+ * `main.jsx` antes de a frase a citar.
  */
 
 /** O que o cartão chama o assunto. */
@@ -87,7 +91,7 @@ export const O_QUE_FAZER = {
   },
 };
 
-export const SUSTENTA_DO_ENVIADO = 'inviteUsedAt';
+export const SUSTENTA_DO_ENVIADO = 'entrou-na-lista';
 
 /**
  * Momento 2 — depois de mandar. Com o nome de quem recebe quando há, sem nome
@@ -181,3 +185,13 @@ export const ROTA_INICIADA_SEM_MAPA = 'Rota iniciada. A perua não aparece no ma
 export const CHAVE_CONVITE_ENVIADO = 'alobuzinou:valorDoConvite:enviado';
 export const EVENTO_CONVITE_ENVIADO = 'alobuzinou:convite-enviado';
 export const CHAVE_AVISO_DO_BANCO = 'alobuzinou:valorDoConvite:bancoVisto';
+
+/**
+ * ── 4ª RODADA: o valor da mensalidade é obrigatório (decisão do dono) ──
+ * Sem ele o contrato não é emitido e o servidor não gera a mensalidade.
+ * A frase diz só isso: não promete cobrança, prazo nem o que acontece depois.
+ */
+export const FALTA_O_VALOR =
+  'Falta o valor da mensalidade. Sem ele, o contrato não pode ser emitido e a mensalidade não é gerada.';
+export const DIGA_O_VALOR = 'Diga o valor da mensalidade.';
+export const ATALHO_DO_VALOR = 'Preencher o valor';

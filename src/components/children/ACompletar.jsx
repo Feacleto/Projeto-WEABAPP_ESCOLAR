@@ -9,6 +9,8 @@ import { useSalvarNaLista } from '../../hooks/useSalvarNaLista';
 import { procurarPontoDaCasa } from '../../services/listaDaTurmaService';
 import { FALTA, gruposACompletar, oQueFalta, resumoDaLinha } from '../../dominio/escola/listaDaTurma.js';
 import { normalizaHora } from '../../dominio/rota/horarios.js';
+import { valorDoCampoFalta } from '../../dominio/cobranca/valorDaMensalidade.js';
+import { DIGA_O_VALOR } from '../../marca/valorDoConvite.js';
 import { mascaraHora, maskPhone, unmaskPhone, isValidPhone } from '../../compartilhado/masks';
 import { montarEndereco } from '../../compartilhado/formatters';
 import {
@@ -147,7 +149,7 @@ function ItemDaFila({ falta, crianca, onProxima }) {
       if (!isValidPhone(valor)) return setErro('Telefone com DDD.');
       mudanca = { parentPhone: unmaskPhone(valor) };
     } else if (falta === FALTA.MENSALIDADE) {
-      if (!(Number(valor) > 0)) return setErro('Valor precisa ser maior que zero.');
+      if (valorDoCampoFalta(valor)) return setErro(DIGA_O_VALOR);
       mudanca = { monthlyFee: Number(valor) };
     } else if (falta === FALTA.NUMERO) {
       const partes = crianca.enderecoPartes;
