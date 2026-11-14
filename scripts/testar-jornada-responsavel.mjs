@@ -49,6 +49,14 @@ const R = require('../functions/lib/reguaDaTransferencia.js');
 const C = require('../functions/lib/reguaDaComunidade.js');
 
 const db = admin.firestore();
+
+// ⚠️ A COMUNIDADE LIGADA (14/11/2026, decisão 26). Ela nasce DESLIGADA no
+// servidor (`platformConfig/app.comunidadeLigada` ausente), e esta jornada
+// prova o comportamento dela LIGADA — parceiros, fotos e transferências. O
+// caso DESLIGADO mora em `testar-comunidade-fechada.mjs`. Toda escrita de
+// `platformConfig/app` aqui substitui o documento inteiro, então a chave vai
+// junto em cada uma; sem isso, ligar a cobrança desligaria a Comunidade.
+const COMUNIDADE_LIGADA = { comunidadeLigada: true };
 const bucket = admin.storage().bucket();
 const AUTH = `http://${HOST_AUTH}/identitytoolkit.googleapis.com/v1/accounts`;
 const BASE = `http://${HOST_FS}/v1/projects/${PID}/databases/(default)`;
@@ -126,7 +134,7 @@ async function main() {
   const Bt = 'tioB';
   const Ct = 'tioC';
   const tio = (nome, extra = {}) => ({ role: 'admin', name: nome, marcaNome: nome, plano: 'mensal', phone: '11999990000', ...extra });
-  await db.doc('platformConfig/app').set({ cobrancaLigada: true });
+  await db.doc('platformConfig/app').set({ cobrancaLigada: true, ...COMUNIDADE_LIGADA });
   await db.doc(`users/${A}`).set(tio('Tio Ana'));
   await db.doc(`users/${Bt}`).set(tio('Tio Beto'));
   await db.doc(`users/${Ct}`).set(tio('Tio Cadu'));
@@ -383,7 +391,7 @@ async function main() {
   checar('pedido vencido é recusado para a família', !venc.ok && venc.code === 'failed-precondition', `${venc.code} ${venc.message}`);
   const nN = (await db.doc('children/N').get()).data();
   checar('e a criança do pedido vencido continua com A, ativa', nN.adminUid === A && nN.active === true);
-  await db.doc('platformConfig/app').set({ cobrancaLigada: false });
+  await db.doc('platformConfig/app').set({ cobrancaLigada: false, ...COMUNIDADE_LIGADA });
   await db.doc('transferenciasDeFamilia/desligada').set({
     deUid: A, paraUid: Bt, familiaUid: fN.uid, childId: 'N', previa: {}, estado: R.ESTADO.PARCEIRO_ACEITOU, familiaVe: true, criadoEm: T(agora), expiraEm: T(agora + 86400000),
   });

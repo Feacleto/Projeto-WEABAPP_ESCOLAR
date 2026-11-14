@@ -48,6 +48,14 @@ const { fotografarBase } = require('../functions/lib/fotoDaBase.js');
 const { chaveDoDia } = require('../functions/lib/reguaDoRetrato.js');
 
 const db = admin.firestore();
+
+// ⚠️ A COMUNIDADE LIGADA (14/11/2026, decisão 26). Ela nasce DESLIGADA no
+// servidor (`platformConfig/app.comunidadeLigada` ausente), e esta jornada
+// prova o comportamento dela LIGADA — parceiros, fotos e transferências. O
+// caso DESLIGADO mora em `testar-comunidade-fechada.mjs`. Toda escrita de
+// `platformConfig/app` aqui substitui o documento inteiro, então a chave vai
+// junto em cada uma; sem isso, ligar a cobrança desligaria a Comunidade.
+const COMUNIDADE_LIGADA = { comunidadeLigada: true };
 const { Timestamp } = admin.firestore;
 
 let ok = 0;
@@ -112,7 +120,7 @@ const CRIANCA = (id, extra = {}) => db.doc(`children/${id}`).set({
 async function main() {
   await limpar();
   await semearTios();
-  await db.doc('platformConfig/app').set({ cobrancaLigada: true });
+  await db.doc('platformConfig/app').set({ cobrancaLigada: true, ...COMUNIDADE_LIGADA });
 
   // ───────────────────────────────────────────────────────────────────────
   bloco('1. Assinar com documento: um CPF, uma conta');
@@ -274,11 +282,11 @@ async function main() {
   checar('o 11º pedido do mês: recusado', 'failed-precondition', codigo(teto));
   checar('com a frase do teto', true, /10 famílias/.test(teto.erro?.message || ''));
 
-  await db.doc('platformConfig/app').set({ cobrancaLigada: false });
+  await db.doc('platformConfig/app').set({ cobrancaLigada: false, ...COMUNIDADE_LIGADA });
   const desl = await chamar('pedirTransferencia', TIO_A, { childId: 'cr4', parceiroUid: TIO_B });
   checar('com a cobrança desligada, pedir é recusado', 'failed-precondition', codigo(desl));
   checar('pela razão certa', true, /ainda não está disponível/.test(desl.erro?.message || ''));
-  await db.doc('platformConfig/app').set({ cobrancaLigada: true });
+  await db.doc('platformConfig/app').set({ cobrancaLigada: true, ...COMUNIDADE_LIGADA });
 
   // ───────────────────────────────────────────────────────────────────────
   bloco('6. Suspensão pelo dono');
@@ -314,9 +322,9 @@ async function main() {
   // o caso inválido agora é suspender por ATRASO com a cobrança DESLIGADA.
   // ⚠️ A jornada liga a cobrança no bloco 5, e com ela ligada "atraso" é
   // motivo válido: desliga só em volta deste caso e religa depois.
-  await db.doc('platformConfig/app').set({ cobrancaLigada: false });
+  await db.doc('platformConfig/app').set({ cobrancaLigada: false, ...COMUNIDADE_LIGADA });
   const s5 = await chamar('suspenderConta', DONO, { ...pedido, alvoUid: TIO_B, motivo: 'atraso' });
-  await db.doc('platformConfig/app').set({ cobrancaLigada: true });
+  await db.doc('platformConfig/app').set({ cobrancaLigada: true, ...COMUNIDADE_LIGADA });
   checar('atraso com a cobrança desligada é recusado', 'invalid-argument', codigo(s5));
   checar('com a frase certa', true, /não existe atraso/.test(s5.erro?.message || ''));
   checar('e B segue sem suspensão', undefined, (await db.doc(`users/${TIO_B}`).get()).data().suspenso);
