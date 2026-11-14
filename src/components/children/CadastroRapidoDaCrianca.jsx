@@ -4,6 +4,8 @@ import Button from '../common/Button';
 import Input from '../common/Input';
 import { useEscolas } from '../../hooks/useEscolas';
 import { addChild } from '../../services/childrenService';
+import { useDeclaracaoDaSessao } from '../../hooks/useDeclaracaoDaSessao';
+import DeclaracaoDeAutorizacao, { DeclaracaoJaFeita } from './DeclaracaoDeAutorizacao';
 
 /**
  * O CADASTRO RÁPIDO DA CRIANÇA — dentro do primeiro acesso (04/10/2026,
@@ -30,6 +32,8 @@ export default function CadastroRapidoDaCrianca({ onSalva }) {
   const [form, setForm] = useState({ name: '', gender: '', schoolId: '', school: '', period: '', parentName: '' });
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
+  // A declaração de autorização: uma pergunta por sessão, um registro por criança.
+  const declaracao = useDeclaracaoDaSessao();
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   const escolherEscola = (e) =>
@@ -45,12 +49,16 @@ export default function CadastroRapidoDaCrianca({ onSalva }) {
       setErro('Escreva o nome da criança.');
       return;
     }
+    if (!declaracao.confirmar()) return;
     setErro('');
     setSalvando(true);
     try {
       const escola = escolas.find((e) => e.id === form.schoolId) || null;
       const { id } = await addChild({
         name: form.name,
+        // Só chega aqui com a declaração feita (marcada agora ou nesta sessão);
+        // o `addChild` recusa criança sem ela.
+        autorizacaoDeclarada: true,
         gender: form.gender || null,
         parentName: form.parentName,
         ...(escola
@@ -65,6 +73,7 @@ export default function CadastroRapidoDaCrianca({ onSalva }) {
           : { school: form.school }),
         ...(form.period ? { period: form.period, pickupPeriod: form.period, dropoffPeriod: form.period } : {}),
       });
+      declaracao.lembrar();
       onSalva({ id, nome: form.name.trim().split(/\s+/)[0] });
     } catch (err) {
       console.error('[cadastro rápido] não salvou:', err);
@@ -132,6 +141,15 @@ export default function CadastroRapidoDaCrianca({ onSalva }) {
         />
       </div>
       <Input falar="nome" label="Nome do responsável" value={form.parentName} onChange={set('parentName')} />
+      {declaracao.jaDeclarou ? (
+        <DeclaracaoJaFeita />
+      ) : (
+        <DeclaracaoDeAutorizacao
+          marcada={declaracao.marcada}
+          onChange={declaracao.marcar}
+          erro={declaracao.erro}
+        />
+      )}
       <p className="text-sm text-textMuted">Endereço, WhatsApp e mensalidade você completa depois, na ficha.</p>
       <Button type="submit" loading={salvando} className="shadow-focus">
         Salvar criança

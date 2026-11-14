@@ -16,7 +16,8 @@
  *   node scripts/testar-abas.mjs      (ou: npm run testar:abas)
  */
 
-import { indiceDaAba } from '../src/compartilhado/abaAtiva.js';
+import { readFileSync } from 'node:fs';
+import { indiceDaAba, semBarraDeBaixo } from '../src/compartilhado/abaAtiva.js';
 
 let ok = 0;
 let bad = 0;
@@ -95,6 +96,36 @@ checar('duas abas: a primeira em 25%', 25, centro(0, 2));
 checar('duas abas: a segunda em 75%', 75, centro(1, 2));
 // A fórmula é geral de propósito: uma terceira aba não pede conta nova.
 checar('três abas: a do meio em 50%', 50, centro(1, 3));
+
+bloco('6. O cadastro da criança não tem a barra de baixo — nas DUAS rotas do mesmo formulário');
+checar('cadastrar: /tio/children/new', true, semBarraDeBaixo('/tio/children/new'));
+checar('completar: /tio/children/:id/completar', true, semBarraDeBaixo('/tio/children/abc123/completar'));
+checar('completar com barra no fim', true, semBarraDeBaixo('/tio/children/abc123/completar/'));
+checar('a ficha da criança TEM a barra', false, semBarraDeBaixo('/tio/children/abc123'));
+checar('a lista de crianças TEM a barra', false, semBarraDeBaixo('/tio/children'));
+checar('o contrato da criança TEM a barra', false, semBarraDeBaixo('/tio/children/abc123/contract'));
+checar('o Início TEM a barra', false, semBarraDeBaixo('/tio'));
+checar('a Carteira TEM a barra', false, semBarraDeBaixo('/tio/finance'));
+checar('caminho vazio ou ausente TEM a barra', false, semBarraDeBaixo(undefined));
+const lerArq = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const layout = lerArq('../src/pages/tio/TioLayout.jsx');
+checar('o TioLayout decide a barra por semBarraDeBaixo (e não por startsWith solto)',
+  true, layout.includes('!semBarraDeBaixo(location.pathname) && <BottomNav'));
+const app = lerArq('../src/App.jsx');
+checar('as duas rotas montam o mesmo ChildForm (por isso as duas escondem a barra)',
+  true,
+  /path="children\/new" element=\{<ChildForm \/>\}/.test(app)
+  && /path="children\/:id\/completar" element=\{<ChildForm \/>\}/.test(app));
+
+bloco('7. Encerrar a rota leva ao Início, não à Carteira');
+const semComentario = layout.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+checar('encerrou com a tela da rota aberta: navega para /tio',
+  true,
+  /if \(!carregandoRota && !emRota && naTelaDaRota\) navigate\('\/tio', \{ replace: true \}\);/.test(semComentario));
+checar('nenhum navigate do layout manda a rota encerrada para /tio/finance',
+  false, /navigate\('\/tio\/finance'/.test(semComentario));
+checar('iniciar a rota ainda tranca o dinheiro (trancar ao ver emRota)',
+  true, /if \(emRota\) trancar\(\);/.test(semComentario));
 
 console.log(`\n${'═'.repeat(64)}`);
 console.log(`  ${ok} passaram, ${bad} falharam`);

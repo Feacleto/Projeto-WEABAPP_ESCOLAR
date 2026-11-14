@@ -13,6 +13,7 @@ import {
 import { auth, db } from '../firebase/config';
 import { generateInviteCode } from '../dominio/identidade/generateInviteCode';
 import { chaveDoTelefone } from '../dominio/identidade/indicacao.js';
+import { camposDaDeclaracao, ERRO_DA_DECLARACAO } from '../dominio/identidade/autorizacaoDeclarada.js';
 import { inviteCodeExists } from './inviteCodeService';
 import { playSound } from './soundService';
 
@@ -78,6 +79,20 @@ export function reservarIdDeCrianca() {
 }
 
 export async function addChild(data) {
+  // ⚠️ SEM DECLARAÇÃO, NÃO SE CADASTRA — e é aqui, não nas telas, que isso
+  // se garante. Os três caminhos (formulário completo, cadastro rápido do
+  // primeiro acesso e vaga rápida da perua) passam por esta função, e toda
+  // criança nasce com `autorizacaoDeclarada`, a data e QUEM declarou. A tela
+  // pode perguntar uma vez por sessão; o registro é por criança. O `true`
+  // nunca é completado aqui: ou a tela trouxe a declaração, ou nada é gravado
+  // (e a checagem vem ANTES de gastar rede com o código do convite).
+  const declaracao = camposDaDeclaracao({
+    declarada: data.autorizacaoDeclarada,
+    uid: auth.currentUser?.uid,
+    quando: serverTimestamp(),
+  });
+  if (!declaracao) throw new Error(ERRO_DA_DECLARACAO);
+
   const inviteCode = await generateUniqueInviteCode();
 
   const payload = {
@@ -167,6 +182,7 @@ export async function addChild(data) {
       ? { vigenciaInicio: data.vigenciaInicio, vigenciaFim: data.vigenciaFim }
       : {}),
     notes: data.notes?.trim() || '',
+    ...declaracao,
     // Posta pelo assento da perua só com o nome (05/10/2026): "falta completar".
     ...(data.cadastroRapido ? { cadastroRapido: true } : {}),
     inviteCode,
@@ -243,6 +259,27 @@ export async function updateChild(id, data) {
   if ('active' in updates) {
     throw new Error(
       'Use deactivateChild: `active` decide a fatura e tem caminho próprio.'
+    );
+  }
+  // A DECLARAÇÃO SÓ ENTRA COMPLETA, COM DATA E AUTOR DO SERVIDOR. Quem
+  // completa uma criança posta pelo assento antes de a declaração existir
+  // (cadastro de antes de 14/11/2026) a declara agora, e a data e o uid vêm
+  // daqui — o chamador nunca escolhe quando nem quem. `Em` e `Por` avulsos
+  // são descartados: reescrever só um dos três seria fabricar a história.
+  // Quem já tem a declaração gravada não a reenvia (o formulário a tira do
+  // payload), e por isso a data original nunca é sobrescrita.
+  const autorizacaoDeclarada = updates.autorizacaoDeclarada;
+  delete updates.autorizacaoDeclarada;
+  delete updates.autorizacaoDeclaradaEm;
+  delete updates.autorizacaoDeclaradaPor;
+  if (autorizacaoDeclarada === true) {
+    Object.assign(
+      updates,
+      camposDaDeclaracao({
+        declarada: true,
+        uid: auth.currentUser?.uid,
+        quando: serverTimestamp(),
+      }) || {}
     );
   }
   if ('lat' in updates) updates.lat = toCoord(updates.lat);

@@ -10,6 +10,7 @@ import { useChildren } from '../../hooks/useChildren';
 import CadastroRapidoDaCrianca from '../../components/children/CadastroRapidoDaCrianca';
 import PassoDasVagas from '../../components/perua/PassoDasVagas';
 import { definirVagasDaPerua } from '../../services/configFinanceiroService';
+import { lembrarDaDeclaracao } from '../../dominio/identidade/autorizacaoDeclarada.js';
 import { VAGAS_SUGERIDAS } from '../../dominio/identidade/vagasDaPerua.js';
 import { lugarDaPosicaoAtual } from '../../services/locationService';
 import { uploadMarcaLogo, deleteMarcaLogo } from '../../services/photoService';
@@ -405,7 +406,15 @@ export default function PrimeiroAcesso({ config, onAdiarVagas }) {
                 Agora, a sua turma
               </h2>
               <p className="mt-1.5 text-base text-textMuted">Cadastre as crianças que você leva.</p>
-              {/* A declaração do cadastro de hoje, uma vez para a turma toda. */}
+              {/* A declaração do cadastro de hoje, uma vez para a turma toda.
+                * ⚠️ ELA CONTA COMO A DECLARAÇÃO DA SESSÃO: ao tocar no botão
+                * abaixo (que só acende com a caixa marcada), o app lembra que
+                * este motorista já declarou, e o cadastro rápido de cada
+                * criança não pergunta de novo. O REGISTRO continua sendo de
+                * cada criança (`addChild` grava a declaração, a data e o uid
+                * em cada documento). Quem chega ao cadastro sem passar por
+                * aqui (retomou o card depois de fechar o app) é perguntado
+                * pelo próprio cadastro rápido. */}
               <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-primarySoft p-3 text-base text-text">
                 <input
                   type="checkbox"
@@ -419,7 +428,10 @@ export default function PrimeiroAcesso({ config, onAdiarVagas }) {
                 <Button
                   type="button"
                   disabled={!autorizou}
-                  onClick={() => setMomentoDaTurma('ficha')}
+                  onClick={() => {
+                    if (autorizou) lembrarDaDeclaracao(user?.uid);
+                    setMomentoDaTurma('ficha');
+                  }}
                   className="shadow-focus"
                 >
                   {n > 0 ? 'Cadastrar mais uma criança' : 'Cadastrar a primeira criança'}

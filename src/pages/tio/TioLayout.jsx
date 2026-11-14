@@ -3,7 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMarcosDoApp } from '../../hooks/useMarcosDoApp';
 import { Bus, Home, Users, Wallet } from 'lucide-react';
 import BottomNav from '../../components/layout/BottomNav';
-import { indiceDaAba } from '../../compartilhado/abaAtiva';
+import { indiceDaAba, semBarraDeBaixo } from '../../compartilhado/abaAtiva';
 import InstallPrompt from '../../components/common/InstallPrompt';
 import ConvitePush from '../../components/tio/ConvitePush';
 import InteractiveTour from '../../components/tutorial/InteractiveTour';
@@ -50,8 +50,9 @@ import {
  * parado. O rodapé é o espaço mais caro do aparelho (sempre visível, onde o
  * polegar descansa), e metade dele estava com o trabalho mais raro.
  *
- * "Rota" saiu do rodapé fixo e VOLTOU como aba que só existe enquanto a
- * rota roda (03/10/2026 — ver `ABA_DA_ROTA` abaixo).
+ * "Rota" saiu do rodapé fixo e VOLTOU, mas não como aba a mais: enquanto a
+ * rota roda, a última aba (a Carteira) passa a se chamar "Rota" e a levar à
+ * tela da rota (ver `ITENS_EM_ROTA` abaixo).
  * "Crianças" saiu porque virou uma linha escrita na home.
  *
  * TIRAR DA ABA NÃO É ESCONDER. `/tio/children` e `/tio/route/now` continuam
@@ -65,6 +66,11 @@ import {
  * densidade): Início · Comunidade · Carteira. Ela era uma linha no Início, e
  * é onde o tio fala com os parceiros e posta a foto da turma — uso de todo
  * dia, sem senha. Na rota ela continua no meio; só a Carteira vira Rota.
+ *
+ * ⚠️ MAS SÓ A PARTIR DO OURO (30/10/2026): abaixo dele a Comunidade não
+ * aparece, e o motorista novo vê DUAS abas — Início · Carteira (na rota,
+ * Início · Rota). A lista abaixo é a do Ouro; quem filtra é o `itens`, dentro
+ * do componente.
  */
 const ABA_DA_COMUNIDADE = { to: '/tio/comunidade', label: 'Comunidade', icon: Users, tour: 'nav-comunidade' };
 
@@ -80,8 +86,9 @@ const NAV_ITEMS = [
 ];
 
 /**
- * ⚠️ NA ROTA, A SEGUNDA ABA É A TELA DA ROTA (04/10/2026, simulação "Rota e
- * Central" aprovada pelo dono).
+ * ⚠️ NA ROTA, A ÚLTIMA ABA É A TELA DA ROTA (04/10/2026, simulação "Rota e
+ * Central" aprovada pelo dono). É a posição da Carteira: terceira no Ouro,
+ * segunda abaixo dele (onde não há Comunidade).
  *
  * ⚠️ A CENTRAL VIROU CARTEIRA (05/10/2026, decisão do dono): o nome pensa no
  * futuro financeiro do app. Duas condições: na rota a aba NÃO se chama
@@ -89,12 +96,14 @@ const NAV_ITEMS = [
  * rota); e, enquanto o app não guarda dinheiro, a tela não sugere que guarda
  * (`npm run testar:nome-da-carteira`).
  *
- * O rodapé tem SEMPRE três abas: Início · Comunidade · Carteira. Fora da rota a Carteira é
- * a do motorista (o caixa, atrás da senha). Com a rota rodando, a MESMA posição
- * vira "Rota" e leva à tela da rota, que é o lugar da auxiliar: sem senha, sem
- * valor nenhum. A bolinha verde (`ponto`) avisa que a rota está rodando.
+ * O rodapé tem TRÊS abas a partir do Ouro (Início · Comunidade · Carteira) e
+ * DUAS abaixo dele (Início · Carteira): a Comunidade só aparece no Ouro. Fora
+ * da rota a Carteira é a do motorista (o caixa, atrás da senha). Com a rota
+ * rodando, a MESMA posição vira "Rota" e leva à tela da rota, que é o lugar da
+ * auxiliar: sem senha, sem valor nenhum. A bolinha verde (`ponto`) avisa que a
+ * rota está rodando. Só a Carteira muda; Início e Comunidade ficam onde estão.
  *
- * Era uma terceira aba, "Rota", que aparecia no meio só durante a rota. Saiu
+ * Era uma aba a mais, "Rota", que aparecia no meio só durante a rota. Saiu
  * porque a auxiliar e o motorista passaram a ter UM lugar cada, e o lugar da
  * auxiliar é a rota.
  *
@@ -276,11 +285,16 @@ export default function TioLayout() {
     (i) => i !== ABA_DA_COMUNIDADE || comunidadeLiberada
   );
   const naTelaDaRota = location.pathname.startsWith('/tio/route/now');
-  // Encerrou com a tela da rota aberta: a Carteira volta a ser do motorista
-  // (`/tio/finance`, que pede a senha). Só depois de ler o documento — durante
-  // a leitura "sem rota" é desconhecido, não falso.
+  // ⚠️ ENCERRAR A ROTA LEVA AO INÍCIO (decisão do dono, 14/11/2026). Encerrou
+  // com a tela da rota aberta: o motorista termina a viagem no Início, onde a
+  // turma e o dia dele moram — e não diante do teclado de senha do dinheiro.
+  // Era `/tio/finance` porque a Carteira voltava a ser dele (a aba deixa de
+  // ser "Rota"), mas o primeiro que ele via ao fim da corrida era a tela de
+  // senha, como se tivesse feito algo errado. A Carteira continua a um toque,
+  // atrás da senha de sempre. Só depois de ler o documento — durante a
+  // leitura "sem rota" é desconhecido, não falso.
   useEffect(() => {
-    if (!carregandoRota && !emRota && naTelaDaRota) navigate('/tio/finance', { replace: true });
+    if (!carregandoRota && !emRota && naTelaDaRota) navigate('/tio', { replace: true });
   }, [carregandoRota, emRota, naTelaDaRota, navigate]);
 
   // ⚠️ A ROTA TRANCA O DINHEIRO. Com a rota rodando, quem segura o celular
@@ -400,9 +414,10 @@ export default function TioLayout() {
         * dela. Pelo índice, a animação toca exatamente quando o rodapé muda de
         * lugar, que é o movimento que ela existe para explicar.
         *
-        * O lado sai do índice: 0 é o Início (mora à esquerda), 1 é o
-        * Financeiro (à direita). Quem não é aba entra sem direção — inventar
-        * um lado ensinaria uma geografia que não existe. */}
+        * O lado sai do índice: 0 é o Início (mora à esquerda), qualquer outra
+        * aba (Comunidade, Carteira ou Rota) mora à direita. Quem não é aba
+        * entra sem direção — inventar um lado ensinaria uma geografia que
+        * não existe. */}
       <div key={abaAtiva} className={entradaDaTela} >
         {/* ⚠️ O GUARDA DO FINANCEIRO ENVOLVE O OUTLET INTEIRO (03/10/2026) e
           * decide pelo CAMINHO: só age em `/tio/finance…`. Assim toda tela
@@ -414,7 +429,10 @@ export default function TioLayout() {
           </GuardaDoFinanceiro>
         </AvisosDoCabecalhoProvider>
       </div>
-      {/* ⚠️ O CADASTRO DA CRIANÇA NÃO TEM A BARRA DE BAIXO (02/10/2026).
+      {/* ⚠️ O CADASTRO DA CRIANÇA NÃO TEM A BARRA DE BAIXO (02/10/2026) — NEM
+        * QUANDO ELE É O "COMPLETAR" (`/tio/children/:id/completar`, o MESMO
+        * `ChildForm`). Quem decide é `semBarraDeBaixo`, que lista as duas
+        * rotas.
         * Ele é um passo a passo com "Cancelar" e "Avançar" próprios, num
         * rodapé fixo. A tela mora dentro do `div` da animação de entrada, e
         * animação (transform/opacidade) cria um contexto de empilhamento: o
@@ -422,7 +440,7 @@ export default function TioLayout() {
         * ficava POR CIMA do "Avançar" — o motorista não saía do passo 1.
         * Achado do teste no navegador (M3). Num passo a passo a barra também
         * é a saída que perde o que ele digitou. */}
-      {!location.pathname.startsWith('/tio/children/new') && <BottomNav items={itens} />}
+      {!semBarraDeBaixo(location.pathname) && <BottomNav items={itens} />}
       <InstallPrompt />
       <InteractiveTour
         open={!!tour}
