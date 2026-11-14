@@ -22,6 +22,7 @@ const {
 const { makeEnviarAvisosComerciais } = require('./lib/enviarAvisos');
 const { makeCasarNoCadastro } = require('./lib/casarNoCadastro');
 const { makeVincularIrmao, makeRecusarIrmao } = require('./lib/vincularIrmao');
+const { makeIrmaoNaTrocaDoTelefone, makeResponderIrmao } = require('./lib/perguntaDoIrmao');
 const { makeDesvincularResponsavel } = require('./lib/desvincularResponsavel');
 const { makeAceitarContrato } = require('./lib/aceitarContrato');
 const { makeInformarTelefoneDaEscola } = require('./lib/telefoneDaEscola');
@@ -443,6 +444,12 @@ exports.casarIndicacaoNoCadastro = makeCasarNoCadastro(db);
 // Ver o cabeçalho de `vincularIrmao.js` e a régua em `reguaDoIrmao.js`.
 exports.vincularIrmaoNoCadastro = makeVincularIrmao(db);
 exports.recusarIrmao = makeRecusarIrmao(db);
+// O TELEFONE DIGITADO DEPOIS (14/11/2026): na TROCA de `parentPhone` o
+// servidor PERGUNTA à mãe ("É seu filho?") em vez de vincular sozinho; abre o
+// pedido de quem esperava pelo número; e dá a `phoneChave` à família que
+// entrou pelo link sem número. Ver `perguntaDoIrmao.js`.
+exports.irmaoNaTrocaDoTelefone = makeIrmaoNaTrocaDoTelefone(db);
+exports.responderIrmao = makeResponderIrmao(db);
 // Tirar UMA criança da conta da família sem apagar a conta — ver o arquivo.
 exports.desvincularResponsavel = makeDesvincularResponsavel(db);
 exports.aceitarContrato = makeAceitarContrato(db);

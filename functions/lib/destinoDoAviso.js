@@ -22,6 +22,8 @@ const DESTINO_DO_AVISO = {
   absence_confirm: '/pai',
   schedule_changed: '/pai/child',
   irmao_vinculado: '/pai',
+  // A pergunta "É seu filho?" mora no Início, com os dois botões.
+  irmao_pergunta: '/pai',
   acesso_aprovado: '/pai',
   acesso_recusado: '/pai',
   // A foto da turma e a pergunta dela moram no Início da família.
