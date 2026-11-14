@@ -7,6 +7,9 @@ import { useDeclaracaoDaSessao } from '../../hooks/useDeclaracaoDaSessao';
 import DeclaracaoDeAutorizacao, { DeclaracaoJaFeita } from './DeclaracaoDeAutorizacao';
 import { ROTULOS, DECLARACAO_UMA_VEZ } from '../../marca/textosDaLista.js';
 import { CLASSE_DO_CAMPO } from './CamposDaLinha';
+import CampoDeValor from '../common/CampoDeValor';
+import { formatCurrency } from '../../compartilhado/formatters';
+import { valorObrigatorioNoCadastro } from '../../dominio/escola/listaDaTurma.js';
 
 /**
  * A LINHA "+ Nome da criança" — SEMPRE ABERTA NO FIM DA LISTA (RC2).
@@ -24,11 +27,23 @@ import { CLASSE_DO_CAMPO } from './CamposDaLinha';
  * criança (decisão 29): `useDeclaracaoDaSessao` lembra por sessão e por
  * usuário, em memória; o `addChild` grava os três campos (`autorizacaoDeclarada`,
  * a data do servidor e quem). Sem a caixa marcada, nada é criado.
+ *
+ * ⚠️ VALOR ZERO NÃO (decisão do dono, 14/11/2026). A linha pede também a
+ * MENSALIDADE, obrigatória (`valorObrigatorioNoCadastro`), já PREENCHIDA com
+ * o valor e o vencimento da criança anterior (`anterior`) — a turma costuma
+ * ter o mesmo preço, e a segunda criança continua custando só o nome e o OK.
+ * A primeira criança dele digita o valor. O valor aparece em destaque
+ * ("R$ 350,00") e por extenso antes do OK: o campo é de caixa eletrônico, e
+ * "350" vira R$ 3,50 — é a letra grande que pega o engano.
  */
-export default function AdicionarCrianca({ escola, onCriada }) {
+export default function AdicionarCrianca({ escola, anterior = null, onCriada }) {
   const id = useId();
   const campo = useRef(null);
   const [nome, setNome] = useState('');
+  const valorAnterior = Number(anterior?.monthlyFee) > 0 ? Number(anterior.monthlyFee).toFixed(2) : '';
+  const [valor, setValor] = useState(valorAnterior);
+  const [erroValor, setErroValor] = useState('');
+  const dueDay = anterior?.dueDay || 10;
   const [salvando, setSalvando] = useState(false);
   const declaracao = useDeclaracaoDaSessao();
 
@@ -37,6 +52,10 @@ export default function AdicionarCrianca({ escola, onCriada }) {
     const limpo = nome.trim();
     if (!limpo || salvando) return;
     if (!declaracao.confirmar()) return;
+    if (valorObrigatorioNoCadastro(valor)) {
+      setErroValor(ROTULOS.erroSemValor);
+      return;
+    }
     setSalvando(true);
     try {
       const { id: novoId } = await addChild({
@@ -44,6 +63,8 @@ export default function AdicionarCrianca({ escola, onCriada }) {
         // Só chega aqui com a declaração feita (marcada agora ou nesta sessão).
         autorizacaoDeclarada: true,
         cadastroRapido: true,
+        monthlyFee: Number(valor),
+        dueDay,
         ...(escola ? camposDaEscola(escola) : {}),
       });
       declaracao.lembrar();
@@ -97,6 +118,25 @@ export default function AdicionarCrianca({ escola, onCriada }) {
           <Plus size={18} aria-hidden="true" />
           {ROTULOS.ok}
         </button>
+      </div>
+      <div className="space-y-1 px-1">
+        <CampoDeValor
+          label={ROTULOS.mensalidade}
+          value={valor}
+          onChange={(v) => {
+            setErroValor('');
+            setValor(v);
+          }}
+          error={erroValor}
+        />
+        {!valorObrigatorioNoCadastro(valor) && (
+          <p className="text-lg font-bold text-text">
+            {formatCurrency(Number(valor))} · {ROTULOS.venceNoDia(dueDay)}
+          </p>
+        )}
+        {valorAnterior && valor === valorAnterior && (
+          <p className="text-sm text-textMuted">{ROTULOS.mesmoValorDaAnterior}</p>
+        )}
       </div>
       {escola?.nome && <p className="px-1 text-sm text-textMuted">{ROTULOS.naEscola(escola.nome)}</p>}
     </form>

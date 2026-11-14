@@ -9,7 +9,13 @@ import CampoDaRua from './CampoDaRua';
 import { CampoQueSalva, EscolhaQueSalva, RotuloDoCampo } from './CamposDaLinha';
 import { useSalvarNaLista } from '../../hooks/useSalvarNaLista';
 import { camposDaEscola } from '../../services/listaDaTurmaService';
-import { fraseDeEstado, resumoDaLinha, NOME_DA_FALTA, FALTA } from '../../dominio/escola/listaDaTurma.js';
+import {
+  fraseDeEstado,
+  resumoDaLinha,
+  NOME_DA_FALTA,
+  FALTA,
+  valorObrigatorioNoCadastro,
+} from '../../dominio/escola/listaDaTurma.js';
 import { formatCurrency } from '../../compartilhado/formatters';
 import { ROTULOS } from '../../marca/textosDaLista.js';
 
@@ -24,7 +30,7 @@ import { ROTULOS } from '../../marca/textosDaLista.js';
  *
  * ABERTA: os campos na ordem em que ele os sabe — nome, menino ou menina,
  * escola, hora de pegar, nome da mãe, rua e número, WhatsApp da mãe (se
- * souber) e mensalidade (se quiser). Sem botão "Salvar" e sem "tem certeza?".
+ * souber) e mensalidade (obrigatória desde 14/11/2026: apagar não grava zero). Sem botão "Salvar" e sem "tem certeza?".
  *
  * ⚠️ DUAS COISAS NÃO SE MEXEM DAQUI, E A FICHA CONTINUA SENDO O CAMINHO:
  *  - o RESPONSÁVEL de quem já entrou no app (a ficha também só deixa editar
@@ -216,19 +222,28 @@ function CorpoDaLinha({ child, escolas, onAbrirFicha, onRecado, onTirar }) {
   );
 }
 
-/** A mensalidade grava ao sair do campo; o extenso embaixo é a conferência. */
+/**
+ * A mensalidade grava ao sair do campo; o extenso embaixo é a conferência.
+ * OBRIGATÓRIA (decisão do dono): apagar o valor não grava zero — a linha diz
+ * "Diga o valor da mensalidade." e o valor salvo continua.
+ */
 function CampoDaMensalidade({ child, salvar, estado, onTentar }) {
   const inicial = Number(child.monthlyFee) > 0 ? Number(child.monthlyFee).toFixed(2) : '';
   const [valor, setValor] = useState(inicial);
+  const [erro, setErro] = useState('');
   const sair = () => {
-    const n = Number(valor);
-    if (!(n > 0) || valor === inicial) return;
-    salvar('mensalidade', { monthlyFee: n });
+    if (valorObrigatorioNoCadastro(valor)) {
+      setErro(ROTULOS.erroSemValor);
+      return;
+    }
+    setErro('');
+    if (valor === inicial) return;
+    salvar('mensalidade', { monthlyFee: Number(valor) });
   };
   return (
     <div onBlur={sair}>
-      <RotuloDoCampo rotulo={ROTULOS.mensalidade} extra={ROTULOS.seQuiser} estado={estado} onTentar={onTentar} />
-      <CampoDeValor value={valor} onChange={setValor} />
+      <RotuloDoCampo rotulo={ROTULOS.mensalidade} estado={estado} onTentar={onTentar} />
+      <CampoDeValor value={valor} onChange={(v) => { setErro(''); setValor(v); }} error={erro} />
     </div>
   );
 }

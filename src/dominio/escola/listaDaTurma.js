@@ -402,3 +402,29 @@ export function proporHorasDePegar({ criancas, escola, entrada }) {
     .filter((p) => p.minutos >= 0)
     .map(({ child, minutos }) => ({ child, hora: deMinutos(minutos) }));
 }
+
+// ============================================================================
+// O valor da mensalidade é obrigatório no cadastro (decisão do dono, 14/11/2026)
+// ============================================================================
+
+/**
+ * "VALOR ZERO NÃO." Ao CADASTRAR uma criança (a linha "+ Nome" da lista e o
+ * cadastro rápido do card do primeiro acesso), o tio diz o valor da
+ * mensalidade. Sem valor a mensalidade do mês não nasce (`billing.js` pula
+ * `fee <= 0`) e o contrato sairia de R$ 0,00.
+ *
+ * Devolve `true` quando o valor FALTA (vazio, zero, negativo, lixo) — a mesma
+ * direção de `valorDaMensalidadeFalta(child)`, a régua irmã que mora em
+ * `src/dominio/cobranca/` na branch feat/ux. Para unificar: esta passa a
+ * chamar aquela com `{ monthlyFee: valor }` (ou some, e os chamadores usam a
+ * de cobrança), mantendo o caso exato `> 0` — o teste reprova `>= 0`.
+ *
+ * ⚠️ ISENTOS, DE PROPÓSITO: a VAGA RÁPIDA da perua (FolhaDaVagaRapida) é só
+ * um lugar na perua, não é contrato nem matrícula; e o "Salvar e completar
+ * depois" do formulário completo é rascunho. Os dois caem no grupo "sem valor"
+ * da caixa "A completar".
+ */
+export function valorObrigatorioNoCadastro(valor) {
+  const n = Number(valor);
+  return !(Number.isFinite(n) && n > 0);
+}

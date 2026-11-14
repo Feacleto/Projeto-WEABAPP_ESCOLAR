@@ -123,6 +123,15 @@ export default function TioChildren() {
     return comEscola.length ? escolasPorId[comEscola[0].schoolId] : null;
   }, [children, escolasPorId]);
 
+  // O VALOR E O VENCIMENTO DA PRÓXIMA CRIANÇA: os da última cadastrada com
+  // valor (decisão do dono: a mensalidade é obrigatória e vem herdada).
+  const anterior = useMemo(() => {
+    const comValor = children
+      .filter((c) => Number(c.monthlyFee) > 0)
+      .sort((a, b) => emMs(b.createdAt) - emMs(a.createdAt));
+    return comValor.length ? { monthlyFee: comValor[0].monthlyFee, dueDay: comValor[0].dueDay } : null;
+  }, [children]);
+
   // ⚠️ A CRIANÇA QUE FICOU COMPLETA SEM PERDER A MARCA. O fim do
   // `cadastroRapido` vai no mesmo write que completa a rua ou a hora
   // (`camposAoSalvar`); se dois campos foram salvos antes de a escuta trazer o
@@ -253,7 +262,7 @@ export default function TioChildren() {
           ))
         )}
 
-        {!loading && <AdicionarCrianca escola={ultimaEscola} />}
+        {!loading && <AdicionarCrianca escola={ultimaEscola} anterior={anterior} />}
 
         <button
           type="button"

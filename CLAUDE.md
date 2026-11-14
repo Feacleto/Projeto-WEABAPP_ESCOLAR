@@ -3955,6 +3955,12 @@ rua e hora de pegar —, e a marca cai no MESMO write que a completa
 hora na PORTA e mudar avisa a família.
 ⚠️ "Tirar da turma" não tem Desfazer: `deactivateChildAndParent` desvincula a
 família, zera o aceite e apaga a foto, e não existe reativar. "Pausar" é RC3.
+⚠️ **VALOR ZERO NÃO** (decisão do dono, 14/11/2026): a mensalidade é
+OBRIGATÓRIA ao cadastrar (`valorObrigatorioNoCadastro`, `> 0` exato) — na
+linha "+ Nome" (herdada da criança anterior, com o vencimento), no cadastro
+rápido do card e no passo 4 do formulário completo. Isentos de propósito: a
+VAGA RÁPIDA da perua (é um lugar, não contrato) e o rascunho "Salvar e
+completar depois"; os dois caem no grupo "sem valor" da caixa "A completar".
 ⚠️ O WhatsApp da mãe ficou OPCIONAL no cadastro. Sem ele o convite abre a
 escolha de contato; o custo é o irmão automático (`vincularIrmao` só roda na
 CRIAÇÃO da criança) e o pedido de acesso, que só acham a família quando o

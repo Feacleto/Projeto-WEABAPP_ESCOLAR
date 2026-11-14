@@ -59,6 +59,7 @@ import {
   lembrarDaDeclaracao,
 } from '../../dominio/identidade/autorizacaoDeclarada.js';
 import { useAuth } from '../../hooks/useAuth';
+import { valorObrigatorioNoCadastro } from '../../dominio/escola/listaDaTurma.js';
 
 const GENDERS = [
   { value: 'male', label: 'Menino' },
@@ -284,9 +285,12 @@ export default function ChildForm() {
         errs.parentPhone = 'Telefone com DDD.';
       if (form.parent2Phone && !isValidPhone(form.parent2Phone))
         errs.parent2Phone = 'Telefone inválido.';
-      const fee = parseFloat(form.monthlyFee);
-      if (String(form.monthlyFee).trim() && (!fee || fee <= 0))
-        errs.monthlyFee = 'Valor precisa ser maior que zero.';
+      // VALOR ZERO NÃO (decisão do dono, 14/11/2026): a mensalidade é
+      // obrigatória para CADASTRAR. Quem não sabe o valor ainda sai pelo
+      // "Salvar e completar depois" dos passos 2 e 3 — rascunho, que a caixa
+      // "A completar" da lista cobra depois.
+      if (valorObrigatorioNoCadastro(form.monthlyFee))
+        errs.monthlyFee = 'Diga o valor da mensalidade.';
       const day = parseInt(form.dueDay, 10);
       if (form.dueDay && (!day || day < 1 || day > 28))
         errs.dueDay = 'Dia entre 1 e 28.';
@@ -1557,12 +1561,12 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
            *
            * Este formulário é um assistente por etapas: o botão chama
            * onSubmit() direto, sem <form> nativo, então a validação do
-           * navegador nunca roda e o atributo não bloqueava nada. E deixar
-           * sem valor é DELIBERADO — a validação da etapa diz, com todas as
-           * letras, que "email e mensalidade podem vir depois", porque nem
-           * sempre o valor está combinado no dia do cadastro.
+           * navegador nunca roda e o atributo não bloqueava nada. Quem
+           * cobra o valor é a validação do passo 4 (obrigatório desde
+           * 14/11/2026, "valor zero não"); o rascunho sem valor sai pelo
+           * "Salvar e completar depois" dos passos anteriores.
            *
-           * O problema não era permitir vazio: era não contar o preço disso.
+           * O preço do vazio, para quem salva rascunho:
            * Mensalidade zerada faz a criança ser PULADA na geração de
            * cobrança do mês (billing.js ignora fee <= 0), sem erro nenhum na
            * hora. Quem cadastra trinta crianças e deixa dez sem valor
@@ -1571,7 +1575,7 @@ function Step4Parent({ form, setForm, setField, setPhone, errors }) {
           hint={
             String(form.monthlyFee).trim()
               ? undefined
-              : 'Sem valor, esta criança não entra na cobrança do mês. Dá pra preencher depois na ficha dela.'
+              : 'Sem valor, a mensalidade do mês não é gerada.'
           }
         />
         <div data-erro={errors.dueDay ? true : undefined}>

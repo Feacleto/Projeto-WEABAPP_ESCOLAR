@@ -41,6 +41,7 @@ import {
   completaParaARota,
   camposAoSalvar,
   SEM_ESCOLA,
+  valorObrigatorioNoCadastro,
 } from '../src/dominio/escola/listaDaTurma.js';
 import { blocosDaDirecao, normalizaHora } from '../src/dominio/rota/horarios.js';
 import {
@@ -51,6 +52,7 @@ import {
   ROTULOS,
   GRUPO_A_COMPLETAR,
   todasAsAfirmacoesDaLista,
+  SEM_VALOR,
 } from '../src/marca/textosDaLista.js';
 import { promessaProibida } from '../src/marca/promessas.js';
 
@@ -339,7 +341,7 @@ const GRAVACOES = [
   ["salvar('hora', { horaPega: v })", 'hora de pegar'],
   ["salvar('mae', { parentName: v })", 'nome da mãe'],
   ["salvar('fone', { parentPhone: v })", 'WhatsApp da mãe'],
-  ["salvar('mensalidade', { monthlyFee: n })", 'mensalidade'],
+  ["salvar('mensalidade', { monthlyFee: Number(valor) })", 'mensalidade'],
 ];
 for (const [trecho, nome] of GRAVACOES) eq(`a linha grava ${nome} sozinho`, linha.includes(trecho), true);
 eq('a rua grava ao assentar (com número ou "não sei"), com numeroPendente e as partes',
@@ -399,6 +401,59 @@ eq('quem já declarou na sessão não é perguntado de novo no formulário',
   /jaDeclarouNestaSessao\(user\?\.uid\)/.test(form) && /jaDeclarou \? \(\s*<DeclaracaoJaFeita \/>/.test(form), true);
 eq('o formulário lembra a declaração só depois de salvar',
   form.indexOf('lembrarDaDeclaracao(user?.uid)') > form.indexOf('await addChild(payload)'), true);
+
+bloco('11. Valor zero não: a mensalidade é obrigatória no cadastro (decisão do dono)');
+{
+  const FALTA_VALOR = ['', null, undefined, 0, '0', '0.00', -10, 'abc', NaN];
+  const TEM_VALOR = [0.01, '350.00', 350, '3.50'];
+  eq('vazio, zero, negativo e lixo: falta o valor', FALTA_VALOR.map(valorObrigatorioNoCadastro), FALTA_VALOR.map(() => true));
+  eq('qualquer valor acima de zero passa', TEM_VALOR.map(valorObrigatorioNoCadastro), TEM_VALOR.map(() => false));
+  // MUTAÇÃO: trocar `> 0` por `>= 0` deixaria o zero passar — e o caso acima reprova.
+  const mutante = (v) => { const n = Number(v); return !(Number.isFinite(n) && n >= 0); };
+  eq('sonda de mutação: com ">= 0" o zero passaria (o caso do zero pega)', mutante(0) === valorObrigatorioNoCadastro(0), false);
+  const regua = ler('src/dominio/escola/listaDaTurma.js');
+  eq('a régua compara com "> 0" exato', /return !\(Number\.isFinite\(n\) && n > 0\);/.test(regua), true);
+
+  const add = semComentarios(ler('src/components/children/AdicionarCrianca.jsx'));
+  const telaLista = semComentarios(ler('src/pages/tio/TioChildren.jsx'));
+  eq('"+ Nome": sem valor válido o OK não cria (a régua vem ANTES do addChild)',
+    add.indexOf('valorObrigatorioNoCadastro(valor)') > -1 && add.indexOf('valorObrigatorioNoCadastro(valor)') < add.indexOf('addChild('), true);
+  eq('"+ Nome": e diz "Diga o valor da mensalidade."', /setErroValor\(ROTULOS\.erroSemValor\)/.test(add) && ROTULOS.erroSemValor === 'Diga o valor da mensalidade.', true);
+  eq('"+ Nome": grava o valor e o vencimento na criança', /monthlyFee: Number\(valor\),\s*dueDay,/.test(add), true);
+  eq('"+ Nome": já vem com o valor da anterior', /useState\(valorAnterior\)/.test(add) && /<AdicionarCrianca escola=\{ultimaEscola\} anterior=\{anterior\} \/>/.test(telaLista), true);
+  eq('"+ Nome": a anterior é a última criada COM valor (valor e vencimento)',
+    /Number\(c\.monthlyFee\) > 0\)[\s\S]{0,120}emMs\(b\.createdAt\) - emMs\(a\.createdAt\)[\s\S]{0,140}dueDay: comValor\[0\]\.dueDay/.test(telaLista), true);
+  eq('"+ Nome": o valor em letra grande antes do OK (R$ formatado)', /formatCurrency\(Number\(valor\)\)/.test(add) && /<CampoDeValor/.test(add), true);
+
+  const card = semComentarios(ler('src/components/children/CadastroRapidoDaCrianca.jsx'));
+  eq('card do primeiro acesso: o valor é obrigatório (antes do addChild)',
+    card.indexOf('valorObrigatorioNoCadastro(form.monthlyFee)') > -1 &&
+      card.indexOf('valorObrigatorioNoCadastro(form.monthlyFee)') < card.indexOf('addChild('), true);
+  eq('card do primeiro acesso: grava o valor', /monthlyFee: Number\(form\.monthlyFee\)/.test(card), true);
+  eq('card do primeiro acesso: não diz mais que a mensalidade é "depois"', /mensalidade você completa depois/.test(card), false);
+
+  const vagaComComentario = ler('src/components/perua/FolhaDaVagaRapida.jsx');
+  const vaga = semComentarios(vagaComComentario);
+  eq('a vaga rápida é ISENTA, e diz por quê', /ISENTA DO VALOR OBRIGATÓRIO/.test(vagaComComentario) && /não é contrato nem\s*\* matrícula/.test(vagaComComentario), true);
+  eq('a vaga rápida não pede valor (nem a régua, nem o campo)', !/valorObrigatorioNoCadastro|CampoDeValor|monthlyFee/.test(vaga), true);
+
+  const formCompleto = semComentarios(ler('src/components/children/ChildForm.jsx'));
+  eq('formulário completo: o passo 4 exige o valor', /if \(valorObrigatorioNoCadastro\(form\.monthlyFee\)\)\s*errs\.monthlyFee = 'Diga o valor da mensalidade\.'/.test(formCompleto), true);
+  eq('formulário completo: o rascunho ("Salvar e completar depois") continua antes do passo 4',
+    /canSaveEarly && step < TOTAL_STEPS/.test(formCompleto), true);
+
+  eq('a linha aberta não diz mais "(se quiser)" na mensalidade', /seQuiser/.test(linha) || Object.hasOwn(ROTULOS, 'seQuiser'), false);
+  eq('a linha aberta não grava zero (usa a régua)', /if \(valorObrigatorioNoCadastro\(valor\)\) \{\s*setErro\(ROTULOS\.erroSemValor\)/.test(linha), true);
+  eq('o grupo "sem valor" diz que é cadastro antigo ou rascunho', /Cadastro antigo ou salvo para completar depois/.test(SEM_VALOR.texto), true);
+
+  // A lista não oferece contrato para criança sem valor: não há botão de
+  // contrato nela, e o contrato só é garantido com valor (> 0).
+  eq('nenhum "Mandar contrato" na lista', /contrato/i.test([telaLista, linha, add, completar].join('\n').replace(/contratoFeito|contratoVigente|contratoAguardando|contractAcceptedAt/g, '')), false);
+  eq('o convite da linha só garante contrato com valor', /Number\(crianca\.monthlyFee\) > 0 \? <GarantirContratoDe/.test(share), true);
+
+  // O selo Entrou ✓ é montado por TioChildren (TioChildren → LinhaDaTurma → ConviteEnxuto).
+  eq('Entrou ✓ montado por TioChildren', /<LinhaDaTurma\b/.test(telaLista) && /<ConviteEnxuto crianca=\{child\}/.test(linha) && /ROTULOS\.entrou/.test(share), true);
+}
 
 console.log(`\n${falhou ? '\x1b[31m' : '\x1b[32m'}${ok} ok, ${falhou} falharam\x1b[0m\n`);
 process.exit(falhou ? 1 : 0);

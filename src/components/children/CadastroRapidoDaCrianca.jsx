@@ -6,6 +6,10 @@ import { useEscolas } from '../../hooks/useEscolas';
 import { addChild } from '../../services/childrenService';
 import { useDeclaracaoDaSessao } from '../../hooks/useDeclaracaoDaSessao';
 import DeclaracaoDeAutorizacao, { DeclaracaoJaFeita } from './DeclaracaoDeAutorizacao';
+import CampoDeValor from '../common/CampoDeValor';
+import { formatCurrency } from '../../compartilhado/formatters';
+import { valorObrigatorioNoCadastro } from '../../dominio/escola/listaDaTurma.js';
+import { ROTULOS } from '../../marca/textosDaLista.js';
 
 /**
  * O CADASTRO RÁPIDO DA CRIANÇA — dentro do primeiro acesso (04/10/2026,
@@ -18,9 +22,11 @@ import DeclaracaoDeAutorizacao, { DeclaracaoJaFeita } from './DeclaracaoDeAutori
  * "Para resolver" (sem horário, convite aberto) e pelo Financeiro (sem
  * mensalidade).
  *
- * ⚠️ Só o NOME é obrigatório. As regras do banco aceitam a criança assim, e o
- * contrato com a família não é emitido enquanto não houver mensalidade
- * (`useGarantirContrato`) — senão sairia um contrato de R$ 0,00.
+ * ⚠️ O NOME E A MENSALIDADE são obrigatórios. A mensalidade entrou em
+ * 14/11/2026 (decisão do dono, "valor zero não"): sem ela a mensalidade do
+ * mês não nasce e o contrato sairia de R$ 0,00. O valor aparece em letra
+ * grande antes de salvar — o campo é de caixa eletrônico, e "350" vira
+ * R$ 3,50.
  */
 const PERIODOS = [
   { value: 'morning', label: 'Manhã' },
@@ -29,8 +35,9 @@ const PERIODOS = [
 
 export default function CadastroRapidoDaCrianca({ onSalva }) {
   const { escolas } = useEscolas();
-  const [form, setForm] = useState({ name: '', gender: '', schoolId: '', school: '', period: '', parentName: '' });
+  const [form, setForm] = useState({ name: '', gender: '', schoolId: '', school: '', period: '', parentName: '', monthlyFee: '' });
   const [erro, setErro] = useState('');
+  const [erroValor, setErroValor] = useState('');
   const [salvando, setSalvando] = useState(false);
   // A declaração de autorização: uma pergunta por sessão, um registro por criança.
   const declaracao = useDeclaracaoDaSessao();
@@ -49,6 +56,10 @@ export default function CadastroRapidoDaCrianca({ onSalva }) {
       setErro('Escreva o nome da criança.');
       return;
     }
+    if (valorObrigatorioNoCadastro(form.monthlyFee)) {
+      setErroValor(ROTULOS.erroSemValor);
+      return;
+    }
     if (!declaracao.confirmar()) return;
     setErro('');
     setSalvando(true);
@@ -61,6 +72,7 @@ export default function CadastroRapidoDaCrianca({ onSalva }) {
         autorizacaoDeclarada: true,
         gender: form.gender || null,
         parentName: form.parentName,
+        monthlyFee: Number(form.monthlyFee),
         ...(escola
           ? {
               schoolId: escola.id,
@@ -141,6 +153,20 @@ export default function CadastroRapidoDaCrianca({ onSalva }) {
         />
       </div>
       <Input falar="nome" label="Nome do responsável" value={form.parentName} onChange={set('parentName')} />
+      <div className="space-y-1">
+        <CampoDeValor
+          label={ROTULOS.mensalidade}
+          value={form.monthlyFee}
+          onChange={(v) => {
+            setErroValor('');
+            setForm((p) => ({ ...p, monthlyFee: v }));
+          }}
+          error={erroValor}
+        />
+        {!valorObrigatorioNoCadastro(form.monthlyFee) && (
+          <p className="text-lg font-bold text-text">{formatCurrency(Number(form.monthlyFee))}</p>
+        )}
+      </div>
       {declaracao.jaDeclarou ? (
         <DeclaracaoJaFeita />
       ) : (
@@ -150,7 +176,7 @@ export default function CadastroRapidoDaCrianca({ onSalva }) {
           erro={declaracao.erro}
         />
       )}
-      <p className="text-sm text-textMuted">Endereço, WhatsApp e mensalidade você completa depois, na ficha.</p>
+      <p className="text-sm text-textMuted">Endereço e WhatsApp você completa depois, na ficha.</p>
       <Button type="submit" loading={salvando} className="shadow-focus">
         Salvar criança
       </Button>

@@ -109,7 +109,11 @@ export const ROTULOS = {
   whatsappDaMae: 'WhatsApp da mãe',
   seSouber: '(se souber)',
   mensalidade: 'Mensalidade',
-  seQuiser: '(se quiser)',
+  // A mensalidade é OBRIGATÓRIA no cadastro (decisão do dono, 14/11/2026):
+  // o "(se quiser)" saiu daqui e da linha aberta.
+  erroSemValor: 'Diga o valor da mensalidade.',
+  venceNoDia: (dia) => `vence todo dia ${dia}`,
+  mesmoValorDaAnterior: 'O mesmo valor da criança anterior.',
   // Salvar sozinho
   salvo: 'salvo ✓',
   salvando: 'salvando…',
@@ -175,7 +179,10 @@ export const NUMERO_PELA_FAMILIA = {
 };
 
 export const SEM_VALOR = {
-  texto: 'Sem valor, a mensalidade não é gerada.',
+  // Só cai aqui quem foi cadastrado ANTES de o valor virar obrigatório, quem
+  // foi salvo como rascunho ("Salvar e completar depois") e a vaga rápida da
+  // perua — a tela diz isso, senão parece que o cadastro deixou passar.
+  texto: 'Cadastro antigo ou salvo para completar depois. Sem valor, a mensalidade não é gerada.',
   sustenta: 'sem-valor-sem-mensalidade',
 };
 
