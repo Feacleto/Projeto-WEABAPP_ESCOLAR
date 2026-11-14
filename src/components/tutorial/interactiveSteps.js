@@ -56,7 +56,7 @@ export const ADMIN_TOUR = [
   {
     path: '/tio',
     anchor: 'turma',
-    title: 'Todo o seu ambiente de operação está aqui',
+    title: 'Sua turma, escolas e horários estão aqui',
     body: 'Crianças, escolas, horários e avisos.',
   },
   {

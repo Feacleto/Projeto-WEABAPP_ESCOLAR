@@ -97,6 +97,7 @@ import {
 } from '../../compartilhado/formatters';
 import { PIX_KEY_TYPES } from '../../services/userService';
 import { useArrastarPraFechar } from '../../hooks/useArrastarPraFechar';
+import { CARTEIRA_VAZIA } from '../../marca/valorDoConvite.js';
 
 /**
  * Financeiro do Tio — O CAIXA, mês a mês (03/10/2026, protótipo aprovado
@@ -995,7 +996,7 @@ export default function TioFinance() {
                 title="Nenhum pagamento"
                 description={
                   isCurrentMonthView
-                    ? 'Os pagamentos do mês são gerados quando você cadastra crianças.'
+                    ? CARTEIRA_VAZIA
                     : `Sem registros pra ${formatMonthLabel(monthKey)}.`
                 }
               />

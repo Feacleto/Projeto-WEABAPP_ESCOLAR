@@ -13,6 +13,7 @@ import { marcarOcorrencia, definirCompartilhamentoDaRota } from '../../services/
 import { encerrarChamadas } from '../../services/pendingCallService';
 import SegurarParaEncerrar from './SegurarParaEncerrar';
 import ConfirmDialog from '../common/ConfirmDialog';
+import { ROTA_INICIADA, ROTA_INICIADA_SEM_MAPA } from '../../marca/valorDoConvite.js';
 
 /**
  * Iniciar e encerrar a rota — o interruptor do GPS.
@@ -145,8 +146,8 @@ export default function ControleDeRota({
     // este cartão não inventa um: o "A perua saiu" já enviado fica no sino
     // delas, e a trava da viagem impede que ele seja repetido hoje.
     const frase = compartilha
-      ? 'Rota começou! GPS ligado.'
-      : 'Rota começou. A perua não aparece no mapa das famílias.';
+      ? ROTA_INICIADA
+      : ROTA_INICIADA_SEM_MAPA;
     const uid = user.uid;
     toast.custom(
       (t) => (
