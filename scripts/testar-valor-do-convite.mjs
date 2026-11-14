@@ -11,9 +11,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import {
+  LINHA_DO_PIX,
   todasAsAfirmacoes,
   textoDoEnviado,
+  textoDeQuemAvisouQuePagou,
+  CARTEIRA_VAZIA,
+  AVISOS_NO_CELULAR,
+  ROTA_INICIADA,
+  ROTA_INICIADA_SEM_MAPA,
   LINHAS_DO_VALOR,
   O_QUE_FAZER,
   AVISO_DO_BANCO,
@@ -22,6 +29,7 @@ import {
 } from '../src/marca/valorDoConvite.js';
 import { promessaProibida } from '../src/marca/promessas.js';
 
+const require = createRequire(import.meta.url);
 const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ler = (p) => fs.readFileSync(path.join(raiz, p), 'utf8');
 // Sem comentários: a frase citada num comentário explicativo não é texto de tela.
@@ -41,18 +49,29 @@ const eq = (nome, a, b) => {
  * cumpre — é o que impede o catálogo de prometer sem fonte.
  */
 const FUNCIONALIDADES = {
-  'mensalidades-pagas-avisaram-atrasadas': [
-    ['src/components/payments/estadoDaMensalidade.js', /rotulo: 'Pagas'/],
+  // A mensalidade só NASCE com a mãe dentro: sem `parentUid` o servidor pula.
+  'mensalidade-nasce-com-a-mae': [
+    ['functions/lib/billing.js', /if \(!child\.parentUid\) \{/],
     ['src/components/payments/estadoDaMensalidade.js', /rotulo: 'Avisaram que pagaram'/],
-    ['src/components/payments/estadoDaMensalidade.js', /rotulo: 'Atrasadas'/],
   ],
   'falta-avisada-no-painel': [
     ['src/services/absencesService.js', /absenceDeclarations/],
     ['src/pages/tio/TioDashboard.jsx', /useAbsences/],
   ],
-  'push-de-embarque': [
-    ['functions/lib/avisos.js', /child_onboard:/],
-    ['functions/lib/destinoDoAviso.js', /child_onboard:/],
+  // De manhã: "A perua saiu" e a chegada na escola; à tarde, a entrega em casa.
+  'push-de-saida-e-chegada': [
+    ['src/services/routeStatusService.js', /type: 'rota_iniciada'/],
+    ['src/services/routeStatusService.js', /child_arrived_home/],
+    ['src/services/routeStatusService.js', /child_arrived_school/],
+  ],
+  // O que o MOTORISTA recebe de fato no celular.
+  'push-ao-motorista': [
+    ['src/services/notificationsService.js', /type: 'payment_claimed'/],
+    ['src/services/absencesService.js', /type: 'absence_declared'/],
+    ['functions/lib/destinoDoAviso.js', /absence_declared: \{ parent: '\/pai\/faltas', admin:/],
+  ],
+  'rota-iniciada': [
+    ['src/components/route/ControleDeRota.jsx', /ROTA_INICIADA_SEM_MAPA/],
   ],
   'pix-direto': [
     ['src/pages/pai/PaiFinance.jsx', /PIX direto/],
@@ -73,6 +92,17 @@ const FUNCIONALIDADES = {
     ['src/components/payments/AguardandoVoce.jsx', /Dar baixa/],
     ['src/services/paymentsService.js', /claimed/],
   ],
+};
+
+/**
+ * AS CONDIÇÕES de que uma frase depende para ser verdade, e a prova de cada
+ * uma. Frase condicionada sem condição declarada, ou com condição que o app não
+ * cumpre, reprova.
+ */
+const CONDICOES = {
+  'mae-no-app': [['functions/lib/billing.js', /if \(!child\.parentUid\) \{/]],
+  'aviso-no-celular-da-mae': [['functions/lib/push.js', /fcmTokens/]],
+  'chave-pix-cadastrada': [['src/components/payments/PerguntaDaChavePix.jsx', /PIX/]],
 };
 
 const semAcento = (t) => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -106,6 +136,14 @@ for (const [chave, provas] of Object.entries(FUNCIONALIDADES)) {
     eq(`"${chave}" existe: ${arquivo} ~ ${padrao}`, padrao.test(ler(arquivo)), true);
   }
 }
+for (const [chave, provas] of Object.entries(CONDICOES)) {
+  for (const [arquivo, padrao] of provas) {
+    eq(`condição "${chave}" existe: ${arquivo}`, padrao.test(ler(arquivo)), true);
+  }
+}
+for (const l of [...LINHAS_DO_VALOR, LINHA_DO_PIX]) {
+  eq(`"${l.id || 'pix'}" declara uma condição da lista fechada`, Object.hasOwn(CONDICOES, l.condicao), true);
+}
 eq('nenhuma chave da lista fechada ficou sem uso',
   Object.keys(FUNCIONALIDADES).filter((k) => !afirmacoes.some((a) => a.sustenta === k)), []);
 
@@ -117,6 +155,12 @@ const todosOsTextos = [
 ];
 for (const [id, texto] of todosOsTextos) {
   eq(`"${id}" está limpo`, reprova(texto), null);
+}
+
+// Frase condicionada não pode soar como "sempre verdadeira".
+const ABSOLUTOS = /\b(sempre|toda|todas|todos|qualquer|nunca|automatic\w*|na hora)\b/;
+for (const l of [...LINHAS_DO_VALOR, LINHA_DO_PIX]) {
+  eq(`"${l.id || 'pix'}" não usa palavra absoluta`, ABSOLUTOS.test(semAcento(l.texto)), false);
 }
 
 console.log('\n\x1b[1m3. Curto para quem não lê\x1b[0m');
@@ -171,6 +215,61 @@ eq('AguardandoVoce só é renderizado em TioFinance (a frase mora num lugar)',
 eq('o botão que a frase manda tocar existe em AguardandoVoce',
   /toque em ([^.]+)\./.test(AVISO_DO_BANCO.texto) &&
     aguardando.includes(AVISO_DO_BANCO.texto.match(/toque em ([^.]+)\./)[1]), true);
+
+console.log('\n\x1b[1m5b. Os textos corrigidos na 2ª rodada\x1b[0m');
+const reguaDosAvisos = require('../functions/lib/reguaDosAvisos.js');
+const aviso = reguaDosAvisos.avisoDoConvite({
+  crianca: { name: 'Ana Clara', inviteStatus: 'pending', createdAt: new Date(2026, 8, 10, 12) },
+  agora: new Date(2026, 8, 14, 12),
+});
+const tour = ler('src/components/tutorial/interactiveSteps.js');
+const fonteDe = (p) => semComentarios(ler(p));
+eq('A: o chip 1 fala da mensalidade com a mãe no app', LINHAS_DO_VALOR[0].texto, 'Com a mãe no app, você acompanha a mensalidade dela');
+eq('B: o chip 3 fala da saída e da chegada', LINHAS_DO_VALOR[2].texto, 'A mãe é avisada quando a perua sai e quando o filho chega');
+eq('D: a Carteira vazia diz que a mensalidade aparece depois que a família entra',
+  CARTEIRA_VAZIA, 'A mensalidade de cada família aparece depois que ela entra no app.');
+eq('D: TioFinance usa o texto do catálogo', /\? CARTEIRA_VAZIA\b/.test(fonteDe('src/pages/tio/TioFinance.jsx')), true);
+eq('E: o convite do aviso só promete o que o motorista recebe',
+  /quem avisou que vai faltar/.test(AVISOS_NO_CELULAR) && /quem avisou que pagou/.test(AVISOS_NO_CELULAR) &&
+    !/chegada|cobran/.test(semAcento(AVISOS_NO_CELULAR)), true);
+eq('E: ConvitePush usa o texto do catálogo', /\{AVISOS_NO_CELULAR\}/.test(fonteDe('src/components/tio/ConvitePush.jsx')), true);
+eq('F: com nome, o sujeito é a família', textoDeQuemAvisouQuePagou('Ana Clara'), 'A família de Ana avisou que pagou');
+eq('F: sem nome, "Uma família"', textoDeQuemAvisouQuePagou(null), 'Uma família avisou que pagou');
+eq('F: AguardandoVoce usa a função do catálogo', /textoDeQuemAvisouQuePagou\(p\.childName\)/.test(fonteDe('src/components/payments/AguardandoVoce.jsx')), true);
+eq('F: a linha pode quebrar (sem truncate cortando "A família de …")',
+  /break-words[^"]*"[^<]*>\s*\{textoDeQuemAvisouQuePagou/.test(fonteDe('src/components/payments/AguardandoVoce.jsx')), true);
+eq('G: a rota inicia calma e sem jargão', [ROTA_INICIADA, /!|gps/i.test(ROTA_INICIADA + ROTA_INICIADA_SEM_MAPA)], ['Rota iniciada.', false]);
+eq('G: o aviso sem mapa continua dizendo o que as famílias não veem', ROTA_INICIADA_SEM_MAPA.includes('não aparece no mapa'), true);
+eq('G: ControleDeRota usa o catálogo', /\? ROTA_INICIADA\s*:\s*ROTA_INICIADA_SEM_MAPA/.test(fonteDe('src/components/route/ControleDeRota.jsx')), true);
+eq('H: o título do tour', /title: 'Sua turma, escolas e horários estão aqui'/.test(tour), true);
+eq('I: o convite parado não afirma que a família recebeu',
+  [aviso?.titulo, /recebeu/.test(aviso?.corpo || '')], ['O convite de Ana está parado', false]);
+eq('I: e diz há quanto tempo e o que fazer',
+  aviso?.corpo, 'Já faz 4 dias e a família ainda não entrou. Toque para mandar de novo.');
+
+console.log('\n\x1b[1m5c. Os textos antigos não voltam (src/ e functions/lib/)\x1b[0m');
+const ANTIGOS = [
+  'Acompanhe o pagamento: quem pagou, avisou ou atrasou',
+  'A mãe é avisada quando o filho entra na perua',
+  'Os pagamentos do mês são gerados quando você cadastra crianças',
+  'chegada da criança, recado de escola e cobrança',
+  'Rota começou! GPS ligado',
+  'ambiente de operação',
+  'A família recebeu há',
+  'não foi usado',
+];
+function arquivos(dir) {
+  return fs.readdirSync(path.join(raiz, dir), { withFileTypes: true }).flatMap((d) => {
+    const rel = `${dir}/${d.name}`;
+    if (d.isDirectory()) return d.name === 'node_modules' ? [] : arquivos(rel);
+    return /\.(jsx?|cjs|mjs)$/.test(d.name) ? [rel] : [];
+  });
+}
+const alvos = [...arquivos('src'), ...arquivos('functions/lib')];
+for (const antigo of ANTIGOS) {
+  eq(`ninguém escreve mais "${antigo}"`, alvos.filter((f) => semComentarios(ler(f)).includes(antigo)), []);
+}
+eq('a sonda acha o antigo quando ele existe', semComentarios("x = 'Rota começou! GPS ligado.'").includes(ANTIGOS[4]), true);
 
 console.log('\n\x1b[1m6. A memória do aparelho nunca derruba a tela\x1b[0m');
 const lembrete = ler('src/compartilhado/lembreteDoAparelho.js');

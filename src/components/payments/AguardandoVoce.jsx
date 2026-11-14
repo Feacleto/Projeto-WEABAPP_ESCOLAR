@@ -5,10 +5,13 @@ import {
   formatCurrency,
   formatDateTime,
   formatMonthLabel,
-  primeiroNome,
 } from '../../compartilhado/formatters';
 import { jaLembrou, lembrar } from '../../compartilhado/lembreteDoAparelho';
-import { AVISO_DO_BANCO, CHAVE_AVISO_DO_BANCO } from '../../marca/valorDoConvite.js';
+import {
+  AVISO_DO_BANCO,
+  CHAVE_AVISO_DO_BANCO,
+  textoDeQuemAvisouQuePagou,
+} from '../../marca/valorDoConvite.js';
 
 const METODO = { cash: 'Dinheiro', card: 'Cartão', pix: 'PIX' };
 
@@ -91,8 +94,8 @@ export default function AguardandoVoce({ pagamentos, alertas = {}, onDarBaixa, o
                   </span>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold leading-snug text-text">
-                    {primeiroNome(p.childName, 'A família')} avisou que pagou
+                  <p className="break-words font-semibold leading-snug text-text">
+                    {textoDeQuemAvisouQuePagou(p.childName)}
                   </p>
                   <p className="text-sm leading-snug text-textBody">
                     {[

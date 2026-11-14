@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Bell, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import { AVISOS_NO_CELULAR } from '../../marca/valorDoConvite.js';
 import { enablePush, isPushAvailable, permissionState } from '../../services/pushService';
 
 const DISPENSADO = 'ab_convite_push_v1';
@@ -143,8 +144,7 @@ export default function ConvitePush() {
             {/* As três coisas que o app manda de verdade. Prometer vago é como
               * se ensina alguém a negar por reflexo. */}
             <p className="mt-0.5 text-sm leading-relaxed text-textBody">
-              Hoje eles só aparecem quando você abre o app. Ligando, chegam no
-              celular: chegada da criança, recado de escola e cobrança.
+              {AVISOS_NO_CELULAR}
             </p>
 
             <button
