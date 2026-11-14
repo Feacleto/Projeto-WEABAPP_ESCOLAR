@@ -389,9 +389,9 @@ export default function TioLayout() {
       className="min-h-screen"
       style={{ paddingBottom: 'calc(var(--altura-do-menu) + env(safe-area-inset-bottom, 0px))' }}
     >
-      {/* A SUSPENSÃO é cortina fixa por cima de tudo, e mora AQUI: dentro da
-        * tela (que anima com `transform`) o `fixed` deixaria de ser relativo
-        * à janela. Os outros avisos vão para baixo do cabeçalho; sem nenhum
+      {/* A SUSPENSÃO é cortina fixa por cima de tudo, e mora AQUI: durante a
+        * entrada da tela (que anima com `transform`) o `fixed` deixaria de
+        * ser relativo à janela. Os outros avisos vão para baixo do cabeçalho; sem nenhum
         * cabeçalho registrado, saem aqui, como antes. */}
       {!naTelaDaTaxa && suspenso && (
         <AvisoDaPlataforma fatura={fatura} criancas={children?.length || 0} />
@@ -417,7 +417,19 @@ export default function TioLayout() {
         * O lado sai do índice: 0 é o Início (mora à esquerda), qualquer outra
         * aba (Comunidade, Carteira ou Rota) mora à direita. Quem não é aba
         * entra sem direção — inventar um lado ensinaria uma geografia que
-        * não existe. */}
+        * não existe.
+        *
+        * ⚠️ O PREENCHIMENTO DA ANIMAÇÃO É `backwards`, E NÃO É DETALHE
+        * (11/2026). Era `both`: o keyframe final já é `transform: none`, mas
+        * o Chrome segue tratando o contêiner como animado por `transform`
+        * enquanto o preenchimento durar, e todo `fixed` lá dentro passa a
+        * medir ESTE `div` (a página inteira), não a janela. Foi assim que o
+        * painel de desfazer, o de encerrar com criança em casa, o da entrega
+        * em lote e o de lançar despesa abriam no fim da página, com `top`
+        * negativo: no 360x640 o motorista via a tela escurecer e nada mais.
+        * Com `backwards` o contêiner é solto no fim dos 300 ms. Quem escrever
+        * outra animação para este `div` não pode usar `both` nem `forwards`
+        * (`npm run testar:preenchimento`). */}
       <div key={abaAtiva} className={entradaDaTela} >
         {/* ⚠️ O GUARDA DO FINANCEIRO ENVOLVE O OUTLET INTEIRO (03/10/2026) e
           * decide pelo CAMINHO: só age em `/tio/finance…`. Assim toda tela

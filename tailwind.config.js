@@ -370,16 +370,27 @@ const base = {
         },
       },
       animation: {
+        // ⚠️ AS ANIMAÇÕES QUE TERMINAM USAM `backwards`, NUNCA `both` NEM
+        // `forwards` (11/2026). Com o preenchimento para a frente, o Chrome
+        // continua tratando o elemento como se `transform` ainda estivesse
+        // animando MESMO com o keyframe final em `transform: none`, e um
+        // filho `position: fixed` passa a medir o elemento, não a janela: os
+        // painéis de confirmação da rota abriam no fim da página, fora da tela.
+        // Medido no navegador (`fixed inset-0` em 360x640, página de 3000 px):
+        // both e forwards = 3000 px de altura; backwards e nenhum = 640 px.
+        // `backwards` mantém o estado inicial durante o atraso e solta o
+        // elemento no fim — que é o estado natural dele. Travado em
+        // `npm run testar:preenchimento`.
         // Os tempos são os do design system: entrada 300ms, estado 200ms,
         // festa 450ms, com a curva de freio (ou a mola, na conquista).
-        'entra-esq': 'entra-esq 300ms cubic-bezier(.2,.8,.2,1) both',
-        'entra-dir': 'entra-dir 300ms cubic-bezier(.2,.8,.2,1) both',
-        'entra-plano': 'entra-plano 200ms linear both',
+        'entra-esq': 'entra-esq 300ms cubic-bezier(.2,.8,.2,1) backwards',
+        'entra-dir': 'entra-dir 300ms cubic-bezier(.2,.8,.2,1) backwards',
+        'entra-plano': 'entra-plano 200ms linear backwards',
         // EXCEÇÃO NOMEADA: o anel do tutorial pulsa enquanto o balão aponta
         // para ele — é o único jeito de achar o alvo numa tela que não
         // escurece. Some quando o tour fecha.
         'tour-pulso': 'tour-pulso 1.4s ease-out infinite',
-        'crianca-chega': 'crianca-chega 450ms cubic-bezier(.3,1.5,.5,1) both',
+        'crianca-chega': 'crianca-chega 450ms cubic-bezier(.3,1.5,.5,1) backwards',
         // EXCEÇÃO NOMEADA: espera real (senha no servidor, Financeiro
         // abrindo). Some quando a resposta chega.
         ponto: 'ponto 1.1s ease-in-out infinite',
