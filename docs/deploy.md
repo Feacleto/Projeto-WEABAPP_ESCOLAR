@@ -567,6 +567,15 @@ Todas foram confirmadas no código, não copiadas de um modelo:
   injeta `<style>` em runtime. Não há equivalente em `script-src`: o HTML
   gerado não tem um único script inline.
 - **`nominatim.openstreetmap.org`** — o geocoding do cadastro de criança.
+- **`viacep.com.br`** — o CEP e a busca de rua do cadastro (`locationService`,
+  `ruas.js`). Ficou de fora até 14/11/2026: com a CSP em `Report-Only` nada
+  quebrava, e no dia de impô-la o CEP morreria em silêncio. `npm run
+  testar:busca` agora lê os hosts do código e exige cada um no `connect-src`.
+- ⚠️ **Antes de IMPOR a CSP, falta pelo menos o App Check**: ele carrega
+  scripts e abre conexões do reCAPTCHA Enterprise (origens do Google em
+  `script-src`, `connect-src` e `frame-src`). **Inferência minha, não
+  verificada** — confirme na documentação do App Check e olhe os relatórios
+  de violação antes de trocar `Report-Only` por `Content-Security-Policy`.
 - **`*.tile.openstreetmap.org`** — os tiles do Leaflet (`{s}` é subdomínio).
 - **`api.dicebear.com`** — avatares, e em `img-src`, não `connect-src`.
 - **`*.googleusercontent.com`** — foto de quem entrou com conta Google.
