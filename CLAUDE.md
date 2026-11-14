@@ -2125,8 +2125,18 @@ Exigem plano **Blaze** — sem elas não há cadastro de responsável.
   ⚠️ **Remover a criança APAGAVA a conta da mãe inteira** (até 02/10/2026) — e
   com ela o acesso ao irmão, ou ao filho na perua de outro motorista. Agora a
   callable tira só aquela criança de `childIds` (e o motorista de `adminUids`,
-  se não sobrar filho com ele) e só apaga a conta quando não sobra filho. As
-  rules recusam o motorista apagar `users` de quem tem mais de um `childId`.
+  se não sobrar filho com ele). ⚠️ **E DESDE 14/11/2026 ELA NUNCA APAGA A
+  CONTA** (decisão do dono): a mãe de um filho só ficava com o Auth órfão e
+  caía em "Falta ligar sua conta". Sem outro filho, a conta fica `role:
+  'parent'` sem criança, sem motorista e sem o `childId` legado (que
+  `getChildIds` contaria), marcada com `semFilhoDesde` — e o card de espera
+  ([AguardandoVinculo](src/components/acesso/AguardandoVinculo.jsx)) diz
+  "Nenhuma criança na sua conta agora", com "Excluir minha conta" (o perfil
+  fica inerte por baixo). Nome, telefone, termos, aparelhos e `phoneChave`
+  são dela e ficam. Um convite novo religa a MESMA conta (`redeemInvite`
+  aceita responsável existente). `npm run testar:desvincular` (emulador).
+  ⚠️ As rules AINDA deixam o motorista apagar `users` de quem tem até um
+  `childId` — nenhum caminho do app faz isso, e fechar é decisão pendente.
   ⚠️ **O link do convite da criança removida morre junto**: remover devolve
   `inviteStatus` a `pending`, então `lookupInvite`, `redeemInvite` e
   `getInvitePreview` recusam `active: false`.

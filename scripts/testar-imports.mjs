@@ -216,6 +216,8 @@ console.log('\n─── todo scripts/testar-*.mjs está na bateria ───');
       'precisa do emulador do Firestore e importa o Admin SDK — chama as callables da Comunidade de verdade',
     'testar-pedido-nao-vincula.mjs':
       'precisa do emulador do Firestore e importa o Admin SDK — responde o pedido de acesso de verdade e lê a criança e a conta depois',
+    'testar-desvincular.mjs':
+      'precisa do emulador do Firestore e importa o Admin SDK — tira a criança da conta de verdade, lê a conta que ficou e religa pelo convite',
     'testar-familia-entrou-servidor.mjs':
       'precisa do emulador do Firestore e importa o Admin SDK — resgata o convite de verdade e lê o aviso ao motorista depois',
     'testar-avatar.mjs': 'bate na API do DiceBear — precisa de rede',

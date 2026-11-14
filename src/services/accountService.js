@@ -194,10 +194,10 @@ export async function deactivateChildAndParent({ childId }) {
   // motorista possa provar. A varredura antiga era negada e, junto com a de
   // ausências, derrubava a remoção inteira.
   //
-  // Fica registrado como pendência de function em vez de tentar e falhar: a
-  // caixa do responsável some quando o doc dele é apagado no passo 3 (sem
-  // documento em `users`, `isAppUser()` nega toda leitura), então o dado fica
-  // inerte — mas fica. Abrir uma rule para o motorista listar a caixa da
+  // Fica registrado como pendência de function em vez de tentar e falhar.
+  // ⚠️ Desde 14/11/2026 a conta dela NÃO é mais apagada (passo 4), então os
+  // avisos antigos sobre esta criança continuam no sino DELA — são o
+  // histórico do que aconteceu com o filho dela, lido só por ela. Abrir uma rule para o motorista listar a caixa da
   // família seria pagar com privacidade uma limpeza de banco.
   const parentNotifs = { docs: [] };
 
@@ -227,15 +227,18 @@ export async function deactivateChildAndParent({ childId }) {
     ...agendaSnap.docs,
   ]);
 
-  // 3. Apaga doc users do pai (Auth fica órfã — sem doc users, não loga)
-  // ⚠️ A CONTA DA FAMÍLIA NÃO É MAIS APAGADA DAQUI (02/10/2026).
+  // 4. Tira ESTA criança da conta da família — e a conta FICA.
+  // ⚠️ A CONTA DA FAMÍLIA NÃO É MAIS APAGADA (02/10/2026 e 14/11/2026).
   //
   // Era um `deleteDoc(users/{parentUid})` — e a mãe de dois irmãos, ou com
   // filho na perua de OUTRO motorista, perdia a conta inteira (e o acesso aos
-  // outros filhos) porque UMA criança saiu desta perua. A função
-  // `desvincularResponsavel` tira só esta criança da conta dela, e só apaga a
-  // conta quando não sobra filho nenhum. Ela precisa rodar ANTES do update
-  // abaixo: é o `parentUid` da criança que diz de quem tirar.
+  // outros filhos) porque UMA criança saiu desta perua. Depois a function
+  // passou a apagar só quando não sobrava filho, e a mãe de um filho só
+  // ainda ficava com o Auth órfão, caindo em "Falta ligar sua conta". Desde
+  // 14/11/2026 (decisão do dono) `desvincularResponsavel` NUNCA apaga: ela
+  // perde o acesso a esta criança e, sem outro filho, vê o card de espera.
+  // Precisa rodar ANTES do update abaixo: é o `parentUid` da criança que diz
+  // de quem tirar.
   if (parentUid) {
     exigirCloud('remover a criança da conta da família');
     await httpsCallable(functions, 'desvincularResponsavel')({ childId });

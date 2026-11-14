@@ -146,7 +146,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
       });
       toast.success(
         parentRemoved
-          ? `${child.name} e o responsável foram removidos.`
+          ? `${child.name} saiu da turma. O responsável não vê mais ${child.name} no app.`
           : `${child.name} foi removido(a) da lista ativa.`
       );
       // A página volta pra lista; a folha só se fecha — a lista já está
@@ -553,7 +553,7 @@ function ChildDetailBody({ childId: childIdProp, onLeave }) {
         title={`Remover ${child.name}?`}
         description={
           child.parentUid
-            ? `A criança sai da lista ativa e o responsável (${child.parentName || 'pai/mãe'}) é desvinculado do app. O histórico de pagamentos é preservado.`
+            ? `A criança sai da lista ativa e o responsável (${child.parentName || 'pai/mãe'}) deixa de ver ${child.name} no app. A conta dele continua. O histórico de pagamentos é preservado.`
             : 'A criança vai sair da lista ativa. O histórico de pagamentos é preservado.'
         }
         confirmLabel="Sim, remover"
