@@ -15,6 +15,7 @@ import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions } from '../firebase/config';
 import { playSound } from './soundService';
 import { exigirCloud } from './callableError';
+import { camposDaCopia, lotesDe } from '../dominio/escola/propagarEscola.js';
 
 // A parte pura da migração mora em utils pra poder ser testada sem Firebase.
 export { chaveDoNome, proporEscolasDasCriancas } from '../dominio/escola/nomeEscola';
@@ -226,6 +227,47 @@ export async function definirTelefoneDaEscola(escolaId, telefone) {
   });
   criancas.docs.forEach((d) => lote.update(d.ref, { schoolPhone: numero }));
   await lote.commit();
+}
+
+/**
+ * O ENDEREÇO NOVO DA ESCOLA, copiado para as crianças dela (RC2, 14/11/2026).
+ *
+ * A criança guarda uma cópia do endereço e do ponto da escola — é o que a
+ * rota, o mapa da família e o contrato leem — e corrigir a escola não a
+ * alcançava. Os campos e o "quem entra" são regra pura
+ * (`dominio/escola/propagarEscola.js`); aqui só se escreve.
+ *
+ * ⚠️ NÃO GEOCODIFICA. Quem chama já tem o ponto: UMA consulta para a escola,
+ * nunca uma por criança (política do Nominatim, e cinco consultas ao mesmo
+ * endereço são cinco chances de achar pontos diferentes). Sem ponto, a régua
+ * recusa e nada é gravado.
+ *
+ * ⚠️ LOTES DE 15, UM POR VEZ. Cada update de `children` passa pelas rules, e o
+ * teto é de acessos por requisição. O lote é atômico, o conjunto não: se o
+ * segundo falhar, o primeiro já valeu — o erro leva `feitas` para a tela
+ * dizer quantas foram, e tocar em Aplicar de novo é seguro (regravar o mesmo
+ * valor não muda nada).
+ *
+ * @param {{ criancaIds: string[], endereco: string, lat: number, lng: number }} p
+ * @returns {Promise<{ feitas: number }>}
+ */
+export async function aplicarEnderecoDaEscolaNasCriancas({ criancaIds, endereco, lat, lng }) {
+  if (!uidAtual()) throw new Error('Sem sessão.');
+  const campos = camposDaCopia({ endereco, lat, lng });
+  if (!campos) throw new Error('Falta o endereço da escola no mapa.');
+  let feitas = 0;
+  for (const lote of lotesDe(criancaIds)) {
+    const batch = writeBatch(db);
+    for (const id of lote) batch.update(doc(db, 'children', id), campos);
+    try {
+      await batch.commit();
+    } catch (err) {
+      err.feitas = feitas;
+      throw err;
+    }
+    feitas += lote.length;
+  }
+  return { feitas };
 }
 
 /** O TELEFONE DA ESCOLA, pela família — pelo servidor (ver a function). */
