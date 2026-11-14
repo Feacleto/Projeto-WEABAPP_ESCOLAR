@@ -1209,6 +1209,24 @@ service cloud.firestore {
         // remover a criança — senão quem viesse depois herdaria o aceite de
         // outra pessoa. Casos em `testar-regras.mjs`, bloco "o aceite".
         && contratoIntocadoOuApagado()
+        // ⚠️ A VIGÊNCIA ACEITA É DO CONTRATO, NÃO DO MOTORISTA (14/11/2026).
+        // Depois do aceite, mudar `vigenciaInicio`/`vigenciaFim` é ADITIVO: a
+        // família aceita e o SERVIDOR aplica (`salvarCombinado` já não grava
+        // na criança). Só o cliente segurava isso — pelo console, o motorista
+        // estendia a vigência e o `billing.js` passava a cobrar meses que a
+        // família nunca aceitou. Antes do aceite (o cadastro e o combinado
+        // ainda em conversa) continua livre. "Aceite" é o ponteiro novo
+        // (`contratoVigente`) OU o aceite antigo (`contractAcceptedAt`),
+        // lidos no documento ANTES da escrita: apagar o aceite e mudar a
+        // vigência no mesmo gesto não passa.
+        // ⚠️ `monthlyFee` e `dueDay` NÃO entram aqui, por decisão do dono
+        // (caso "o motorista edita a mensalidade sem tocar no aceite").
+        && (
+          (resource.data.get('contratoVigente', null) == null
+            && resource.data.get('contractAcceptedAt', null) == null)
+          || !request.resource.data.diff(resource.data).affectedKeys()
+               .hasAny(['vigenciaInicio', 'vigenciaFim'])
+        )
         // ⚠️ O MOTORISTA DESVINCULA, NUNCA VINCULA (03/10/2026). `parentUid`
         // é quem LÊ a criança (o `allow read` libera por ele) e quem recebe a
         // buzina, os avisos e o contrato dela. O ramo aceitava qualquer valor:

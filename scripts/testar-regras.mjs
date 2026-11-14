@@ -2112,6 +2112,35 @@ async function oAceite({ tio1, tio2, pai1 }) {
   checar('pos', 'motorista edita a mensalidade sem tocar no aceite', 'PASSA',
     await escrever('children/kidAceite', tio1, { monthlyFee: N(400) }, ['monthlyFee']));
 
+  // ⚠️ A VIGÊNCIA ACEITA É DO CONTRATO (14/11/2026). Depois do aceite, mudar
+  // a vigência é aditivo (a família aceita, o servidor aplica); pelo console,
+  // o motorista estendia o prazo e o `billing.js` cobrava sem aceite.
+  const VIG = (inicio, fim) => ({ vigenciaInicio: S(inicio), vigenciaFim: S(fim) });
+  await semear('children/kidVigencia', crianca({
+    parentUid: S(pai1.uid), ...VIG('2026-02-01', '2026-12-31'),
+    contratoVigente: { mapValue: { fields: { numero: { integerValue: '1' } } } },
+  }));
+  checar('aceite', 'motorista NÃO estende a vigência aceita (contratoVigente)', 'NEGA',
+    await escrever('children/kidVigencia', tio1, { vigenciaFim: S('2027-12-31') }, ['vigenciaFim']));
+  checar('aceite', 'nem antecipa o início da vigência aceita', 'NEGA',
+    await escrever('children/kidVigencia', tio1, { vigenciaInicio: S('2025-01-01') }, ['vigenciaInicio']));
+  checar('pos', 'com aceite, emitir o aditivo (só contratoAguardando) passa', 'PASSA',
+    await escrever('children/kidVigencia', tio1, { contratoAguardando: { integerValue: '2' } }, ['contratoAguardando']));
+  checar('pos', 'com aceite, reenviar a MESMA vigência passa (não é mudança)', 'PASSA',
+    await escrever('children/kidVigencia', tio1, VIG('2026-02-01', '2026-12-31'), ['vigenciaInicio', 'vigenciaFim']));
+  await semear('children/kidVigencia', crianca({
+    parentUid: S(pai1.uid), ...VIG('2026-02-01', '2026-12-31'), contractAcceptedAt: T(-5), contractHash: S('h1'),
+  }));
+  checar('aceite', 'motorista NÃO estende a vigência (aceite antigo, contractAcceptedAt)', 'NEGA',
+    await escrever('children/kidVigencia', tio1, { vigenciaFim: S('2027-12-31') }, ['vigenciaFim']));
+  checar('aceite', 'nem apaga o aceite e estende no mesmo gesto', 'NEGA',
+    await escrever('children/kidVigencia', tio1,
+      { contractAcceptedAt: { nullValue: null }, contractHash: { nullValue: null }, vigenciaFim: S('2027-12-31') },
+      ['contractAcceptedAt', 'contractHash', 'vigenciaFim']));
+  await semear('children/kidVigencia', crianca({ parentUid: S(pai1.uid), ...VIG('2026-02-01', '2026-12-31') }));
+  checar('pos', 'sem aceite, o motorista muda a vigência (cadastro e combinado)', 'PASSA',
+    await escrever('children/kidVigencia', tio1, VIG('2026-03-01', '2027-02-28'), ['vigenciaInicio', 'vigenciaFim']));
+
   checar('aceite', 'motorista NÃO aponta qual contrato "vale"', 'NEGA',
     await escrever('children/kidAceite', tio1,
       { contratoVigente: { mapValue: { fields: { numero: { integerValue: '1' } } } } },
