@@ -28,6 +28,7 @@ import {
   ROTULO_RECOLHIDO,
 } from '../src/marca/valorDoConvite.js';
 import { promessaProibida } from '../src/marca/promessas.js';
+import { primeiroNomeSemTratamento } from '../src/compartilhado/formatters.js';
 
 const require = createRequire(import.meta.url);
 const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -291,6 +292,42 @@ eq('sem nome: não deixa buraco nem "undefined"', /undefined|null|\{|\}|para \./
 eq('sem nome: fala da família', semNome.includes('família'), true);
 eq('nulo e espaços valem como sem nome', [textoDoEnviado(null), textoDoEnviado('   ')], [semNome, semNome]);
 eq('com nome cabe em 90 caracteres', comNome.length <= 90, true);
+
+// Rodada 2 do passeio visual: "Dona Marta" saía "Enviado para Dona.".
+const TRATAMENTOS_CASOS = [
+  ['Dona Marta', 'Marta'],
+  ['dona marta', 'marta'],
+  ['DONA Marta', 'Marta'],
+  ['Sra. Ana Paula', 'Ana'],
+  ['sra ana', 'ana'],
+  ['Seu João', 'João'],
+  ['D. Marta', 'Marta'],
+  ['Dr. Carlos', 'Carlos'],
+  ['Tia Cida', 'Cida'],
+  ['Maria', 'Maria'],
+  ['Maria Dona', 'Maria'],
+  ['  ', ''],
+  ['Dona', ''],
+  ['Sra.', ''],
+  ['Dona Sra.', ''],
+  [null, ''],
+];
+for (const [entrada, esperado] of TRATAMENTOS_CASOS) {
+  eq(`primeiroNomeSemTratamento(${JSON.stringify(entrada)}) = "${esperado}"`,
+    primeiroNomeSemTratamento(entrada), esperado);
+}
+eq('"Dona Marta" vira "Enviado para Marta."', textoDoEnviado('Dona Marta').startsWith('Enviado para Marta. '), true);
+eq('só "Dona" vira a frase sem nome', [textoDoEnviado('Dona'), textoDoEnviado('sra.')], [semNome, semNome]);
+eq('nenhum tratamento sobra como nome na frase',
+  TRATAMENTOS_CASOS.map(([e]) => textoDoEnviado(e)).filter((t) => /para (dona|seu|sra|sr|d|dr|tia)\b/i.test(t)), []);
+// Mutação: a versão ingênua (primeira palavra) precisa REPROVAR estes casos,
+// senão a tabela acima não está provando nada.
+const ingenuo = (n) => String(n ?? '').trim().split(/\s+/)[0] || '';
+eq('sonda: o primeiro-nome ingênuo erra pelo menos 6 dos casos',
+  TRATAMENTOS_CASOS.filter(([e, esp]) => ingenuo(e) !== esp).length >= 6, true);
+const fonteDoEnviado = codigo('src/marca/valorDoConvite.js').match(/function textoDoEnviado[\s\S]*?\n}/)[0];
+eq('textoDoEnviado usa primeiroNomeSemTratamento (não o split ingênuo)',
+  /primeiroNomeSemTratamento\(nome\)/.test(fonteDoEnviado) && !/split\(/.test(fonteDoEnviado), true);
 eq('nenhuma das duas formas promete um "Entrou ✓" que a tela não tem',
   /entrou ✓/i.test(comNome + semNome), false);
 

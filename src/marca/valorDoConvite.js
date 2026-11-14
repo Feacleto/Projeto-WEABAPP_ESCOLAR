@@ -25,6 +25,8 @@
  * sustenta cada frase seja ALCANÇÁVEL a partir do `main.jsx`.
  */
 
+import { primeiroNomeSemTratamento } from '../compartilhado/formatters.js';
+
 /** O que o cartão chama o assunto. */
 export const TITULO_DO_CARTAO = 'Para que serve o convite';
 
@@ -96,10 +98,11 @@ export const SUSTENTA_DO_ENVIADO = 'convites-abertos-no-inicio';
 /**
  * Momento 2 — depois de mandar. Com o nome de quem recebe quando há, sem nome
  * quando não há ("a família", nunca "ela" solto). Só o PRIMEIRO nome: é a
- * pessoa que ele vê na conversa do WhatsApp.
+ * pessoa que ele vê na conversa do WhatsApp. "Dona Marta" é "Marta": o
+ * tratamento é pulado, e só tratamento ("Dona") vira a frase sem nome.
  */
 export function textoDoEnviado(nome) {
-  const primeiro = String(nome || '').trim().split(/\s+/)[0];
+  const primeiro = primeiroNomeSemTratamento(nome);
   return primeiro
     ? `Enviado para ${primeiro}. Quando ela entrar, sai do aviso “ainda não entraram” no Início.`
     : 'Enviado. Quando a família entrar, sai do aviso “ainda não entraram” no Início.';

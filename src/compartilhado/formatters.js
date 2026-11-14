@@ -45,6 +45,34 @@ export function primeiroNome(nome, fallback = '') {
 }
 
 /**
+ * Tratamentos que vêm ANTES do nome quando o motorista salva o contato do
+ * jeito que chama a pessoa: "Dona Marta", "Seu João", "Sra. Ana Paula". Com o
+ * `primeiroNome` puro, a frase do convite enviado dizia "Enviado para Dona."
+ * (rodada 2 do passeio visual, 14/11/2026). Comparado sem ponto, sem acento e
+ * em minúscula.
+ */
+const TRATAMENTOS = new Set([
+  'dona', 'd', 'seu', 'sr', 'sra', 'srta', 'senhor', 'senhora', 'senhorita',
+  'tio', 'tia', 'dr', 'dra', 'doutor', 'doutora', 'prof', 'profa',
+  'professor', 'professora', 'vo', 'vovo',
+]);
+
+const semPontoNemAcento = (palavra) =>
+  palavra.replace(/\./g, '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/**
+ * O primeiro nome DE VERDADE: pula os tratamentos do começo. Se só sobrar
+ * tratamento ("Dona"), devolve o `fallback` — melhor a frase sem nome que
+ * "Enviado para Dona.". Não é o `primeiroNome` de propósito: ele tem 24
+ * chamadores, e mudar todos de uma vez não era o defeito pedido.
+ */
+export function primeiroNomeSemTratamento(nome, fallback = '') {
+  const palavras = String(nome ?? '').trim().split(/\s+/).filter(Boolean);
+  const nomeDeVerdade = palavras.find((p) => !TRATAMENTOS.has(semPontoNemAcento(p)));
+  return nomeDeVerdade || fallback;
+}
+
+/**
  * Dinheiro na TELA. Vazio vira travessão.
  *
  * "—" diz "não há número aqui"; "R$ 0,00" diz "o número é zero". Num painel,
