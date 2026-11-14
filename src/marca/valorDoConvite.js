@@ -13,11 +13,16 @@
  * Cobrar por ele, saber quando o PIX chega, reduzir atraso, segurança, preço,
  * "grátis", prazo de função nova e número solto. Número, só da régua.
  *
- * ⚠️ O MOMENTO 2 DIZ "o aviso 'Convite pendente' some", E NÃO "aparece Entrou ✓"
- * como a especificação propunha: não existe "Entrou ✓" em tela nenhuma. O que o
- * app faz é tirar a etiqueta "Convite pendente" do cartão da criança quando a
- * família entra (`inviteStatus` deixa de ser `pending`). Prometer um selo que
- * não aparece seria a primeira mentira do cartão que veio explicar o valor.
+ * ⚠️ O MOMENTO 2 DIZ "sai do aviso 'ainda não entraram' no Início", E NÃO
+ * "aparece Entrou ✓" como a especificação propunha: não existe "Entrou ✓" em
+ * tela nenhuma. Houve uma versão que dizia "o 'Convite pendente' some da
+ * lista", apoiada na etiqueta do `ChildCard` — e o `ChildCard` não é montado
+ * por NENHUMA tela: a frase era falsa e o teste não pegou, porque provava que o
+ * texto EXISTIA no arquivo, não que alguém o mostrava. O que o tio vê de fato
+ * é o aviso "N famílias ainda não entraram" no "Para resolver" do Início
+ * (`TioDashboard`), contado pelas crianças com convite pendente; quando a
+ * família entra, o número diminui. Por isso o teste agora exige que a tela que
+ * sustenta cada frase seja ALCANÇÁVEL a partir do `main.jsx`.
  */
 
 /** O que o cartão chama o assunto. */
@@ -86,7 +91,7 @@ export const O_QUE_FAZER = {
   },
 };
 
-export const SUSTENTA_DO_ENVIADO = 'inviteUsedAt';
+export const SUSTENTA_DO_ENVIADO = 'convites-abertos-no-inicio';
 
 /**
  * Momento 2 — depois de mandar. Com o nome de quem recebe quando há, sem nome
@@ -96,8 +101,8 @@ export const SUSTENTA_DO_ENVIADO = 'inviteUsedAt';
 export function textoDoEnviado(nome) {
   const primeiro = String(nome || '').trim().split(/\s+/)[0];
   return primeiro
-    ? `Enviado para ${primeiro}. Quando ela entrar, o “Convite pendente” some da lista.`
-    : 'Enviado. Quando a família entrar, o “Convite pendente” some da lista.';
+    ? `Enviado para ${primeiro}. Quando ela entrar, sai do aviso “ainda não entraram” no Início.`
+    : 'Enviado. Quando a família entrar, sai do aviso “ainda não entraram” no Início.';
 }
 
 /**
