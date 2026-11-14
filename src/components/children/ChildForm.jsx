@@ -51,6 +51,8 @@ import CampoVigencia from '../contract/CampoVigencia';
 import { vigenciaPadrao, erroDaVigencia } from '../../dominio/cobranca/contratoDaFamilia.js';
 import BotaoDeFalar from '../common/BotaoDeFalar';
 import PerguntaDasVagas from '../perua/PerguntaDasVagas';
+import DeclaracaoDeAutorizacao from './DeclaracaoDeAutorizacao';
+import { ERRO_DA_DECLARACAO } from '../../dominio/identidade/autorizacaoDeclarada.js';
 
 const GENDERS = [
   { value: 'male', label: 'Menino' },
@@ -217,8 +219,7 @@ export default function ChildForm() {
       // não no fim, onde ela seria um pedágio no momento em que ele já quer
       // salvar.
       if (!form.autorizacaoDeclarada) {
-        errs.autorizacaoDeclarada =
-          'Confirme que você tem autorização do responsável.';
+        errs.autorizacaoDeclarada = ERRO_DA_DECLARACAO;
       }
     }
     if (s === 2) {
@@ -355,10 +356,11 @@ export default function ChildForm() {
         dueDay: parseInt(form.dueDay, 10) || 10,
         vigenciaInicio: form.vigenciaInicio,
         vigenciaFim: form.vigenciaFim,
-        // A DATA da declaração, não só o `true`. Um booleano sozinho não diz
-        // QUANDO, e é o quando que a torna uma declaração em vez de uma
-        // caixa marcada.
-        autorizacaoDeclaradaEm: new Date().toISOString(),
+        // A DATA e QUEM declarou NÃO saem daqui: o serviço grava os dois com
+        // o relógio e o uid do servidor/da sessão (`camposDaDeclaracao`). O
+        // `new Date().toISOString()` que ficava aqui era uma data escrita
+        // pelo aparelho — e o `addChild` a descartava, então nada chegava
+        // ao documento.
       };
       let id;
       let inviteCode;
@@ -367,6 +369,11 @@ export default function ChildForm() {
         // complemento, partes do CEP) não são do documento.
         const resto = { ...payload };
         for (const k of ['id', 'numero', 'complemento', 'cepPartes', 'semNumero']) delete resto[k];
+        // Criança que JÁ nasceu com a declaração (todas, desde 14/11/2026)
+        // mantém a data e o autor originais: não reenviar é o que impede o
+        // `updateChild` de regravá-los. Só a posta antes disso, sem registro,
+        // é declarada agora.
+        if (paraCompletar?.autorizacaoDeclarada === true) delete resto.autorizacaoDeclarada;
         await updateChild(idParaCompletar, {
           ...resto,
           cadastroRapido: false,
@@ -747,33 +754,12 @@ function Step1Child({ form, setForm, setField, errors, idReservado }) {
         *
         * Fica no passo 1 porque é sobre a criança inteira, e no FIM do passo
         * porque ela confirma o que ele acabou de digitar. */}
-      <label
-        data-erro={errors.autorizacaoDeclarada ? true : undefined}
-        className={`mt-1 flex cursor-pointer items-start gap-3 rounded-2xl border bg-surface p-3 ${
-          errors.autorizacaoDeclarada ? 'border-danger' : 'border-border'
-        }`}
-      >
-        <input
-          ref={declaracaoRef}
-          type="checkbox"
-          checked={form.autorizacaoDeclarada}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, autorizacaoDeclarada: e.target.checked }))
-          }
-          className="mt-0.5 h-6 w-6 shrink-0 accent-primary"
-        />
-        <span className="text-sm leading-relaxed text-text">
-          Confirmo que tenho <strong>autorização do responsável legal</strong>{' '}
-          desta criança para cadastrar no Alô Buzinou o nome, o endereço de
-          embarque e os dados de contato, com a finalidade de operar o
-          transporte escolar.
-        </span>
-      </label>
-      {errors.autorizacaoDeclarada && (
-        <p className="-mt-1 text-sm font-semibold text-dangerText">
-          {errors.autorizacaoDeclarada}
-        </p>
-      )}
+      <DeclaracaoDeAutorizacao
+        marcada={form.autorizacaoDeclarada}
+        onChange={(v) => setForm((p) => ({ ...p, autorizacaoDeclarada: v }))}
+        erro={errors.autorizacaoDeclarada}
+        inputRef={declaracaoRef}
+      />
     </>
   );
 }

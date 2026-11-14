@@ -5,6 +5,8 @@ import Sheet from '../common/Sheet';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import { addChild } from '../../services/childrenService';
+import { useDeclaracaoDaSessao } from '../../hooks/useDeclaracaoDaSessao';
+import DeclaracaoDeAutorizacao, { DeclaracaoJaFeita } from '../children/DeclaracaoDeAutorizacao';
 import { criancaRapida, frasesDaPerua, ocupacao } from '../../dominio/identidade/vagasDaPerua.js';
 
 /**
@@ -39,6 +41,9 @@ function CorpoDaVagaRapida({ onFechar, vagas, criancas }) {
   const [salvando, setSalvando] = useState(false);
   const [ultima, setUltima] = useState(null);
   const campo = useRef(null);
+  // A declaração de autorização: uma pergunta por sessão, um registro por
+  // criança. A perua enche em sequência, então a caixa some depois da primeira.
+  const declaracao = useDeclaracaoDaSessao();
 
   const { livres } = ocupacao({ vagas, criancas });
 
@@ -49,10 +54,13 @@ function CorpoDaVagaRapida({ onFechar, vagas, criancas }) {
       setErro('Escreva o nome da criança.');
       return;
     }
+    if (!declaracao.confirmar()) return;
     setErro('');
     setSalvando(true);
     try {
-      await addChild(dados);
+      // Só chega aqui com a declaração feita; o `addChild` recusa sem ela.
+      await addChild({ ...dados, autorizacaoDeclarada: true });
+      declaracao.lembrar();
       setUltima(dados.name.split(/\s+/)[0]);
       setNome('');
       setGenero('');
@@ -100,6 +108,15 @@ function CorpoDaVagaRapida({ onFechar, vagas, criancas }) {
             </button>
           ))}
         </div>
+        {declaracao.jaDeclarou ? (
+          <DeclaracaoJaFeita />
+        ) : (
+          <DeclaracaoDeAutorizacao
+            marcada={declaracao.marcada}
+            onChange={declaracao.marcar}
+            erro={declaracao.erro}
+          />
+        )}
         <Button type="submit" loading={salvando} className="shadow-focus">
           Pôr na perua
         </Button>

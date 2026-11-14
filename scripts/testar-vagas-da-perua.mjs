@@ -246,7 +246,7 @@ igual('completar leva ao formulário em modo edição', caminhoDeCompletar('abc'
     [linha.includes('onVagaLivre={() => setRapida(true)}'), linha.includes("navigate('/tio/children/new')")]);
   const folha = semComentarios(ler('src/components/perua/FolhaDaVagaRapida.jsx'));
   igual('a folha grava por criancaRapida e oferece o cadastro completo', true,
-    folha.includes('criancaRapida(') && folha.includes('addChild(dados)') && folha.includes("navigate('/tio/children/new')"));
+    folha.includes('criancaRapida(') && folha.includes('addChild({ ...dados, autorizacaoDeclarada: true })') && folha.includes("navigate('/tio/children/new')"));
   igual('a folha não diz "lugar"', false, /lugar/i.test(folha));
   const ficha = semComentarios(ler('src/pages/ChildDetail.jsx'));
   const lista = semComentarios(ler('src/pages/tio/TioChildren.jsx'));
