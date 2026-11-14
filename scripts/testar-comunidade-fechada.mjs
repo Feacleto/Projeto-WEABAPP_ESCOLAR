@@ -22,6 +22,7 @@
  * (`testar:imports` proíbe alcançar o SDK lá).
  */
 import { createRequire } from 'node:module';
+import { readFileSync, writeFileSync, rmSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
 const admin = require('../functions/node_modules/firebase-admin/lib/index.js');
@@ -44,7 +45,13 @@ const {
   makeAvisarParceiroIndicado,
   makePublicarFotoDaTurma,
 } = require('../functions/lib/comunidade.js');
-const { makePedirTransferencia } = require('../functions/lib/transferencias.js');
+const {
+  makePedirTransferencia,
+  makeResponderTransferencia,
+  makeAceitarTransferencia,
+  makeCancelarTransferencia,
+} = require('../functions/lib/transferencias.js');
+const { comunidadeLigada, exigirComunidadeLigada } = require('../functions/lib/comunidadeLigada.js');
 const { makeCasarNoCadastro } = require('../functions/lib/casarNoCadastro.js');
 const { FRASE_DA_COMUNIDADE_FECHADA } = require('../functions/lib/reguaDaComunidade.js');
 
@@ -53,6 +60,9 @@ const fotosDaComunidade = makeFotosDaComunidade(db);
 const avisarParceiroIndicado = makeAvisarParceiroIndicado(db);
 const publicarFotoDaTurma = makePublicarFotoDaTurma(db);
 const pedirTransferencia = makePedirTransferencia(db);
+const responderTransferencia = makeResponderTransferencia(db);
+const aceitarTransferencia = makeAceitarTransferencia(db);
+const cancelarTransferencia = makeCancelarTransferencia(db);
 const casarNoCadastro = makeCasarNoCadastro(db);
 
 let ok = 0;
@@ -78,11 +88,14 @@ async function chamar(fn, uid, data = {}) {
 }
 
 const ESTRANHO = 'estranhoS';
+// A família do estranho: a rede dela inclui os "parceiros" dele, então, sem
+// o portão, ela receberia a foto do colega. É o que torna a sonda de verdade.
+const FAMILIA = 'familiaDoEstranho';
 const COLEGA = 'colegaA';
 const TEL = '11988887777';
 
 async function limpar() {
-  for (const col of ['users', 'indicacoes', 'fotosDaTurma', 'notifications', 'platformConfig', 'schools', 'children', 'transferenciasDeFamilia']) {
+  for (const col of ['users', 'indicacoes', 'fotosDaTurma', 'notifications', 'platformConfig', 'schools', 'children', 'transferenciasDeFamilia', 'payments', 'contratosAssociacao']) {
     const snap = await db.collection(col).get();
     await Promise.all(snap.docs.map((d) => d.ref.delete()));
   }
@@ -111,6 +124,13 @@ async function semear() {
     caminho: `fotosDaTurma/${COLEGA}/c.jpg`, url: null, criadaEm: Timestamp.now(), expiraEm: expira,
   });
   await db.doc('children/kidS').set({ name: 'Ana', adminUid: ESTRANHO, active: true });
+  await db.doc(`users/${FAMILIA}`).set({ role: 'parent', name: 'Mãe da Ana', adminUid: ESTRANHO, adminUids: [ESTRANHO], childIds: ['kidS'] });
+  // Um pedido de transferência ABERTO ANTES da chave, para o "parceiro"
+  // forjado — o que a auditoria achou escapando do portão.
+  await db.doc('transferenciasDeFamilia/trAberta').set({
+    deUid: ESTRANHO, paraUid: COLEGA, familiaUid: FAMILIA, childId: 'kidS',
+    estado: 'pedido', previa: { primeiroNome: 'Ana' }, criadoEm: Timestamp.now(),
+  });
 }
 
 async function main() {
@@ -133,6 +153,9 @@ async function main() {
     checar('…e nenhum WhatsApp do colega sai', false, JSON.stringify(mp).includes('988887777'));
     const fc = await chamar(fotosDaComunidade, ESTRANHO);
     checar('fotosDaComunidade recusa (o motorista)', 'failed-precondition', fc.erro);
+    const fcFam = await chamar(fotosDaComunidade, FAMILIA);
+    checar('fotosDaComunidade recusa (a FAMÍLIA)', 'failed-precondition', fcFam.erro);
+    checar('…e a família não recebe a foto do colega', false, JSON.stringify(fcFam).includes('fotoComunidade'));
     const av = await chamar(avisarParceiroIndicado, ESTRANHO, { parceiroUid: COLEGA });
     checar('avisarParceiroIndicado recusa', 'failed-precondition', av.erro);
     const caixa = await db.collection('notifications').where('userId', '==', COLEGA).get();
@@ -148,6 +171,69 @@ async function main() {
     const tr = await chamar(pedirTransferencia, ESTRANHO, { childId: 'kidS', parceiroUid: COLEGA });
     checar('pedirTransferencia recusa', 'failed-precondition', tr.erro);
     checar('…com a frase da Comunidade (não a da cobrança)', FRASE_DA_COMUNIDADE_FECHADA, tr.msg);
+    // O pedido JÁ ABERTO: o parceiro não responde e a família não aceita.
+    for (const aceito of [true, false]) {
+      const rt = await chamar(responderTransferencia, COLEGA, { id: 'trAberta', aceito });
+      checar(`responderTransferencia (aceito: ${aceito}) recusa`, ['failed-precondition', FRASE_DA_COMUNIDADE_FECHADA], [rt.erro, rt.msg]);
+    }
+    const at = await chamar(aceitarTransferencia, FAMILIA, { id: 'trAberta' });
+    checar('aceitarTransferencia (a família) recusa', ['failed-precondition', FRASE_DA_COMUNIDADE_FECHADA], [at.erro, at.msg]);
+    const tr2 = (await db.doc('transferenciasDeFamilia/trAberta').get()).data();
+    checar('…e o pedido continua como estava', 'pedido', tr2.estado);
+    const novas = await db.collection('children').where('adminUid', '==', COLEGA).get();
+    checar('…e nenhuma criança nasceu na conta do "parceiro"', 0, novas.size);
+  }
+
+  console.log('\n2b. a leitura da chave FALHA: fecha (fail-closed)');
+  {
+    // Um db que deixa tudo passar, menos a leitura de platformConfig/app,
+    // que LANÇA — com a chave ligada no banco de verdade. Se a falha abrisse
+    // a porta, meusParceiros devolveria o WhatsApp do colega.
+    await db.doc('platformConfig/app').set({ comunidadeLigada: true });
+    const quebrado = new Proxy(db, {
+      get(alvo, prop) {
+        if (prop === 'doc') {
+          return (caminho) => (caminho === 'platformConfig/app'
+            ? { get: async () => { throw new Error('rede caiu'); } }
+            : alvo.doc(caminho));
+        }
+        const v = alvo[prop];
+        return typeof v === 'function' ? v.bind(alvo) : v;
+      },
+    });
+    checar('comunidadeLigada com leitura que lança: false', false, await comunidadeLigada(quebrado));
+    let erro = null;
+    try { await exigirComunidadeLigada(quebrado); } catch (e) { erro = e.code; }
+    checar('exigirComunidadeLigada com leitura que lança: recusa', 'failed-precondition', erro);
+    const mpq = await chamar(makeMeusParceiros(quebrado), ESTRANHO);
+    checar('meusParceiros com a leitura quebrada (chave LIGADA no banco): recusa', 'failed-precondition', mpq.erro);
+    checar('…e nenhum WhatsApp sai', false, JSON.stringify(mpq).includes('988887777'));
+    checar('sonda: com o db de verdade e a chave ligada, ela abre', true, await comunidadeLigada(db));
+    await db.doc('platformConfig/app').delete();
+  }
+
+  console.log('\n2c. SONDA: o portão dentro do ramo do motorista seria pego');
+  {
+    // Muta uma CÓPIA do arquivo: move o portão para dentro do
+    // `if (eu?.role === 'admin')`. O caso da família tem de falhar nela —
+    // senão ele não protege nada.
+    const fonte = readFileSync(new URL('../functions/lib/comunidade.js', import.meta.url), 'utf8');
+    const antes = "    const { uid, dados: eu } = await carregarUsuario(db, request);\n    await exigirComunidadeLigada(db);\n    let tios;\n    if (eu?.role === 'admin') {\n";
+    const depois = "    const { uid, dados: eu } = await carregarUsuario(db, request);\n    let tios;\n    if (eu?.role === 'admin') {\n      await exigirComunidadeLigada(db);\n";
+    const normal = fonte.replace(/\r\n/g, '\n');
+    checar('sonda: o trecho a mutar existe no arquivo', true, normal.includes(antes));
+    const tmp = new URL('../functions/lib/.sonda-comunidade.tmp.js', import.meta.url);
+    writeFileSync(tmp, normal.replace(antes, depois));
+    try {
+      const mutante = require('../functions/lib/.sonda-comunidade.tmp.js');
+      const fam = await chamar(mutante.makeFotosDaComunidade(db), FAMILIA);
+      const doMotorista = await chamar(mutante.makeFotosDaComunidade(db), ESTRANHO);
+      checar('sonda: no mutante, o motorista continua recusado', 'failed-precondition', doMotorista.erro);
+      checar('sonda: no mutante, a FAMÍLIA vaza a foto do colega (o caso acima pegaria)', ['fotoComunidade'],
+        (fam.dados?.fotos || []).map((f) => f.id));
+    } finally {
+      rmSync(tmp, { force: true });
+    }
   }
 
   console.log('\n3. a chave LIGADA: o comportamento antigo volta');
@@ -162,6 +248,17 @@ async function main() {
   checar('fotosDaComunidade responde com a foto do colega', ['fotoComunidade'], (fc.dados?.fotos || []).map((f) => f.id));
   const av = await chamar(avisarParceiroIndicado, ESTRANHO, { parceiroUid: COLEGA });
   checar('avisarParceiroIndicado avisa', true, av.dados?.ok);
+  const fcFam = await chamar(fotosDaComunidade, FAMILIA);
+  checar('a família volta a ver a foto do parceiro do tio dela', ['fotoComunidade'], (fcFam.dados?.fotos || []).map((f) => f.id));
+  const rt = await chamar(responderTransferencia, COLEGA, { id: 'trAberta', aceito: false });
+  checar('responderTransferencia passa do portão (recusar funciona)', true, rt.dados?.ok);
+  const at = await chamar(aceitarTransferencia, FAMILIA, { id: 'trAberta' });
+  checar('aceitarTransferencia passa do portão (cai em outra regra, não na da Comunidade)', true,
+    at.msg !== FRASE_DA_COMUNIDADE_FECHADA);
+  await db.doc('transferenciasDeFamilia/trCancelar').set({ deUid: ESTRANHO, paraUid: COLEGA, familiaUid: FAMILIA, childId: 'kidS', estado: 'pedido', criadoEm: Timestamp.now() });
+  await db.doc('platformConfig/app').delete();
+  const cc = await chamar(cancelarTransferencia, ESTRANHO, { id: 'trCancelar' });
+  checar('cancelar o próprio pedido continua possível com a chave DESLIGADA', true, cc.dados?.ok);
 
   await limpar();
   console.log(`\n${ok} passaram, ${bad} falharam`);
