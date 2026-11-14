@@ -7,6 +7,12 @@ import WhatsAppIcon from '../common/WhatsAppIcon';
 import { inviteUrl } from '../../dominio/identidade/inviteUrl';
 import { doDa } from '../../compartilhado/formatters';
 import { mensagemDoConvite } from '../../marca/mensagensDoLink.js';
+import {
+  textoDoEnviado,
+  CHAVE_CONVITE_ENVIADO,
+  EVENTO_CONVITE_ENVIADO,
+} from '../../marca/valorDoConvite.js';
+import { lembrar } from '../../compartilhado/lembreteDoAparelho';
 import { FileSignature } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { dadosDaContratadaFaltando } from '../../services/contractService';
@@ -125,6 +131,9 @@ function GarantirContrato({ childId }) {
  *
  * `rotulo` troca o texto do botão principal.
  *
+ * `nomeDoResponsavel` entra na frase que aparece depois do toque ("Enviado
+ * para Ana. Quando ela entrar…"); sem ele a frase fala da família.
+ *
  * `crianca` (a ficha passa o documento ao vivo) liga o prazo do link e o
  * "Gerar link novo"; sem ela, o componente lê a criança por `childId`.
  */
@@ -134,6 +143,7 @@ export default function InviteShare({
   childName,
   gender = null,
   parentPhone,
+  nomeDoResponsavel = '',
   jaEntrou = false,
   recolhido = false,
   rotulo,
@@ -263,6 +273,11 @@ export default function InviteShare({
           const id = childId || crianca?.id;
           if (id && !jaEntrou) marcarConviteEnviado(id).catch(() => {});
           setEnviado(true);
+          // O cartão "Para que serve o convite" se recolhe depois do primeiro.
+          if (!jaEntrou) {
+            lembrar(CHAVE_CONVITE_ENVIADO);
+            window.dispatchEvent(new Event(EVENTO_CONVITE_ENVIADO));
+          }
           onEnviado?.();
         }}
         // TEXTO ESCURO SOBRE O VERDE DO WHATSAPP: o branco dava 1,98:1
@@ -283,6 +298,12 @@ export default function InviteShare({
           </>
         )}
       </a>
+
+      {mostrarEnviado && (
+        <p className="text-center text-sm leading-snug text-textBody">
+          {textoDoEnviado(nomeDoResponsavel)}
+        </p>
+      )}
 
       {/* Só no convite ainda não usado: para quem já entrou, o link é a
         * porta de volta ao app e trocá-lo a deixaria do lado de fora. */}
