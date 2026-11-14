@@ -27,9 +27,16 @@
  */
 const PID = 'alobuzinou-be81f';
 const BUCKET = `${PID}.firebasestorage.app`;
-const AUTH = 'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts';
-const FS = `http://127.0.0.1:8085/v1/projects/${PID}/databases/(default)/documents`;
-const ST = `http://127.0.0.1:9199/v0/b/${BUCKET}/o`;
+// O ENDEREÇO VEM DO EMULADOR, como em `testar-regras.mjs`: o
+// `emulators:exec` exporta onde subiu cada um. Com as portas escritas à mão,
+// um emulador em outra porta (para não brigar com outra sessão aberta) fazia
+// o teste rodar contra o emulador ALHEIO, cheio de dados velhos.
+const HOST_AUTH = process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099';
+const HOST_FS = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8085';
+const HOST_ST = process.env.FIREBASE_STORAGE_EMULATOR_HOST || '127.0.0.1:9199';
+const AUTH = `http://${HOST_AUTH}/identitytoolkit.googleapis.com/v1/accounts`;
+const FS = `http://${HOST_FS}/v1/projects/${PID}/databases/(default)/documents`;
+const ST = `http://${HOST_ST}/v0/b/${BUCKET}/o`;
 
 const ADM = { 'Content-Type': 'application/json', Authorization: 'Bearer owner' };
 const S = (v) => ({ stringValue: v });
