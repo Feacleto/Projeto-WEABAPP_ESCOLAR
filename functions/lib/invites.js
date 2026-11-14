@@ -24,6 +24,7 @@ const LIMITES = require('./limites');
 // R1). Os módulos novos já usam este caminho.
 const { FieldValue } = require('firebase-admin/firestore');
 const { chaveDoTelefone } = require('./indicacao');
+const { avisoDaFamiliaEntrou, idDoAvisoDaFamiliaEntrou } = require('./reguaDaFamiliaEntrou');
 
 const REGION = 'southamerica-east1';
 
@@ -182,7 +183,8 @@ function makeRedeemInvite(db) {
 
     const childRef = childDoc.ref;
     const userRef = db.doc(`users/${uid}`);
-
+    // O aviso ao motorista sai DEPOIS da transação, com os dados que ela leu.
+    let avisoAoMotorista = null;
 
     const result = await db.runTransaction(async (tx) => {
       const freshChild = await tx.get(childRef);
@@ -328,6 +330,9 @@ function makeRedeemInvite(db) {
 
       tx.set(userRef, userPayload, { merge: true });
 
+      // Recalculado a cada tentativa da transação: vale o da que gravou.
+      avisoAoMotorista = avisoDaFamiliaEntrou(child, childRef.id);
+
       return {
         childId: childRef.id,
         childFirstName: firstName(child.name),
@@ -338,8 +343,37 @@ function makeRedeemInvite(db) {
     // Sem o CÓDIGO no log (03/10/2026): log é lido por mais gente que o
     // banco, e o código é a chave da conta da família.
     logger.info('Convite resgatado', { child: result.childId, uid });
+    await avisarQueAFamiliaEntrou(db, avisoAoMotorista);
     return result;
   });
+}
+
+/**
+ * "A FAMÍLIA DE X ENTROU" — o aviso ao motorista (`reguaDaFamiliaEntrou.js`).
+ *
+ * ⚠️ FORA DA TRANSAÇÃO, E FALHAR AQUI NÃO DESFAZ O VÍNCULO. A família já está
+ * dentro; o aviso é um toque a mais. Dentro da transação, um `create` sobre um
+ * id que já existe derrubaria o resgate inteiro.
+ *
+ * ⚠️ `create()`, NUNCA `set()`: o id é determinístico por criança, e o
+ * `create` recusa o segundo — é isso que impede a reentrega de duplicar.
+ * O que vai ao log é o id da criança, nunca o nome.
+ */
+async function avisarQueAFamiliaEntrou(db, aviso) {
+  if (!aviso) return;
+  const id = idDoAvisoDaFamiliaEntrou(aviso.childId);
+  if (!id) return;
+  try {
+    await db.doc(`notifications/${id}`).create({
+      ...aviso,
+      read: false,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  } catch (err) {
+    // 6 = ALREADY_EXISTS: o aviso desta criança já foi dado.
+    if (err?.code === 6 || err?.code === 'already-exists') return;
+    logger.warn('redeemInvite: aviso ao motorista não saiu', { child: aviso.childId, erro: err?.message });
+  }
 }
 
 /**

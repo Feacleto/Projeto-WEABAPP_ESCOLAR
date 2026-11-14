@@ -87,9 +87,16 @@ export function useGeolocation() {
       // esperar por um leque de escritas no meio-fio, às vezes sem sinal. O
       // service engole o próprio erro e tem trava de uma vez por dia — ida e
       // volta são duas rotas, e na volta ela já está em casa.
-      avisarSaidaDaRota(driverUid, opcoes.saida);
+      //
+      // ⚠️ A PROMESSA VOLTA PARA QUEM INICIOU (14/11/2026, RC2): é quantas
+      // famílias o aviso alcançou, e o cartão de "Rota iniciada" mostra o
+      // número quando ele chega. Quem chama NÃO espera por ela — a rota já
+      // começou nas linhas de cima. Zero = ninguém avisado agora (ou a trava
+      // do dia já tinha avisado): o cartão fica sem número.
+      return avisarSaidaDaRota(driverUid, opcoes.saida);
     } catch (err) {
       setError(err);
+      return Promise.resolve(0);
     }
   }, []);
 

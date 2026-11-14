@@ -67,6 +67,8 @@ export const DESTINO_DO_AVISO = {
   alt_pickup: '/tio/children/{childId}',
   irmao_recusado: '/tio/children/{childId}',
   convite_parado: '/tio/children/{childId}',
+  // A ficha da criança: é lá que ele cadastra o valor da mensalidade.
+  familia_entrou: '/tio/children/{childId}',
   pedido_de_acesso: '/tio',
   acesso_temporario: '/tio/children/{childId}',
   indicacao_cadastrou: '/tio/indicar',
